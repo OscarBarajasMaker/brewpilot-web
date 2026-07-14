@@ -1,0 +1,4844 @@
+<!doctype html>
+<html data-theme="graphite">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <title>BrewPilot</title>
+    <style>
+      :root {
+        --bg: #0e1116;
+        --panel: #161b22;
+        --panel2: #1c232d;
+        --line: #263041;
+        --line2: #3a4050;
+        --text: #e6edf3;
+        --dim: #8b949e;
+        --pressure: #e8833a;
+        --flow: #4ca5e8;
+        --temp: #e5484d;
+        --weight: #3fb950;
+        --warn: #e3b341;
+        --sel-bg: #16233a;
+        --sel-line: #4a7fb5;
+        --sel-text: #8fc4ff;
+        --hi-bg: #16241c;
+        --hi-line: #2f6f4f;
+        --hi-text: #8fdcb0;
+        --danger-bg: #2a1616;
+        --danger-line: #6f3a3a;
+        --danger-text: #ff9a9a;
+        --rec-bg: #1a1522;
+        --rec-line: #3a2f4a;
+        --rec-text: #c8a2ff;
+      }
+      [data-theme="carbon"] {
+        --bg: #000000;
+        --panel: #0b0d10;
+        --panel2: #14171c;
+        --line: #242a31;
+        --line2: #2e353d;
+        --text: #f2f5f8;
+        --dim: #9aa3ad;
+        --pressure: #f5924a;
+        --flow: #5cb3f2;
+        --temp: #f0575c;
+        --weight: #4cc85f;
+        --warn: #ebb84a;
+        --sel-bg: #0e1d2b;
+        --sel-line: #4a85c0;
+        --sel-text: #8fc4ff;
+        --hi-bg: #0e1e15;
+        --hi-line: #34794f;
+        --hi-text: #8fdcb0;
+        --danger-bg: #1e1010;
+        --danger-line: #7a4040;
+        --danger-text: #ff9a9a;
+        --rec-bg: #141020;
+        --rec-line: #40354f;
+        --rec-text: #c8a2ff;
+      }
+      [data-theme="daylight"] {
+        --bg: #f6f8fa;
+        --panel: #ffffff;
+        --panel2: #eef1f4;
+        --line: #d0d7de;
+        --line2: #c2cad2;
+        --text: #1f2328;
+        --dim: #656d76;
+        --pressure: #c2601f;
+        --flow: #1668c4;
+        --temp: #c93c41;
+        --weight: #2a9d45;
+        --warn: #b8860b;
+        --sel-bg: #dcebfb;
+        --sel-line: #1668c4;
+        --sel-text: #0f5bb5;
+        --hi-bg: #e7f6ec;
+        --hi-line: #2a9d45;
+        --hi-text: #1e7a34;
+        --danger-bg: #fbe7e7;
+        --danger-line: #c93c41;
+        --danger-text: #b23138;
+        --rec-bg: #f0eafb;
+        --rec-line: #8a6dbf;
+        --rec-text: #6b44b0;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0 auto;
+        max-width: 520px;
+        padding: 0 0 78px;
+        font-family:
+          "Inter",
+          -apple-system,
+          system-ui,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      h1 {
+        display: none;
+      }
+      .appbar {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px 10px;
+        background: var(--bg);
+        border-bottom: 1px solid var(--line);
+      }
+      .brand {
+        font-weight: 800;
+        font-size: 18px;
+      }
+      .brand span {
+        color: var(--pressure);
+      }
+      .themebtns {
+        display: flex;
+        gap: 6px;
+      }
+      .tdot {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 1px solid var(--line);
+        cursor: pointer;
+      }
+      .tdot.on {
+        outline: 2px solid var(--pressure);
+        outline-offset: 1px;
+      }
+      .wrap {
+        padding: 14px 16px 0;
+      }
+      .tabpanel {
+        display: none;
+      }
+      .tabpanel.on {
+        display: block;
+      }
+      .hero {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 16px;
+        margin-bottom: 14px;
+      }
+      .herotop {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+      }
+      .herophase {
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        color: var(--dim);
+        text-transform: uppercase;
+      }
+      .heronum {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 30px;
+        font-weight: 600;
+      }
+      .herosub {
+        color: var(--dim);
+        font-size: 12px;
+        margin-top: 2px;
+      }
+      .spark {
+        display: flex;
+        align-items: flex-end;
+        gap: 5px;
+        height: 60px;
+        margin-top: 14px;
+      }
+      .spark i {
+        flex: 1;
+        border-radius: 2px 2px 0 0;
+        display: block;
+        background: var(--pressure);
+      }
+      .sparkcap {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        color: var(--dim);
+        margin-top: 6px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .tabbar {
+        position: fixed;
+        left: 50%;
+        bottom: 0;
+        transform: translateX(-50%);
+        width: 100%;
+        max-width: 520px;
+        z-index: 20;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        padding: 8px 0 10px;
+        background: var(--bg);
+        border-top: 1px solid var(--line);
+      }
+      .tab {
+        text-align: center;
+        cursor: pointer;
+        color: var(--dim);
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+      }
+      .tab .ic {
+        font-size: 16px;
+        line-height: 1;
+      }
+      .tab.on {
+        color: var(--pressure);
+      }
+      #state {
+        background: var(--panel);
+        border-color: var(--line);
+        color: var(--text);
+      }
+      button {
+        background: var(--flow);
+      }
+      .warm {
+        background: var(--pressure);
+      }
+      .off {
+        background: var(--panel2);
+      }
+      .grn {
+        background: var(--weight);
+      }
+      select,
+      input,
+      .fin {
+        background: var(--panel);
+        border-color: var(--line);
+        color: var(--text);
+      }
+      input[type="number"] {
+        font-family: "JetBrains Mono", monospace;
+      }
+      .sub {
+        color: var(--dim);
+      }
+
+      .chip {
+        display: inline-block;
+        padding: 8px 12px;
+        border-radius: 18px;
+        font-size: 13px;
+        cursor: pointer;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--text);
+      }
+      .chip.on {
+        border-color: var(--sel-line);
+        background: var(--sel-bg);
+        color: var(--sel-text);
+      }
+      .chip.sm {
+        padding: 7px 11px;
+        border-radius: 16px;
+        font-size: 12px;
+      }
+      .chip.xs {
+        padding: 6px 10px;
+        border-radius: 15px;
+        font-size: 11px;
+      }
+      .chip.hi {
+        border-color: var(--hi-line);
+        background: var(--hi-bg);
+      }
+      .chip.hi.on {
+        color: var(--hi-text);
+      }
+      .chip.rec {
+        border-color: var(--rec-line);
+        background: var(--rec-bg);
+        color: var(--rec-text);
+      }
+
+      .rightbar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .langtoggle {
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 4px 9px;
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--dim);
+        cursor: pointer;
+      }
+      body.role-logmgr #machineOnly,
+      body.role-logmgr #tierCard {
+        display: none !important;
+      }
+      .tool {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 13px 14px;
+        margin-bottom: 12px;
+      }
+      .toolhd {
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+      .convrow {
+        display: flex;
+        gap: 8px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+      }
+      .convcell {
+        flex: 1 1 90px;
+        min-width: 0;
+      }
+      .convout {
+        margin-top: 10px;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 15px;
+        color: var(--hi-text);
+      }
+      .rolerow {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-bottom: 6px;
+      }
+      .wizmask {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 40;
+        display: none;
+        align-items: flex-end;
+        justify-content: center;
+      }
+      .wizmask.on {
+        display: flex;
+      }
+      .wizcard {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 16px 16px 0 0;
+        width: 100%;
+        max-width: 520px;
+        padding: 18px 18px 26px;
+        max-height: 88vh;
+        overflow: auto;
+      }
+      .wiztitle {
+        font-size: 16px;
+        font-weight: 800;
+        margin-bottom: 4px;
+      }
+      .wizstep {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px;
+        margin-top: 10px;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      .wizn {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: var(--pressure);
+        color: #0b0e12;
+        font-weight: 800;
+        font-size: 12px;
+        text-align: center;
+        line-height: 20px;
+        margin-right: 8px;
+      }
+      .wizok {
+        color: var(--hi-text);
+      }
+      .dura {
+        border: 1px solid var(--warn);
+        background: var(--panel);
+        border-radius: 12px;
+        padding: 12px 13px;
+        margin-bottom: 12px;
+      }
+      .durahd {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13.5px;
+      }
+      .durabolt {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: var(--warn);
+        color: #0b0e12;
+        font-weight: 800;
+        font-size: 12px;
+        text-align: center;
+        line-height: 18px;
+        flex: none;
+      }
+      .durab {
+        font-size: 12px;
+        color: var(--dim);
+        line-height: 1.55;
+        margin-top: 7px;
+      }
+      .durarow {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+      .durabtn {
+        flex: 1 1 150px;
+        border: none;
+        border-radius: 9px;
+        padding: 11px;
+        font-weight: 700;
+        font-size: 13px;
+        cursor: pointer;
+        color: #0b0e12;
+      }
+      .durabtn2 {
+        flex: 0 0 auto;
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--dim);
+        border-radius: 9px;
+        padding: 11px 13px;
+        font-size: 12.5px;
+        cursor: pointer;
+      }
+      .duracount {
+        font-size: 11px;
+        color: var(--warn);
+        margin-top: 8px;
+        font-family: "JetBrains Mono", monospace;
+      }
+      .durasafe {
+        border-color: var(--hi-line);
+      }
+      .durasafe .durabolt {
+        background: var(--weight);
+      }
+      .inslock {
+        border: 1px solid var(--warn);
+        background: var(--panel);
+        border-radius: 12px;
+        padding: 16px;
+        text-align: left;
+      }
+      .inslockT {
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+      .inslockB {
+        font-size: 12.5px;
+        color: var(--dim);
+        line-height: 1.55;
+      }
+      .cs {
+        border: 1px solid var(--line);
+        background: var(--panel2);
+        border-radius: 10px;
+        padding: 10px 12px;
+        margin: 8px 0;
+      }
+      .csHd {
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        color: var(--dim);
+        text-transform: uppercase;
+      }
+      .csV {
+        font-family: "JetBrains Mono", monospace;
+        font-size: 18px;
+        font-weight: 600;
+        color: var(--hi-text);
+        margin-top: 4px;
+      }
+      .csS {
+        font-size: 11.5px;
+        color: var(--dim);
+        margin-top: 4px;
+        line-height: 1.5;
+      }
+      .wsub {
+        font-size: 12.5px;
+        color: var(--dim);
+        line-height: 1.55;
+        margin: 6px 0 0 28px;
+      }
+      .kbd {
+        background: var(--panel2);
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        padding: 1px 6px;
+        color: var(--text);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      .wizbtn {
+        display: inline-block;
+        margin: 8px 0 0 28px;
+        background: var(--sel-bg);
+        border: 1px solid var(--sel-line);
+        color: var(--sel-text);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 13px;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      .wizwarn {
+        border-color: var(--warn);
+      }
+      .wizn2 {
+        background: var(--warn);
+      }
+      .wshot {
+        display: block;
+        width: calc(100% - 28px);
+        margin: 10px 0 0 28px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+      .wizerr {
+        color: var(--danger-text);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="appbar">
+      <div class="brand">Brew<span>Pilot</span></div>
+      <div class="rightbar">
+        <div class="langtoggle" id="langBtn" onclick="setLang(LANG==='es'?'en':'es')">ES</div>
+        <div class="themebtns">
+          <div
+            class="tdot on"
+            data-t="graphite"
+            style="background: #0e1116"
+            onclick="setTheme('graphite')"
+          ></div>
+          <div
+            class="tdot"
+            data-t="carbon"
+            style="background: #000"
+            onclick="setTheme('carbon')"
+          ></div>
+          <div
+            class="tdot"
+            data-t="daylight"
+            style="background: #f6f8fa"
+            onclick="setTheme('daylight')"
+          ></div>
+        </div>
+      </div>
+    </div>
+    <div class="wrap">
+      <div class="dura" id="duraBanner" style="display: none">
+        <div class="durahd">
+          <span class="durabolt">!</span
+          ><b data-i18n="duraT">Your brews are only in this browser</b>
+        </div>
+        <div class="durab" data-i18n="duraB">
+          Nothing is backed up. Clearing your browser data, or leaving the site unused for about a
+          week on iPhone, can erase it. Connect a Google Sheet (5 min, one time) to keep your
+          history for good and get better insights.
+        </div>
+        <div class="durarow">
+          <button
+            class="grn durabtn"
+            onclick="document.getElementById('wizMask').classList.add('on')"
+            data-i18n="duraGo"
+          >
+            Connect a sheet (5 min)</button
+          ><button class="durabtn2" onclick="exportLocal()" data-i18n="duraExp">
+            Export backup
+          </button>
+        </div>
+        <div class="duracount" id="duraCount"></div>
+      </div>
+      <div class="tabpanel on" id="tab-home">
+        <div class="hero">
+          <div class="herotop">
+            <div>
+              <div class="herophase" id="heroPhase">Ready to log</div>
+              <div class="herosub" id="heroSub">your coffee companion</div>
+            </div>
+            <div class="heronum" id="heroNum">--</div>
+          </div>
+          <div class="spark" id="heroSpark"></div>
+          <div class="sparkcap">
+            <span data-i18n="recentShots">recent shots</span><span data-i18n="rating">rating</span>
+          </div>
+        </div>
+        <div
+          id="welcome"
+          style="
+            display: none;
+            margin-bottom: 14px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--sel-line);
+            background: var(--sel-bg);
+          "
+        >
+          <div
+            style="color: var(--sel-text); font-weight: 600; font-size: 14px; margin-bottom: 6px"
+          >
+            Welcome to the BrewPilot beta
+          </div>
+          <div style="color: var(--dim); font-size: 12px; line-height: 1.5; margin-bottom: 8px">
+            This webapp gives you the full logging, rotation and insights experience. To save your
+            data, connect your own free Google Sheet (2 min). Your data stays in your account.
+          </div>
+          <button
+            class="grn"
+            style="width: 100%"
+            onclick="document.getElementById('setPanel').style.display='block';toggleSettings();document.getElementById('setPanel').scrollIntoView({behavior:'smooth'})"
+          >
+            Connect my sheet
+          </button>
+          <div style="color: var(--dim); font-size: 11px; margin-top: 6px">
+            No sheet yet? You can still explore - dial-in advice works offline.
+          </div>
+        </div>
+        <h1>BrewPilot</h1>
+        <div class="sub">your coffee companion</div>
+        <div
+          id="planBanner"
+          style="
+            display: none;
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--hi-line);
+            background: var(--hi-bg);
+          "
+        ></div>
+        <div id="machineOnly">
+          <div id="state">loading...</div>
+          <div class="row">
+            <button class="warm" onclick='cmd("warm")'>Warm up</button
+            ><button class="off" onclick='cmd("off")'>Off</button>
+          </div>
+        </div>
+      </div>
+      <div class="tabpanel" id="tab-log">
+        <label id="logLabel">Log the last shot</label>
+        <div id="rotwrap" style="margin-bottom: 10px">
+          <button
+            id="samelast"
+            onclick="fillSame()"
+            style="
+              width: 100%;
+              padding: 12px;
+              font-size: 15px;
+              margin-bottom: 8px;
+              border-radius: 12px;
+              border: 1px solid var(--hi-line);
+              background: var(--hi-bg);
+              color: var(--hi-text);
+              font-weight: 600;
+            "
+          >
+            Same coffee as last shot
+          </button>
+          <div style="color: var(--dim); font-size: 12px; margin: 4px 2px">
+            Current rotation (tap to fill):
+          </div>
+          <div id="chips" style="display: flex; flex-wrap: wrap; gap: 6px"></div>
+          <div
+            id="dialin"
+            style="
+              display: none;
+              margin-top: 10px;
+              padding: 12px;
+              border-radius: 12px;
+              border: 1px solid var(--rec-line);
+              background: var(--rec-bg);
+              font-size: 14px;
+              line-height: 1.5;
+            "
+          ></div>
+          <button
+            id="finbtn"
+            onclick="finishBag()"
+            style="
+              display: none;
+              width: 100%;
+              margin-top: 8px;
+              padding: 11px;
+              font-size: 14px;
+              border-radius: 12px;
+              border: 1px solid var(--danger-line);
+              background: var(--danger-bg);
+              color: var(--danger-text);
+            "
+          >
+            Finished this bag - suggest next
+          </button>
+        </div>
+        <input
+          id="coffee"
+          placeholder="coffee name"
+          style="
+            width: 100%;
+            padding: 13px;
+            font-size: 16px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            color: var(--text);
+          "
+        /><select
+          id="roaster"
+          style="
+            width: 100%;
+            padding: 13px;
+            font-size: 16px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            color: var(--text);
+          "
+        >
+          <option value="">roaster...</option>
+          <optgroup label="Yours">
+            <option>September</option>
+            <option>Sey</option>
+            <option>Luna</option>
+            <option>Hydrangea</option>
+            <option>Coffee with Dongze</option>
+            <option>DAK</option>
+            <option>XLIII</option>
+            <option>Big Sur</option>
+            <option>Native</option>
+            <option>The Picky Chemist</option>
+            <option>Special Guests</option>
+            <option>Ilse</option>
+            <option>Habito</option>
+            <option>La Cabra</option>
+          </optgroup>
+          <optgroup label="Europe">
+            <option>Tim Wendelboe</option>
+            <option>Coffee Collective</option>
+            <option>April</option>
+            <option>Manhattan</option>
+            <option>Friedhats</option>
+            <option>Nomad</option>
+            <option>Gardelli</option>
+            <option>The Barn</option>
+            <option>Five Elephant</option>
+            <option>Round Hill</option>
+            <option>Square Mile</option>
+            <option>Assembly</option>
+            <option>Cartwheel</option>
+          </optgroup>
+          <optgroup label="North America">
+            <option>Onyx</option>
+            <option>Prodigal</option>
+            <option>Black & White</option>
+            <option>Passenger</option>
+            <option>Hatch</option>
+            <option>George Howell</option>
+            <option>Intelligentsia</option>
+            <option>Datura</option>
+            <option>Apollon's Gold</option>
+            <option>Moonwake</option>
+            <option>Aviary</option>
+            <option>Shoebox</option>
+            <option>Glitch</option>
+            <option>Substance</option>
+          </optgroup>
+          <optgroup label="Asia / Pacific">
+            <option>ONA</option>
+            <option>Standout</option>
+            <option>Fortitude</option>
+          </optgroup>
+          <optgroup label="Other"><option>Other</option></optgroup></select
+        ><input
+          id="roaster_other"
+          placeholder="type roaster name"
+          style="
+            display: none;
+            width: 100%;
+            padding: 13px;
+            font-size: 16px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            color: var(--text);
+          "
+        /><select
+          id="varietal"
+          style="
+            width: 100%;
+            padding: 13px;
+            font-size: 16px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            color: var(--text);
+          "
+        >
+          <option value="">varietal...</option>
+          <optgroup label="Ethiopian / Landrace">
+            <option>Heirloom</option>
+            <option>Kurume</option>
+            <option>Welicho</option>
+            <option>Wolisho</option>
+            <option>Gesha</option>
+            <option>Wush Wush</option>
+            <option>74110</option>
+            <option>74158</option>
+          </optgroup>
+          <optgroup label="Rare / Exotic">
+            <option>Eugenioides</option>
+            <option>Sudan Rume</option>
+            <option>Chiroso</option>
+            <option>Ombligon</option>
+            <option>Mokka</option>
+            <option>Pacamara</option>
+            <option>Maracaturra</option>
+          </optgroup>
+          <optgroup label="Bourbon family">
+            <option>Bourbon</option>
+            <option>Red Bourbon</option>
+            <option>Yellow Bourbon</option>
+            <option>Pink Bourbon</option>
+            <option>Caturra</option>
+            <option>Catuai</option>
+            <option>Pacas</option>
+            <option>Villa Sarchi</option>
+            <option>Laurina</option>
+          </optgroup>
+          <optgroup label="Typica family">
+            <option>Typica</option>
+            <option>Mundo Novo</option>
+            <option>Maragogipe</option>
+            <option>Kona</option>
+            <option>Blue Mountain</option>
+            <option>Java</option>
+            <option>Sidra</option>
+          </optgroup>
+          <optgroup label="Kenyan / SL">
+            <option>SL28</option>
+            <option>SL34</option>
+            <option>SL14</option>
+            <option>Ruiru 11</option>
+            <option>Batian</option>
+            <option>K7</option>
+          </optgroup>
+          <optgroup label="Hybrids / Large-bean">
+            <option>Castillo</option>
+            <option>Colombia</option>
+            <option>Catimor</option>
+            <option>Sarchimor</option>
+            <option>Marsellesa</option>
+            <option>Centroamericano</option>
+          </optgroup>
+          <optgroup label="Other">
+            <option>Blend</option>
+            <option>Other</option>
+            <option>Unknown</option>
+          </optgroup></select
+        ><select
+          id="roast"
+          style="
+            width: 100%;
+            padding: 13px;
+            font-size: 16px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            color: var(--text);
+          "
+        >
+          <option value="">roast level...</option>
+          <option>Ultra Light</option>
+          <option>Extra Light</option>
+          <option>Light</option>
+          <option>Light Medium</option>
+          <option>Medium</option>
+          <option>Medium Dark</option>
+          <option>Dark</option></select
+        ><select
+          id="process"
+          style="
+            width: 100%;
+            padding: 13px;
+            font-size: 16px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            color: var(--text);
+          "
+        >
+          <option value="">process...</option>
+          <optgroup label="Classic">
+            <option>Washed</option>
+            <option>Natural</option>
+            <option>Honey</option>
+            <option>White Honey</option>
+            <option>Yellow Honey</option>
+            <option>Red Honey</option>
+            <option>Black Honey</option>
+            <option>Pulped Natural</option>
+          </optgroup>
+          <optgroup label="Fermentation">
+            <option>Anaerobic</option>
+            <option>Anaerobic Natural</option>
+            <option>Anaerobic Washed</option>
+            <option>Anoxic</option>
+            <option>Lactic</option>
+            <option>Yeast Inoculated</option>
+            <option>Extended Fermentation</option>
+            <option>Co-Fermented</option>
+          </optgroup>
+          <optgroup label="Experimental">
+            <option>Carbonic Maceration</option>
+            <option>Thermal Shock</option>
+            <option>Frozen / Cryo</option>
+            <option>Double Anaerobic</option>
+            <option>Washed Anaerobic</option>
+          </optgroup>
+          <optgroup label="Co-Ferment (fruit)">
+            <option>Co-Ferment (generic)</option>
+            <option>Lychee Co-Ferment</option>
+            <option>Strawberry Co-Ferment</option>
+            <option>Blueberry Co-Ferment</option>
+            <option>Raspberry Co-Ferment</option>
+            <option>Passionfruit Co-Ferment</option>
+            <option>Grape Co-Ferment</option>
+            <option>Peach Co-Ferment</option>
+            <option>Mango Co-Ferment</option>
+            <option>Pineapple Co-Ferment</option>
+            <option>Banana Co-Ferment</option>
+            <option>Melon Co-Ferment</option>
+            <option>Cherry Co-Ferment</option>
+            <option>Citrus Co-Ferment</option>
+            <option>Apple Co-Ferment</option>
+          </optgroup>
+          <optgroup label="Co-Ferment (other)">
+            <option>Hops Co-Ferment</option>
+            <option>Cinnamon Co-Ferment</option>
+            <option>Vanilla Co-Ferment</option>
+            <option>Ginger Co-Ferment</option>
+            <option>Mint Co-Ferment</option>
+            <option>Chili Co-Ferment</option>
+            <option>Rose / Floral Co-Ferment</option>
+            <option>Wine Yeast Co-Ferment</option>
+            <option>Champagne Yeast Co-Ferment</option>
+          </optgroup>
+          <optgroup label="Infused">
+            <option>Infused (post-process)</option>
+            <option>Bourbon Barrel Aged</option>
+            <option>Whiskey Barrel Aged</option>
+            <option>Rum Barrel Aged</option>
+          </optgroup>
+          <optgroup label="Other"><option>Other</option></optgroup></select
+        ><input
+          id="process_other"
+          placeholder="type process"
+          style="
+            display: none;
+            width: 100%;
+            padding: 13px;
+            font-size: 16px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel);
+            color: var(--text);
+          "
+        />
+        <div class="row">
+          <select
+            id="type"
+            style="
+              flex: 1;
+              padding: 13px;
+              font-size: 16px;
+              border-radius: 12px;
+              border: 1px solid var(--line);
+              background: var(--panel);
+              color: var(--text);
+            "
+          >
+            <option value="">type (auto)</option>
+            <option value="soup">soup</option>
+            <option value="espresso">espresso</option>
+            <option value="filter">filter</option></select
+          ><input
+            id="dose"
+            type="number"
+            step="0.1"
+            inputmode="decimal"
+            placeholder="dose g"
+            style="
+              flex: 1;
+              padding: 13px;
+              font-size: 16px;
+              border-radius: 12px;
+              border: 1px solid var(--line);
+              background: var(--panel);
+              color: var(--text);
+            "
+          /><select
+            id="grinder"
+            onchange="localStorage.setItem('grinder',this.value);let _e=ROT.find(x=>x.coffee==document.getElementById('coffee').value);renderGsetChips(_e);renderGrinderChips(_e)"
+            style="
+              flex: 1;
+              padding: 13px;
+              font-size: 16px;
+              border-radius: 12px;
+              border: 1px solid var(--line);
+              background: var(--panel);
+              color: var(--text);
+            "
+          >
+            <option value="">grinder</option>
+            <option value="K7">Kingrinder K7</option>
+            <option value="A2">Femobook A2</option>
+            <option value="QAir">1Zpresso Q-Air</option>
+            <option value="ZP6">1Zpresso ZP6</option>
+            <option value="Motto80">Bookoo Motto80</option></select
+          ><input
+            id="r"
+            type="number"
+            min="1"
+            max="10"
+            step="1"
+            inputmode="numeric"
+            placeholder="1-10"
+            style="
+              flex: 1;
+              padding: 13px;
+              font-size: 16px;
+              border-radius: 12px;
+              border: 1px solid var(--line);
+              background: var(--panel);
+              color: var(--text);
+            "
+          />
+        </div>
+        <div style="margin-top: 10px">
+          <div style="color: var(--dim); font-size: 12px; margin-bottom: 5px">
+            Grinder (tap to switch, converts setting):
+          </div>
+          <div
+            id="grchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+          ></div>
+          <div style="color: var(--dim); font-size: 12px; margin-bottom: 5px">
+            Grind setting used:
+          </div>
+          <div
+            id="gchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"
+          ></div>
+          <input
+            id="gset"
+            type="number"
+            step="0.1"
+            inputmode="decimal"
+            placeholder="grind # / um"
+            style="
+              width: 100%;
+              padding: 13px;
+              font-size: 16px;
+              border-radius: 12px;
+              border: 1px solid var(--line);
+              background: var(--panel);
+              color: var(--text);
+            "
+          />
+        </div>
+        <div style="margin-top: 8px">
+          <div style="color: var(--dim); font-size: 12px; margin-bottom: 5px">Water</div>
+          <div
+            id="gwaterchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"
+          ></div>
+          <div style="color: var(--dim); font-size: 12px; margin-bottom: 5px">
+            How did it taste?
+          </div>
+          <div id="gtastechips" style="display: flex; flex-wrap: wrap; gap: 6px"></div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 8px">
+          <button
+            class="off"
+            style="flex: 1; color: var(--sel-text); border: 1px solid var(--sel-line)"
+            onclick='startBrew("gaggia")'
+          >
+            Start (plan now)</button
+          ><button id="saveBtn" class="grn" style="flex: 1" onclick="logshot()">Save to log</button>
+        </div>
+        <div
+          onclick="toggleFilter()"
+          style="
+            margin-top: 14px;
+            padding: 12px;
+            text-align: center;
+            border: 1px dashed var(--line2);
+            border-radius: 12px;
+            color: var(--sel-text);
+            font-size: 14px;
+            cursor: pointer;
+          "
+        >
+          <span id="filterAddLabel">+ Log a filter / non-Gaggia brew</span>
+        </div>
+        <div
+          id="filterForm"
+          style="
+            display: none;
+            margin-top: 10px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel2);
+          "
+        >
+          <div style="color: var(--dim); font-size: 12px; margin-bottom: 5px">Brewer</div>
+          <div
+            id="brewerchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+          ></div>
+          <div class="fl">Recipe (tap to prefill)</div>
+          <div
+            id="frechips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+          ></div>
+          <div class="fl">Same coffee / from rotation</div>
+          <div
+            id="frotchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+          ></div>
+          <div class="fl">Coffee</div>
+          <input id="fcoffee" placeholder="e.g. Panama Gesha" class="fin" style="width: 100%" />
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Roaster</div>
+              <select id="froaster" class="fin">
+                <option value="">-</option>
+              </select>
+            </div>
+            <div class="fcell">
+              <div class="fl">Roast</div>
+              <select id="froast" class="fin">
+                <option value="">-</option>
+                <option>Extra Light</option>
+                <option>Light</option>
+                <option>Light Medium</option>
+                <option>Medium</option>
+                <option>Medium Dark</option>
+                <option>Dark</option>
+              </select>
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Dose (g)</div>
+              <input
+                id="fdose"
+                type="number"
+                step="0.1"
+                inputmode="decimal"
+                placeholder="15"
+                class="fin"
+              />
+            </div>
+            <div class="fcell">
+              <div class="fl">Water (g)</div>
+              <input
+                id="fwater"
+                type="number"
+                step="1"
+                inputmode="decimal"
+                placeholder="250"
+                class="fin"
+              />
+            </div>
+            <div class="fcell">
+              <div class="fl">Total time (m:ss)</div>
+              <input id="ftime" placeholder="2:45" class="fin" />
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Bloom time (s, optional)</div>
+              <input id="fbloom" type="number" inputmode="numeric" placeholder="40" class="fin" />
+            </div>
+            <div class="fcell"></div>
+          </div>
+          <div class="fl" style="margin-top: 4px">Kettle temp (C)</div>
+          <div
+            id="ftempchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"
+          ></div>
+          <input
+            id="ftemp"
+            type="number"
+            step="0.5"
+            inputmode="decimal"
+            placeholder="92"
+            class="fin"
+            style="width: 100%"
+          />
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Grind # (ZP6)</div>
+              <input
+                id="fgrind"
+                type="number"
+                step="0.1"
+                inputmode="decimal"
+                placeholder="5.2"
+                class="fin"
+              />
+            </div>
+            <div class="fcell">
+              <div class="fl">Rating (1-10)</div>
+              <input
+                id="frating"
+                type="number"
+                min="1"
+                max="10"
+                inputmode="numeric"
+                placeholder="8"
+                class="fin"
+              />
+            </div>
+          </div>
+          <div class="fl">Water</div>
+          <div
+            id="fwaterchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+          ></div>
+          <div class="fl">How did it taste?</div>
+          <div
+            id="ftastechips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+          ></div>
+          <div
+            onclick="var x=document.getElementById('fadv');x.style.display=x.style.display=='none'?'block':'none'"
+            style="color: var(--dim); font-size: 12px; cursor: pointer; margin-bottom: 6px"
+          >
+            + paper / agitation (optional)
+          </div>
+          <div id="fadv" style="display: none">
+            <div class="fl">Filter paper</div>
+            <div
+              id="fpaperchips"
+              style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+            ></div>
+            <div class="fl">Agitation</div>
+            <div
+              id="fagitchips"
+              style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+            ></div>
+          </div>
+          <div style="display: flex; gap: 8px; margin-top: 8px">
+            <button
+              class="off"
+              style="flex: 1; color: var(--sel-text); border: 1px solid var(--sel-line)"
+              onclick='startBrew("filter")'
+            >
+              Start brew (plan now)</button
+            ><button class="grn" style="flex: 1" onclick="logFilter()">Save filter brew</button>
+          </div>
+        </div>
+      </div>
+      <div class="tabpanel" id="tab-beans">
+        <div class="tool" id="convTool">
+          <div class="toolhd" data-i18n="grindConverter">Grinder converter</div>
+          <div class="convrow">
+            <div class="convcell">
+              <div class="fl" data-i18n="from">From</div>
+              <select id="convFrom" class="fin"></select>
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="to">To</div>
+              <select id="convTo" class="fin"></select>
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="setting">Setting</div>
+              <input
+                id="convVal"
+                type="number"
+                step="0.1"
+                inputmode="decimal"
+                class="fin"
+                oninput="convCompute()"
+              />
+            </div>
+          </div>
+          <div class="convout" id="convOut"></div>
+          <div class="mut" style="text-align: left" data-i18n="convHint">
+            Same burr gap, on each grinder's dial.
+          </div>
+        </div>
+        <div
+          onclick="toggleInv()"
+          style="
+            margin-top: 14px;
+            padding: 12px;
+            text-align: center;
+            border: 1px dashed var(--line2);
+            border-radius: 12px;
+            color: var(--sel-text);
+            font-size: 14px;
+            cursor: pointer;
+          "
+        >
+          Coffee inventory &amp; rotation
+        </div>
+        <div
+          id="invPanel"
+          style="
+            display: none;
+            margin-top: 10px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel2);
+          "
+        >
+          <div class="fl">Rotation style</div>
+          <div
+            id="rotmodechips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+          ></div>
+          <div
+            id="rotpick"
+            style="
+              background: var(--rec-bg);
+              border: 1px solid var(--rec-line);
+              border-radius: 10px;
+              padding: 10px;
+              font-size: 12px;
+              color: var(--rec-text);
+              margin-bottom: 10px;
+              display: none;
+            "
+          ></div>
+          <div class="fl">Freeze coffee</div>
+          <input id="invcoffee" placeholder="coffee name" class="fin" style="width: 100%" />
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Roaster</div>
+              <input id="invroaster" class="fin" />
+            </div>
+            <div class="fcell">
+              <div class="fl">Roast date</div>
+              <input id="invrdate" type="date" class="fin" />
+            </div>
+          </div>
+          <div class="fl">Portion size</div>
+          <div
+            id="invsizechips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+          ></div>
+          <div class="frow" style="align-items: flex-end">
+            <div class="fcell">
+              <div class="fl">How many</div>
+              <input id="invqty" type="number" value="1" min="1" class="fin" />
+            </div>
+            <div class="fcell">
+              <button class="grn" style="width: 100%" onclick="freezeCoffee()">Freeze it</button>
+            </div>
+          </div>
+          <div class="fl" style="margin-top: 8px">Your inventory</div>
+          <div id="invList"><div class="mut" style="text-align: left">loading...</div></div>
+        </div>
+      </div>
+      <div class="tabpanel" id="tab-insights">
+        <div class="fl" data-i18n="role">Role</div>
+        <div class="rolerow" id="rolechips"></div>
+        <button
+          class="grn"
+          style="width: 100%; margin: 6px 0 12px"
+          onclick="document.getElementById('wizMask').classList.add('on')"
+          data-i18n="setupSheet"
+        >
+          Set up your Google Sheet
+        </button>
+        <div
+          onclick="toggleInsights()"
+          style="
+            margin-top: 10px;
+            padding: 12px;
+            text-align: center;
+            border: 1px dashed var(--line2);
+            border-radius: 12px;
+            color: var(--sel-text);
+            font-size: 14px;
+            cursor: pointer;
+          "
+        >
+          Insights
+        </div>
+        <div
+          id="insPanel"
+          style="
+            display: none;
+            margin-top: 10px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel2);
+          "
+        >
+          <div class="fl">How often should insights arrive?</div>
+          <div
+            id="insfreqchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+          ></div>
+          <div style="display: flex; gap: 8px; margin-bottom: 10px">
+            <button
+              class="off"
+              style="flex: 1; color: var(--sel-text); border: 1px solid var(--sel-line)"
+              onclick="runInsights()"
+            >
+              Refresh now
+            </button>
+          </div>
+          <div
+            id="insText"
+            style="white-space: pre-wrap; font-size: 12px; line-height: 1.5; color: var(--text)"
+          ></div>
+          <div id="insAt" class="mut" style="text-align: left; margin-top: 8px"></div>
+        </div>
+        <div
+          id="tierCard"
+          style="
+            margin-top: 10px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel2);
+          "
+        ></div>
+        <div
+          onclick="toggleSettings()"
+          style="
+            margin-top: 10px;
+            padding: 10px;
+            text-align: center;
+            color: var(--dim);
+            font-size: 13px;
+            cursor: pointer;
+          "
+        >
+          Settings
+        </div>
+        <div
+          id="setPanel"
+          style="
+            display: none;
+            margin-top: 6px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel2);
+          "
+        >
+          <div class="fl">What do you brew?</div>
+          <div
+            id="wamethods"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+          ></div>
+          <div class="fl">What hardware do you have?</div>
+          <div id="wahw" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"></div>
+          <div id="wakeyrow" style="display: none; margin-bottom: 10px">
+            <input
+              id="waDeviceKey"
+              placeholder="device key (from your BrewPilot)"
+              style="
+                width: 100%;
+                padding: 11px;
+                font-size: 13px;
+                border-radius: 10px;
+                border: 1px solid var(--line);
+                background: var(--panel);
+                color: var(--text);
+                margin-bottom: 4px;
+              "
+            />
+            <div style="color: var(--dim); font-size: 11px">
+              Beta: unlocking is on the honor system - device-key validation comes later.
+            </div>
+          </div>
+          <div class="fl">Google Sheet (enables inventory, history, trends)</div>
+          <div id="sheetStatus" style="font-size: 12px; margin-bottom: 6px"></div>
+          <input
+            id="setWebhook"
+            placeholder="paste your /exec URL"
+            style="
+              width: 100%;
+              padding: 11px;
+              font-size: 14px;
+              border-radius: 10px;
+              border: 1px solid var(--line);
+              background: var(--panel);
+              color: var(--text);
+              margin-bottom: 6px;
+            "
+          /><button class="grn" style="width: 100%; margin-bottom: 12px" onclick="saveWebhook()">
+            Connect sheet
+          </button>
+          <div class="fl">Which grinders do you own? (shown when logging)</div>
+          <div
+            id="mygrinderchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+          ></div>
+          <div class="fl">New-bean cold start (per brewer, on your grinder)</div>
+          <div id="coldstartbox" class="mut" style="text-align: left; line-height: 1.6"></div>
+        </div>
+      </div>
+    </div>
+    <div class="tabbar">
+      <div class="tab on" data-tab="home" onclick="showTab('home')">
+        <div class="ic">◉</div>
+        <span data-i18n="home">HOME</span>
+      </div>
+      <div class="tab" data-tab="log" onclick="showTab('log')">
+        <div class="ic">+</div>
+        <span data-i18n="log">LOG</span>
+      </div>
+      <div class="tab" data-tab="beans" onclick="showTab('beans')">
+        <div class="ic">▢</div>
+        <span data-i18n="beans">BEANS</span>
+      </div>
+      <div class="tab" data-tab="insights" onclick="showTab('insights')">
+        <div class="ic">◎</div>
+        <span data-i18n="insights">INSIGHTS</span>
+      </div>
+    </div>
+    <div class="wizmask" id="wizMask">
+      <div class="wizcard">
+        <div class="wiztitle" data-i18n="wizSetupTitle">Set up BrewPilot</div>
+        <div class="mut" style="text-align: left" data-i18n="wizSetupIntro">
+          Two minutes. Pick what you do, then connect a sheet if you want your data saved.
+        </div>
+        <div class="wizstep">
+          <span class="wizn">1</span><b data-i18n="wizWhat">What do you want to do?</b>
+          <div class="rolerow" id="wizRole" style="margin-top: 8px"></div>
+          <div id="wizMethodWrap">
+            <div class="fl" style="margin-top: 10px" data-i18n="wizMethods">What do you brew?</div>
+            <div class="rolerow" id="wizMethods"></div>
+            <div class="fl" style="margin-top: 10px" data-i18n="wizHw">What gear do you have?</div>
+            <div class="rolerow" id="wizHw"></div>
+            <div class="fl" style="margin-top: 10px" data-i18n="wizGrinders">
+              Which grinders do you own?
+            </div>
+            <div class="rolerow" id="wizGrinders" style="max-height: 132px; overflow: auto"></div>
+          </div>
+        </div>
+        <div class="wiztitle" data-i18n="setupSheet">Set up your Google Sheet</div>
+        <div class="mut" style="text-align: left" data-i18n="wizIntro">
+          Your data lives in your own Google Sheet. Three steps, about two minutes.
+        </div>
+        <div class="wizstep">
+          <span class="wizn">2</span><b data-i18n="s2t">Copy the template</b>
+          <div class="wsub" data-i18n="s2a">
+            The template already has the code inside. A blank sheet will not work.
+          </div>
+          <a id="wizTemplate" class="wizbtn" href="#" target="_blank" data-i18n="s2b"
+            >Open the template</a
+          >
+          <div class="wsub" data-i18n="s2c">
+            In the menu: File > Make a copy. The copy is yours, in your Drive.
+          </div>
+          <img class="wshot" id="shot1" alt="" style="display: none" />
+        </div>
+        <div class="wizstep">
+          <span class="wizn">3</span><b data-i18n="s3t">Open the code editor</b>
+          <div class="wsub">
+            <span class="kbd" data-i18n="s3a">Extensions</span> &rsaquo;
+            <span class="kbd" data-i18n="s3b">Apps Script</span>
+          </div>
+          <div class="wsub" data-i18n="s3c">
+            A new tab opens. This is the code that will save your brews.
+          </div>
+          <img class="wshot" id="shot2" alt="" style="display: none" />
+        </div>
+        <div class="wizstep">
+          <span class="wizn">4</span><b data-i18n="s4t">Publish it as a web app</b>
+          <div class="wsub">
+            1. <span class="kbd" data-i18n="s4a">Deploy</span> &rsaquo;
+            <span class="kbd" data-i18n="s4b">New deployment</span>
+          </div>
+          <div class="wsub" data-i18n="s4c">2. Click the gear icon, choose Web app.</div>
+          <div class="wsub" data-i18n="s4d">3. Execute as: Me</div>
+          <div class="wsub" data-i18n="s4e">4. Who has access: Anyone <-- this one matters</div>
+          <div class="wsub" data-i18n="s4f">5. Press Deploy.</div>
+          <img class="wshot" id="shot3" alt="" style="display: none" />
+        </div>
+        <div class="wizstep wizwarn">
+          <span class="wizn wizn2">!</span
+          ><b data-i18n="s5t">Google will warn you. This is normal.</b>
+          <div class="wsub" data-i18n="s5a">
+            It says Google hasn't verified this app. That is because the app is yours, written by
+            you, not published to the store.
+          </div>
+          <div class="wsub" data-i18n="s5b">Press Advanced, then Go to (unsafe), then Allow.</div>
+          <img class="wshot" id="shot4" alt="" style="display: none" />
+        </div>
+        <div class="wizstep">
+          <span class="wizn">5</span><b data-i18n="s6t">Copy the link and paste it here</b>
+          <div class="wsub" data-i18n="s6a">Copy the Web app URL. It ends in /exec.</div>
+          <input
+            id="wizUrl"
+            placeholder="https://script.google.com/.../exec"
+            class="fin"
+            style="margin-top: 8px"
+          /><button
+            class="grn"
+            style="width: 100%; margin-top: 8px"
+            onclick="wizVerify()"
+            data-i18n="wizVerify"
+          >
+            Verify and connect
+          </button>
+          <div id="wizMsg" style="font-size: 12px; margin-top: 8px"></div>
+          <img class="wshot" id="shot5" alt="" style="display: none" />
+        </div>
+        <button
+          class="off"
+          style="width: 100%; margin-top: 12px"
+          onclick="document.getElementById('wizMask').classList.remove('on')"
+          data-i18n="close"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+    <script>
+      async function refresh() {
+        var wh = localStorage.getItem("webhook");
+        if (wh) WEBHOOK_URL = wh;
+        if (!M_INIT) {
+          loadSetup();
+          M_INIT = true;
+          applyNoun();
+          applyHwLocks();
+        }
+        renderTier();
+      }
+      async function cmd(c) {
+        alert("Machine control needs the BrewPilot device + a Gaggiuino.");
+      }
+      function otherToggle(sel, inp) {
+        document.getElementById(inp).style.display =
+          document.getElementById(sel).value == "Other" ? "block" : "none";
+      }
+      document.getElementById("roaster").addEventListener("change", function () {
+        otherToggle("roaster", "roaster_other");
+      });
+      document.getElementById("process").addEventListener("change", function () {
+        otherToggle("process", "process_other");
+      });
+      function pick(sel, inp) {
+        let v = document.getElementById(sel).value;
+        if (v == "Other") {
+          let o = document.getElementById(inp).value.trim();
+          return o || "";
+        }
+        return v;
+      }
+      async function logshot() {
+        let g = (id) => document.getElementById(id).value.trim();
+        let c = g("coffee"),
+          rst = pick("roaster", "roaster_other"),
+          v = g("varietal"),
+          pr = pick("process", "process_other"),
+          ro = document.getElementById("roast").value,
+          t = document.getElementById("type").value,
+          d = g("dose"),
+          r = g("r");
+        if (!c) {
+          alert("Coffee name?");
+          return;
+        }
+        if (r) {
+          let n = parseInt(r);
+          if (n < 1 || n > 10) {
+            alert("Rating 1-10");
+            return;
+          }
+        }
+        let gs = document.getElementById("gset").value;
+        let grn = document.getElementById("grinder").value;
+        if (grn) localStorage.setItem("grinder", grn);
+        let gsetN = parseFloat(gs);
+        if (!isNaN(gsetN) && grn) {
+          localStorage.setItem("gset_" + grn, gsetN);
+        }
+        let cols = [
+          "",
+          "",
+          c,
+          rst,
+          v,
+          pr,
+          ro,
+          t || "",
+          d,
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          r || "",
+          "",
+          gs || "",
+          GWATER || "",
+          "",
+          "",
+          GTASTE || "",
+          "",
+        ];
+        let csv = "CSV," + cols.join(",");
+        let url = WEBHOOK();
+        if (!url) {
+          alert("Connect your Google Sheet in Settings first.");
+          return;
+        }
+        try {
+          await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: "csv=" + encodeURIComponent(csv),
+          });
+        } catch (e) {
+          alert("save failed");
+          return;
+        }
+        pushRotation(
+          {
+            coffee: c,
+            roaster: rst,
+            varietal: v,
+            process: pr,
+            roast: ro,
+            type: t,
+            dose: d,
+            grinder: grn,
+            gset: isNaN(gsetN) ? null : gsetN,
+            water: GWATER || "",
+            taste: GTASTE || "",
+          },
+          {},
+          r,
+        );
+        ["coffee", "varietal", "dose", "r", "gset", "roaster_other", "process_other"].forEach(
+          (i) => (document.getElementById(i).value = ""),
+        );
+        GTASTE = "";
+        renderGWater();
+        renderGTaste();
+        document.getElementById("type").value = "";
+        document.getElementById("roast").value = "";
+        document.getElementById("roaster").value = "";
+        document.getElementById("process").value = "";
+        if (getPlan() && getPlan().kind == "gaggia") clearPlan();
+        alert("Logged to your sheet");
+      }
+      let ROT = [];
+      function saveRot() {
+        try {
+          localStorage.setItem("rotation", JSON.stringify(ROT));
+        } catch (e) {}
+        0;
+      }
+      async function loadRot() {
+        let local = [];
+        try {
+          local = JSON.parse(localStorage.getItem("rotation") || "[]");
+        } catch (e) {}
+        if (local && local.length) {
+          ROT = local;
+        }
+        renderChips();
+      }
+      function pushRotation(entry, ls, rating) {
+        if (!entry.coffee) return;
+        let existing = ROT.find((x) => x.coffee == entry.coffee);
+        let rec = null;
+        if (ls && (ls.peakBar !== undefined || ls.ratio !== undefined)) {
+          rec = {
+            peak: ls.peakBar,
+            yield: ls.yieldG,
+            ratio: ls.ratio,
+            dur: ls.durationS,
+            dose: entry.dose,
+            rating: rating ? parseInt(rating) : null,
+            type: entry.type,
+            gset: entry.gset,
+            grinder: entry.grinder,
+          };
+        }
+        if (existing) {
+          if (
+            rec &&
+            rec.rating &&
+            (!existing.best ||
+              !existing.best.rating ||
+              rec.rating >= existing.best.rating ||
+              existing.best.type != entry.type)
+          ) {
+            existing.best = rec;
+          }
+          existing.last = rec || existing.last;
+          if (rec && rec.gset != null && rec.peak != null) {
+            existing.hist = (existing.hist || [])
+              .concat([{ gset: rec.gset, peak: rec.peak }])
+              .slice(-12);
+          }
+          Object.assign(existing, {
+            roaster: entry.roaster,
+            varietal: entry.varietal,
+            process: entry.process,
+            roast: entry.roast,
+            type: entry.type,
+            dose: entry.dose,
+            grinder: entry.grinder,
+          });
+        } else {
+          entry.best = rec && rec.rating ? rec : null;
+          entry.last = rec;
+          entry.hist =
+            rec && rec.gset != null && rec.peak != null ? [{ gset: rec.gset, peak: rec.peak }] : [];
+          ROT.unshift(entry);
+        }
+        learnFrom(ROT.find((x) => x.coffee == entry.coffee));
+        ROT = ROT.filter((x, i) => ROT.findIndex((y) => y.coffee == x.coffee) == i);
+        let pins = ROT.filter((x) => x.pin),
+          rest = ROT.filter((x) => !x.pin).slice(0, 8);
+        ROT = pins.concat(rest);
+        saveRot();
+        renderChips();
+        showDialin(ROT.find((x) => x.coffee == entry.coffee));
+      }
+      function fillEntry(e) {
+        document.getElementById("coffee").value = e.coffee || "";
+        setSel("roaster", "roaster_other", e.roaster);
+        setSel("process", "process_other", e.process);
+        document.getElementById("varietal").value = e.varietal || "";
+        document.getElementById("roast").value = e.roast || "";
+        document.getElementById("type").value = e.type || "";
+        document.getElementById("dose").value = e.dose || "";
+        if (e.grinder) {
+          document.getElementById("grinder").value = e.grinder;
+          localStorage.setItem("grinder", e.grinder);
+        }
+        showDialin(e);
+      }
+      function showDialin(e) {
+        let box = document.getElementById("dialin");
+        if (!e || (!e.best && !e.last)) {
+          box.style.display = "none";
+          return;
+        }
+        let b = e.best,
+          l = e.last,
+          h = "";
+        if (b && b.rating) {
+          h += "<b>Best so far</b> (rated " + b.rating + "): ";
+          h += fmtRecipe(b) + "<br>";
+        }
+        if (b && l && b.peak !== undefined && l.peak !== undefined) {
+          let adj = dialAdvice(b, l, e);
+          if (adj) h += "<span style='color:var(--rec-text)'>Next: " + adj + "</span>";
+        } else if (!b) {
+          h += "<span style='color:var(--dim)'>rate a few to lock a target recipe</span>";
+        } else if (b) {
+          h += "<span style='color:var(--hi-text)'>re-buy? start here: " + fmtRecipe(b) + "</span>";
+        }
+        box.innerHTML = h;
+        box.style.display = "block";
+        let fb = document.getElementById("finbtn");
+        if (fb) {
+          fb.style.display = "block";
+          fb.dataset.coffee = e.coffee;
+        }
+        renderGsetChips(e);
+        renderGrinderChips(e);
+      }
+      function setGset(v) {
+        document.getElementById("gset").value = v;
+      }
+      function renderGsetChips(e) {
+        let box = document.getElementById("gchips");
+        if (!box) return;
+        box.innerHTML = "";
+        let grn = document.getElementById("grinder").value || lastGrinder();
+        let isM = grn == "Motto80";
+        let lastG = null;
+        if (e) {
+          if (e.last && e.last.gset != null) lastG = e.last.gset;
+          else if (e.hist && e.hist.length) lastG = e.hist[e.hist.length - 1].gset;
+        }
+        if (lastG == null && grn) {
+          let s = localStorage.getItem("gset_" + grn);
+          if (s != null && s !== "") lastG = parseFloat(s);
+        }
+        let bestG = e && e.best && e.best.gset != null ? e.best.gset : null;
+        function chip(label, val, hi) {
+          let c = document.createElement("div");
+          c.textContent = label;
+          c.onclick = () => setGset(val);
+          c.className = "chip" + (hi ? " hi" : "");
+          return c;
+        }
+        if (bestG != null) box.appendChild(chip("best: " + bestG + (isM ? "um" : ""), bestG, true));
+        if (lastG != null)
+          box.appendChild(chip("same: " + lastG + (isM ? "um" : ""), lastG, false));
+        if (lastG != null) {
+          let steps = isM ? [-20, -10, 10, 20] : [-3, -2, -1, 1, 2, 3];
+          steps.forEach((d) => {
+            let v = Math.round((lastG + d) * 10) / 10;
+            box.appendChild(chip((d > 0 ? "+" : "") + d + (isM ? "um" : " clk"), v, false));
+          });
+        }
+        if (lastG == null && bestG == null) {
+          let hint = document.createElement("span");
+          hint.textContent = "type your grind # (or um for Motto80) once, then chips appear";
+          hint.style.cssText = "color:var(--dim);font-size:12px";
+          box.appendChild(hint);
+        }
+      }
+      function convertGrind(v, from, to) {
+        let f = GRINDERS[from],
+          t = GRINDERS[to];
+        if (!f || !t || v == null || isNaN(v)) return null;
+        let fromUm = f.um > 0 ? f.um : 1;
+        let gapUm = v * fromUm;
+        return t.um > 0 ? Math.round(gapUm / t.um) : Math.round(gapUm);
+      }
+      function ownedGrinders() {
+        try {
+          let s = localStorage.getItem("myGrinders");
+          if (s) {
+            let a = JSON.parse(s);
+            if (a && a.length) return a;
+          }
+        } catch (e) {}
+        return ["K7", "A2", "QAir", "ZP6", "Motto80"];
+      }
+      function renderGrinderChips(e) {
+        let box = document.getElementById("grchips");
+        if (!box) return;
+        box.innerHTML = "";
+        let cur = document.getElementById("grinder").value || lastGrinder();
+        ownedGrinders().forEach((id) => {
+          let g = GRINDERS[id];
+          if (!g) return;
+          let c = document.createElement("div");
+          c.textContent = g.n;
+          let on = id == cur;
+          c.className = "chip" + (on ? " on" : "");
+          c.onclick = () => selectGrinder(id, e);
+          box.appendChild(c);
+        });
+      }
+      function selectGrinder(id, e) {
+        let old = document.getElementById("grinder").value || lastGrinder();
+        let cur = parseFloat(document.getElementById("gset").value);
+        document.getElementById("grinder").value = id;
+        localStorage.setItem("grinder", id);
+        let src = !isNaN(cur) ? cur : e && e.last && e.last.gset != null ? e.last.gset : null;
+        if (src != null && old && old != id) {
+          let conv = convertGrind(src, old, id);
+          if (conv != null) {
+            document.getElementById("gset").value = conv;
+          }
+        }
+        renderGrinderChips(e);
+        renderGsetChips(e);
+      }
+      async function finishBag() {
+        let fb = document.getElementById("finbtn");
+        let name = fb.dataset.coffee;
+        if (!name) return;
+        if (!confirm('Mark "' + name + '" finished and get a rotation suggestion?')) return;
+        ROT = ROT.filter((x) => x.coffee != name);
+        saveRot();
+        renderChips();
+        document.getElementById("dialin").style.display = "none";
+        fb.style.display = "none";
+        let url = WEBHOOK();
+        if (url) {
+          try {
+            await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: "action=finished&coffee=" + encodeURIComponent(name),
+            });
+          } catch (e) {}
+        }
+        alert("Marked finished. Check Telegram for what to thaw next.");
+      }
+      let WEBHOOK_URL = "";
+      function WEBHOOK() {
+        return WEBHOOK_URL;
+      }
+      let BOIL_C = 94;
+      let M_ESP = true,
+        M_SOUP = true,
+        M_FIL = true,
+        M_GAG = true;
+      let M_SCALE = false;
+      let M_INIT = false;
+      let M_HW = "none";
+      let BETA_OPEN = true;
+      function gate(feature) {
+        if (BETA_OPEN) return true;
+        return false;
+      }
+      function renderTier() {
+        var el = document.getElementById("tierCard");
+        if (!el) return;
+        var tier = M_GAG ? 2 : M_SCALE ? 1 : 0;
+        var names = ["Manual", "BLE scale", "Gaggiuino"];
+        var cur =
+          "<div style='color:var(--hi-text);font-size:13px;font-weight:600'>Your setup: Tier " +
+          tier +
+          " - " +
+          names[tier] +
+          "</div>";
+        var body = "";
+        if (tier == 0) {
+          body =
+            "<div style='color:var(--dim);font-size:12px;margin:4px 0 8px'>You type dose, yield, time - and get history, trends and rotation. You do the logging.</div>" +
+            "<div style='color:var(--sel-text);font-size:12px;font-weight:600'>Add a BLE scale -></div>" +
+            "<div style='color:var(--dim);font-size:12px'>flow curve + yield captured live (no typing), flow-vs-rating insights a webapp can't compute.</div>";
+        } else if (tier == 1) {
+          body =
+            "<div style='color:var(--dim);font-size:12px;margin:4px 0 8px'>Your scale captures weight, yield and live flow - no typing. You get flow-rate and drawdown insights.</div>" +
+            "<div style='color:var(--sel-text);font-size:12px;font-weight:600'>Add a Gaggiuino -></div>" +
+            "<div style='color:var(--dim);font-size:12px'>every shot auto-logs pressure + flow + temp, and the device coaches you mid-pull.</div>";
+        } else {
+          body =
+            "<div style='color:var(--dim);font-size:12px;margin:4px 0 8px'>Every shot auto-logs with full pressure, flow and temp - zero effort - and the device times warm-up, watches readiness and coaches live. You're at the top of the ladder.</div>";
+        }
+        var tagline =
+          "<div style='color:var(--dim);font-size:11px;margin-top:8px;font-style:italic'>The more the device sees, the less you do - and the better it coaches.</div>";
+        el.innerHTML = cur + body + tagline;
+      }
+      function NOUN() {
+        return !M_ESP && !M_SOUP && M_FIL ? "brew" : "shot";
+      }
+      function NOUNCAP() {
+        let n = NOUN();
+        return n.charAt(0).toUpperCase() + n.slice(1);
+      }
+      function applyNoun() {
+        let n = NOUN();
+        let ll = document.getElementById("logLabel");
+        if (ll) ll.textContent = "Log the last " + n;
+        let mo = document.getElementById("machineOnly");
+        if (mo) mo.style.display = M_GAG ? "block" : "none";
+        let fh = document.getElementById("filterAddLabel");
+        if (!M_ESP && !M_SOUP) {
+          if (fh) fh.textContent = "+ Log another brewer";
+        }
+        renderChips();
+      }
+      let FBREWER = "";
+      let FWATER = "";
+      let FTASTE = "";
+      let FPAPER = "";
+      let FAGIT = "";
+      let GWATER = "";
+      let GTASTE = "";
+      function renderGWater() {
+        var b = document.getElementById("gwaterchips");
+        if (!b) return;
+        b.innerHTML = "";
+        WATER_LIST.forEach((w) => {
+          var c = document.createElement("div");
+          c.textContent = w;
+          var on = w == GWATER;
+          c.className = "chip sm" + (on ? " on" : "");
+          c.onclick = function () {
+            GWATER = GWATER == w ? "" : w;
+            renderGWater();
+          };
+          b.appendChild(c);
+        });
+      }
+      function renderGTaste() {
+        var b = document.getElementById("gtastechips");
+        if (!b) return;
+        b.innerHTML = "";
+        [
+          ["sour", "sour/green"],
+          ["bright", "bright/juicy"],
+          ["sweet", "sweet/round"],
+          ["bitter", "bitter/dry"],
+        ].forEach(function (p) {
+          var c = document.createElement("div");
+          c.textContent = p[1];
+          var on = p[0] == GTASTE;
+          c.className = "chip sm" + (on ? " hi on" : "");
+          c.onclick = function () {
+            GTASTE = GTASTE == p[0] ? "" : p[0];
+            renderGTaste();
+          };
+          b.appendChild(c);
+        });
+      }
+      function toggleFilter() {
+        let f = document.getElementById("filterForm");
+        let show = f.style.display == "none";
+        f.style.display = show ? "block" : "none";
+        if (show) {
+          renderBrewerChips();
+          renderTempChips();
+          renderFilterExtras();
+          renderFilterRot();
+          renderRecipeChips();
+        }
+      }
+      function chipRow(boxId, items, cur, setter, reRender) {
+        let box = document.getElementById(boxId);
+        if (!box) return;
+        box.innerHTML = "";
+        items.forEach((it) => {
+          let c = document.createElement("div");
+          c.textContent = it;
+          let on = it == cur;
+          c.className = "chip" + (on ? " on" : "");
+          c.onclick = () => {
+            setter(it);
+            reRender();
+          };
+          box.appendChild(c);
+        });
+      }
+      function renderFilterExtras() {
+        chipRow(
+          "fwaterchips",
+          WATER_LIST,
+          FWATER,
+          (v) => {
+            FWATER = v;
+          },
+          renderFilterExtras,
+        );
+        chipRow(
+          "ftastechips",
+          ["sour", "bright", "sweet", "bitter"],
+          FTASTE,
+          (v) => {
+            FTASTE = v;
+          },
+          renderFilterExtras,
+        );
+        chipRow(
+          "fpaperchips",
+          ["Sibarist", "CAFEC Abaca", "Hario tabbed", "Orea", "other"],
+          FPAPER,
+          (v) => {
+            FPAPER = v;
+          },
+          renderFilterExtras,
+        );
+        chipRow(
+          "fagitchips",
+          ["double bloom + WDT", "WDT", "melodrip", "swirl", "gentle pour", "none"],
+          FAGIT || "double bloom + WDT",
+          (v) => {
+            FAGIT = v;
+          },
+          renderFilterExtras,
+        );
+      }
+      function renderFilterRot() {
+        let box = document.getElementById("frotchips");
+        if (!box) return;
+        box.innerHTML = "";
+        if (ROT.length) {
+          let s = document.createElement("div");
+          s.textContent = "same as last";
+          s.style.cssText =
+            "padding:8px 12px;border-radius:18px;font-size:13px;cursor:pointer;border:1px solid var(--hi-line);background:var(--hi-bg);color:var(--hi-text)";
+          s.onclick = () => fillFilterFrom(ROT[0]);
+          box.appendChild(s);
+        }
+        ROT.slice(0, 6).forEach((e) => {
+          if (!e.coffee) return;
+          let c = document.createElement("div");
+          c.textContent = e.coffee;
+          c.style.cssText =
+            "padding:8px 12px;border-radius:18px;font-size:13px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--text)";
+          c.onclick = () => fillFilterFrom(e);
+          box.appendChild(c);
+        });
+      }
+      function fillFilterFrom(e) {
+        document.getElementById("fcoffee").value = e.coffee || "";
+        setSel("froaster", "", e.roaster);
+        if (e.roast) document.getElementById("froast").value = e.roast;
+        if (e.water) {
+          FWATER = e.water;
+        }
+        if (e.grinder == "ZP6" && e.gset != null) document.getElementById("fgrind").value = e.gset;
+        renderFilterExtras();
+        renderTempChips();
+      }
+      function renderBrewerChips() {
+        let box = document.getElementById("brewerchips");
+        if (!box) return;
+        box.innerHTML = "";
+        ["V60", "V60 Switch", "V60 Neo", "Orea", "Origami", "OXO soup", "Other"].forEach((b) => {
+          let c = document.createElement("div");
+          c.textContent = b;
+          let on = b == FBREWER;
+          c.className = "chip" + (on ? " on" : "");
+          c.onclick = () => {
+            FBREWER = b;
+            renderBrewerChips();
+          };
+          box.appendChild(c);
+        });
+      }
+      function renderTempChips() {
+        let box = document.getElementById("ftempchips");
+        if (!box) return;
+        box.innerHTML = "";
+        let roast = document.getElementById("froast").value || "Light";
+        let b = Math.round(BOIL_C);
+        let OFF = {
+          "Extra Light": [1, 2, 3],
+          Light: [2, 3, 4],
+          "Light Medium": [3, 4, 5],
+          Medium: [4, 6, 8],
+          "Medium Dark": [6, 8, 10],
+          Dark: [8, 10, 12],
+        };
+        let offs = OFF[roast] || [2, 3, 4];
+        let labels = ["hot", "mid", "cool"];
+        offs.forEach((o, i) => {
+          let t = b - o;
+          let c = document.createElement("div");
+          c.textContent = t + " (" + labels[i] + ")";
+          c.onclick = () => {
+            document.getElementById("ftemp").value = t;
+          };
+          c.style.cssText =
+            "padding:8px 12px;border-radius:18px;font-size:13px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--text)";
+          box.appendChild(c);
+        });
+        let d = document.createElement("div");
+        d.textContent = b - 2 + " (near boil)";
+        d.onclick = () => {
+          document.getElementById("ftemp").value = b - 2;
+        };
+        d.style.cssText =
+          "padding:8px 12px;border-radius:18px;font-size:13px;cursor:pointer;border:1px solid var(--hi-line);background:var(--hi-bg);color:var(--hi-text)";
+        box.appendChild(d);
+        if (!document.getElementById("ftemp").value) document.getElementById("ftemp").value = b - 2;
+      }
+      document.addEventListener("change", function (e) {
+        if (e.target && e.target.id == "froast") renderTempChips();
+      });
+      function toSecs(t) {
+        if (!t) return "";
+        t = String(t).trim();
+        if (t.indexOf(":") > 0) {
+          let p = t.split(":");
+          return parseInt(p[0]) * 60 + parseInt(p[1]) || "";
+        }
+        return parseFloat(t) || "";
+      }
+      async function logFilter() {
+        let coffee = document.getElementById("fcoffee").value.trim();
+        if (!coffee) {
+          alert("coffee name?");
+          return;
+        }
+        let dose = document.getElementById("fdose").value,
+          water = document.getElementById("fwater").value;
+        let dur = toSecs(document.getElementById("ftime").value);
+        let temp = document.getElementById("ftemp").value,
+          grind = document.getElementById("fgrind").value;
+        let rating = document.getElementById("frating").value;
+        let roaster = document.getElementById("froaster").value,
+          roast = document.getElementById("froast").value;
+        let ratio = dose && water ? (water / dose).toFixed(1) : "";
+        let bloom = document.getElementById("fbloom").value || "";
+        let cols = [
+          "",
+          "",
+          coffee,
+          roaster,
+          "",
+          "",
+          roast,
+          "filter",
+          dose,
+          water,
+          ratio,
+          dur,
+          "",
+          "",
+          temp,
+          rating,
+          FBREWER || "",
+          grind || "",
+          FWATER || "",
+          FAGIT || "double bloom + WDT",
+          FPAPER || "",
+          FTASTE || "",
+          bloom,
+        ];
+        let csv = "CSV," + cols.join(",");
+        let url = WEBHOOK();
+        if (!url) {
+          alert("no webhook configured");
+          return;
+        }
+        try {
+          await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: "csv=" + encodeURIComponent(csv),
+          });
+          pushRotation(
+            {
+              coffee: coffee,
+              roaster: roaster,
+              roast: roast,
+              type: "filter",
+              dose: dose,
+              grinder: "ZP6",
+              gset: grind ? parseFloat(grind) : null,
+              water: FWATER || "",
+              brewer: FBREWER || "",
+              taste: FTASTE || "",
+            },
+            {
+              peakBar: undefined,
+              yieldG: water ? parseFloat(water) : undefined,
+              ratio: ratio ? parseFloat(ratio) : undefined,
+              durationS: dur ? parseFloat(dur) : undefined,
+            },
+            rating,
+          );
+          ["fcoffee", "fdose", "fwater", "ftime", "fbloom", "fgrind", "frating"].forEach(
+            (i) => (document.getElementById(i).value = ""),
+          );
+          FTASTE = "";
+          if (getPlan() && getPlan().kind == "filter") clearPlan();
+          alert("Filter brew logged");
+        } catch (e) {
+          alert("save failed");
+        }
+      }
+      function fmtRecipe(r) {
+        let p = [];
+        if (r.dose) p.push(r.dose + "g");
+        if (r.yield) p.push("->" + Math.round(r.yield) + "g");
+        if (r.ratio) p.push("1:" + r.ratio.toFixed(1));
+        if (r.peak) p.push(r.peak.toFixed(1) + "bar");
+        if (r.dur) p.push(Math.round(r.dur) + "s");
+        return p.join(", ");
+      }
+      let GRINDERS = {
+        K7: { n: "K7", um: 15 },
+        A2: { n: "A2", um: 18 },
+        QAir: { n: "Q-Air", um: 25 },
+        ZP6: { n: "ZP6", um: 22 },
+        KUltra: { n: "K-Ultra", um: 20 },
+        JUltra: { n: "J-Ultra", um: 8 },
+        JMax: { n: "J-Max", um: 8.8 },
+        JXPro: { n: "JX-Pro", um: 12.5 },
+        K6: { n: "K6", um: 16 },
+        Comandante: { n: "Comandante", um: 30 },
+        Ode2: { n: "Ode 2", um: 13 },
+        Encore: { n: "Encore", um: 38 },
+        Sculptor078S: { n: "Sculptor 078S", um: 25 },
+        FemobookA4Z: { n: "Femobook A4Z", um: 8 },
+        ZernoZ1: { n: "Zerno Z1", um: 22 },
+        ZernoZ2: { n: "Zerno Z2", um: 22 },
+        LagomP80: { n: "Lagom P80", um: 10 },
+        MignonSpecialita: { n: "Mignon Specialita", um: 24 },
+        MignonSilenzio: { n: "Mignon Silenzio", um: 24 },
+        MignonZero: { n: "Mignon Zero", um: 24 },
+        MignonClassico: { n: "Mignon Classico", um: 24 },
+        MignonOro: { n: "Mignon Oro", um: 24 },
+        MignonXL: { n: "Mignon XL", um: 24 },
+        Motto80: { n: "Motto80", um: 0 },
+      };
+      let PRIOR_UMBAR = { espresso: 22, soup: 45, filter: 110 };
+      let SENS = {};
+      function loadSens() {
+        try {
+          SENS = JSON.parse(localStorage.getItem("sens") || "{}");
+        } catch (e) {
+          SENS = {};
+        }
+      }
+      function saveSens() {
+        try {
+          localStorage.setItem("sens", JSON.stringify(SENS));
+        } catch (e) {}
+        0;
+      }
+      function lastGrinder() {
+        return localStorage.getItem("grinder") || "";
+      }
+      function umBar(method) {
+        let m = method || "soup";
+        let s = SENS[m];
+        return s && s.n > 0 ? s.um : PRIOR_UMBAR[m] || PRIOR_UMBAR.soup;
+      }
+      function beanUmBar(e) {
+        if (!e || !e.hist || e.hist.length < 2) return null;
+        let g = GRINDERS[e.grinder];
+        if (!g) return null;
+        let h = e.hist,
+          n = h.length,
+          sx = 0,
+          sy = 0,
+          sxx = 0,
+          sxy = 0;
+        for (let i = 0; i < n; i++) {
+          let x = h[i].gset,
+            y = h[i].peak;
+          sx += x;
+          sy += y;
+          sxx += x * x;
+          sxy += x * y;
+        }
+        let den = n * sxx - sx * sx;
+        if (Math.abs(den) < 1e-6) return null;
+        let slope = (n * sxy - sx * sy) / den;
+        if (Math.abs(slope) < 1e-4) return null;
+        let umPerUnit = g.um > 0 ? g.um : 1;
+        let umbar = Math.abs(umPerUnit / slope);
+        if (umbar < 5 || umbar > 400) return null;
+        return umbar;
+      }
+      function learnFrom(e) {
+        if (!e) return;
+        let bu = beanUmBar(e);
+        if (bu == null) return;
+        let m = e.type || "soup";
+        let s = SENS[m] || { um: PRIOR_UMBAR[m] || 45, n: 0 };
+        if (s.n > 0 && (bu > s.um * 3 || bu < s.um / 3)) {
+          saveSens();
+          return;
+        }
+        let a = Math.min(0.35, 0.15 + 0.05 * e.hist.length);
+        s.um = s.n > 0 ? (1 - a) * s.um + a * bu : bu;
+        s.n = Math.min(s.n + 1, 50);
+        SENS[m] = s;
+        saveSens();
+      }
+      function tempCap() {
+        return BOIL_C || 94;
+      }
+      let ROAST_OFF = {
+        "Extra Light": 1,
+        Light: 2,
+        "Light Medium": 3,
+        Medium: 5,
+        "Medium Dark": 7,
+        Dark: 9,
+      };
+      function idealTemp(roast) {
+        let b = tempCap();
+        let o = ROAST_OFF[roast];
+        if (o == null) o = 3;
+        let t = b - o;
+        let lo = b - 12,
+          hi = b - 1;
+        return Math.max(lo, Math.min(hi, Math.round(t)));
+      }
+      function atCeiling(roast) {
+        return idealTemp(roast) >= Math.round(tempCap()) - 2;
+      }
+      let RATIO_BAND = { espresso: [2.0, 2.5], soup: [3.0, 4.5], filter: [14, 16] };
+      function ratioInBand(method, r) {
+        let b = RATIO_BAND[method];
+        if (!b || !r) return null;
+        return r < b[0] ? "tight" : r > b[1] ? "loose" : "in";
+      }
+      function tasteDir(tag) {
+        if (!tag) return null;
+        if (tag == "sour") return "under";
+        if (tag == "bitter") return "over";
+        return "target";
+      }
+      function tasteAdvice(tag, method, roast, prep) {
+        let dir = tasteDir(tag);
+        if (!dir || dir == "target") return "";
+        let a = [];
+        if (dir == "under") {
+          a.push("grind finer");
+          if (method == "filter" || method == "soup") a.push("tighten ratio a touch");
+          if (method == "filter") a.push("add agitation (WDT / gentle pour)");
+          if (!atCeiling(roast)) a.push("or raise temp ~1C");
+          else
+            a.push(
+              "(already at your " +
+                Math.round(tempCap()) +
+                "C ceiling - use grind/agitation, not heat)",
+            );
+        } else {
+          a.push("grind coarser");
+          if (method == "filter" || method == "soup") a.push("loosen ratio a touch");
+          a.push("ease agitation");
+          if (!atCeiling(roast)) a.push("or drop temp ~1C");
+        }
+        return a.join(", ");
+      }
+      let WATERS = {
+        Bright: {
+          acid: 2,
+          body: 0,
+          note: "Mg-forward, low alkalinity: acidity, juiciness, clarity",
+        },
+        "Sweet & Body": { acid: -1, body: 2, note: "Ca-forward: roundness, body, sweetness" },
+        Light: { acid: 1, body: -1, note: "gentle load: delicate, tea-like clarity" },
+        Snap: { acid: 2, body: 0, note: "crisp, snappy acidity, high definition" },
+        SILK: { acid: -1, body: 1, note: "soft, silky, rounded texture" },
+        Aquacode: { acid: 0, body: 0, note: "balanced ~60ppm all-rounder" },
+        TWW: { acid: 0, body: 0, note: "balanced ~60ppm all-rounder" },
+        tap: { acid: 0, body: 0, note: "variable - alkalinity may mute acidity" },
+      };
+      let WATER_LIST = [
+        "Bright",
+        "Sweet & Body",
+        "Light",
+        "Snap",
+        "SILK",
+        "Aquacode",
+        "TWW",
+        "tap",
+      ];
+      function waterNudge(tag, curWater) {
+        if (tag == "bitter")
+          return "water: a rounder water (Sweet & Body / SILK) softens harshness";
+        if (tag == "sour") return "";
+        return "";
+      }
+      function waterForGoal(goal) {
+        if (goal == "bright") return "Bright (or Light) to lift acidity/clarity";
+        if (goal == "sweet") return "Sweet & Body for roundness + sweetness";
+        return "";
+      }
+      let RECIPES = {
+        "Tetsu 4:6": {
+          brewer: "V60",
+          ratio: 15,
+          grind: "coarse",
+          pours: "5 equal pulses (40% then 60%), 45s apart, ~3:30",
+        },
+        "Hoffmann V60": {
+          brewer: "V60",
+          ratio: 16.7,
+          grind: "medium-fine",
+          pours: "bloom 2x + swirl, to 60% by 1:15, to 100% by 1:45, swirl",
+        },
+        "Double bloom": {
+          brewer: "V60",
+          ratio: 15.5,
+          grind: "medium-fine",
+          pours: "bloom 2-3x, wait 40s, 2nd bloom 2x + swirl, then pours to target",
+        },
+        "Switch hybrid": {
+          brewer: "V60 Switch",
+          ratio: 16,
+          grind: "medium",
+          pours: "closed bloom 3x 40s, open to 160g, to full by ~1:30, close+drain 2:10",
+        },
+        "Orea low-bypass": {
+          brewer: "Orea",
+          ratio: 15.5,
+          grind: "finer",
+          pours: "bloom 2x, gentle pulses to target, minimal agitation",
+        },
+        "Single / melodrip": {
+          brewer: "V60",
+          ratio: 16,
+          grind: "medium-fine",
+          pours: "bloom 2x, one slow continuous pour, minimal agitation",
+        },
+        "Rao clarity": {
+          brewer: "V60",
+          ratio: 16.7,
+          grind: "medium-fine",
+          pours: "bloom 2-3x + spin, slow spiral to target, swirl at end",
+        },
+        "Hedrick hi-ext": {
+          brewer: "V60",
+          ratio: 15,
+          grind: "fine",
+          pours: "bloom, pulse pours WITH WDT between, hot (to your cap), longer contact",
+        },
+      };
+      function renderRecipeChips() {
+        let box = document.getElementById("frechips");
+        if (!box) return;
+        box.innerHTML = "";
+        Object.keys(RECIPES).forEach((name) => {
+          let c = document.createElement("div");
+          c.textContent = name;
+          c.className = "chip sm rec";
+          c.onclick = () => applyRecipe(name);
+          box.appendChild(c);
+        });
+      }
+      function gv(id) {
+        var e = document.getElementById(id);
+        return e ? e.value : "";
+      }
+      function startBrew(kind) {
+        var p = { kind: kind, t: Date.now() };
+        if (kind == "filter") {
+          p.coffee = gv("fcoffee");
+          p.roaster = gv("froaster");
+          p.roast = gv("froast");
+          p.dose = gv("fdose");
+          p.water = gv("fwater");
+          p.grind = gv("fgrind");
+          p.temp = gv("ftemp");
+          p.brewer = FBREWER;
+          p.wtr = FWATER;
+          p.paper = FPAPER;
+          p.agit = FAGIT;
+        } else {
+          p.coffee = gv("coffee");
+          p.roaster = gv("roaster");
+          p.roast = (document.getElementById("roast") || {}).value;
+          p.type = (document.getElementById("type") || {}).value;
+          p.dose = gv("dose");
+          p.grind = gv("gset");
+          p.grinder = (document.getElementById("grinder") || {}).value;
+          p.wtr = GWATER;
+        }
+        if (!p.coffee) {
+          alert("Add at least the coffee name to start a brew");
+          return;
+        }
+        localStorage.setItem("brewPlan", JSON.stringify(p));
+        renderPlanBanner();
+        alert("Brew planned. Come back and tap Finish when it is done.");
+      }
+      function getPlan() {
+        try {
+          var s = localStorage.getItem("brewPlan");
+          return s ? JSON.parse(s) : null;
+        } catch (e) {
+          return null;
+        }
+      }
+      function clearPlan() {
+        localStorage.removeItem("brewPlan");
+        renderPlanBanner();
+      }
+      function planAgo(t) {
+        var m = Math.round((Date.now() - t) / 60000);
+        return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + "h ago";
+      }
+      function renderPlanBanner() {
+        var b = document.getElementById("planBanner");
+        if (!b) return;
+        var p = getPlan();
+        if (!p) {
+          b.style.display = "none";
+          return;
+        }
+        b.style.display = "block";
+        if (p.detected) {
+          var det = [
+            p.detYield ? "yield " + Math.round(p.detYield) + "g" : "",
+            p.detRatio ? "1:" + p.detRatio.toFixed(1) : "",
+            p.detDur ? p.detDur.toFixed(0) + "s" : "",
+            p.detPeak ? p.detPeak.toFixed(1) + " bar" : "",
+          ]
+            .filter(Boolean)
+            .join(", ");
+          b.innerHTML =
+            "<div style='color:var(--hi-text);font-size:13px;font-weight:600'>Shot detected: " +
+            (p.coffee || "") +
+            "</div>" +
+            "<div style='color:var(--dim);font-size:12px;margin:3px 0 8px'>machine captured " +
+            det +
+            " - just add taste + rating</div>" +
+            "<div style='display:flex;gap:8px'><button class='grn' style='flex:2' onclick='finishBrew()'>Add taste + rating</button>" +
+            "<button class='off' style='flex:1;color:var(--danger-text);border:1px solid var(--danger-line)' onclick='discardBrew()'>Discard</button></div>";
+          return;
+        }
+        var sub = [
+          p.dose ? p.dose + "g" : "",
+          p.water ? "-> " + p.water + "g" : "",
+          p.brewer || "",
+          p.grind ? "grind " + p.grind : "",
+        ]
+          .filter(Boolean)
+          .join(", ");
+        b.innerHTML =
+          "<div style='color:var(--hi-text);font-size:13px;font-weight:600'>Brew in progress: " +
+          (p.coffee || "") +
+          "</div>" +
+          "<div style='color:var(--dim);font-size:12px;margin:3px 0 8px'>planned " +
+          planAgo(p.t) +
+          (sub ? " - " + sub : "") +
+          (p.kind == "gaggia" ? " - pull it on the machine" : "") +
+          "</div>" +
+          "<div style='display:flex;gap:8px'>" +
+          "<button class='grn' style='flex:2' onclick='finishBrew()'>Finish this brew</button>" +
+          "<button class='off' style='flex:1;color:var(--danger-text);border:1px solid var(--danger-line)' onclick='discardBrew()'>Discard</button></div>";
+      }
+      function discardBrew() {
+        if (confirm("Discard the planned brew?")) clearPlan();
+      }
+      function finishBrew() {
+        var p = getPlan();
+        if (!p) return;
+        if (p.kind == "filter") {
+          var f = document.getElementById("filterForm");
+          if (f && f.style.display == "none") toggleFilter();
+          function set(id, v) {
+            var e = document.getElementById(id);
+            if (e && v) e.value = v;
+          }
+          set("fcoffee", p.coffee);
+          set("froaster", p.roaster);
+          set("froast", p.roast);
+          set("fdose", p.dose);
+          set("fwater", p.water);
+          set("fgrind", p.grind);
+          set("ftemp", p.temp);
+          FBREWER = p.brewer || "";
+          FWATER = p.wtr || "";
+          FPAPER = p.paper || "";
+          FAGIT = p.agit || "";
+          renderBrewerChips();
+          renderFilterExtras();
+          document.getElementById("filterForm").scrollIntoView({ behavior: "smooth" });
+          alert("Plan loaded. Add yield, time, taste and rating, then Save filter brew.");
+        } else {
+          function setg(id, v) {
+            var e = document.getElementById(id);
+            if (e && v) e.value = v;
+          }
+          setg("coffee", p.coffee);
+          setg("roaster", p.roaster);
+          setg("roast", p.roast);
+          setg("type", p.type);
+          setg("dose", p.dose);
+          setg("gset", p.grind);
+          setg("grinder", p.grinder);
+          GWATER = p.wtr || "";
+          renderGWater();
+          document.getElementById("logLabel").scrollIntoView({ behavior: "smooth" });
+          alert("Plan loaded. Add the outcome (rating, taste), then Save to log.");
+        }
+      }
+      function applyRecipe(name) {
+        let r = RECIPES[name];
+        if (!r) return;
+        FBREWER = r.brewer;
+        renderBrewerChips();
+        let dose = parseFloat(document.getElementById("fdose").value) || 15;
+        document.getElementById("fwater").value = Math.round(dose * r.ratio);
+        let box = document.getElementById("frechips");
+        let note = document.createElement("div");
+        note.style.cssText =
+          "width:100%;margin-top:6px;font-size:11px;color:var(--dim);line-height:1.5";
+        note.textContent = name + ": " + r.grind + " grind, 1:" + r.ratio + ". " + r.pours;
+        renderRecipeChips();
+        document.getElementById("frechips").appendChild(note);
+      }
+      let BREWER_UM = {
+        V60: 700,
+        "V60 Switch": 850,
+        "V60 Neo": 720,
+        Orea: 630,
+        Origami: 750,
+        "OXO soup": 800,
+        Chemex: 900,
+        Kalita: 780,
+        AeroPress: 600,
+        Other: 750,
+      };
+      function coldStart(brewerName, grinderId) {
+        let um = BREWER_UM[brewerName] || 750;
+        let g = GRINDERS[grinderId];
+        if (!g) return um + "um";
+        if (g.um == 0) return um + "um (absolute)";
+        let clicks = Math.round(um / g.um);
+        return "~" + clicks + " clicks";
+      }
+      function renderColdStart() {
+        let box = document.getElementById("coldstartbox");
+        if (!box) return;
+        let gid = lastGrinder() || ownedGrinders()[0];
+        let g = GRINDERS[gid];
+        let gn = g ? g.n : gid;
+        let rows = ["V60", "Orea", "Origami", "V60 Switch", "OXO soup", "Chemex"].map(
+          (b) => b + ": " + coldStart(b, gid),
+        );
+        box.innerHTML = "on " + gn + " (light roast, dial by taste after):<br>" + rows.join("<br>");
+      }
+      let INVSIZE = "40g";
+      let ROTMODE = localStorage.getItem("rotMode") || "balanced";
+      let INSFREQ = "daily";
+      function toggleInsights() {
+        var p = document.getElementById("insPanel");
+        var show = p.style.display == "none";
+        p.style.display = show ? "block" : "none";
+        if (show) {
+          renderFreqChips();
+          loadInsights();
+        }
+      }
+      function renderFreqChips() {
+        var box = document.getElementById("insfreqchips");
+        if (!box) return;
+        box.innerHTML = "";
+        [
+          ["daily", "Daily"],
+          ["every3", "Every 3 days"],
+          ["weekly", "Weekly"],
+          ["off", "Off"],
+        ].forEach(function (m) {
+          var c = document.createElement("div");
+          c.textContent = m[1];
+          var on = m[0] == INSFREQ;
+          c.className = "chip" + (on ? " on" : "");
+          c.onclick = function () {
+            INSFREQ = m[0];
+            renderFreqChips();
+            setFreq(m[0]);
+          };
+          box.appendChild(c);
+        });
+      }
+      async function setFreq(f) {
+        var url = WEBHOOK();
+        if (!url) return;
+        try {
+          await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: "action=setInsightsFreq&freq=" + f,
+          });
+        } catch (e) {}
+      }
+      async function loadInsights() {
+        var t = document.getElementById("insText"),
+          a = document.getElementById("insAt");
+        var url = WEBHOOK();
+        if (!url) {
+          t.innerHTML = noSheetMsg();
+          a.textContent = "";
+          return;
+        }
+        try {
+          var r = await fetch(url + "?action=getInsights");
+          var d = await r.json();
+          if (d.freq) {
+            INSFREQ = d.freq;
+            renderFreqChips();
+          }
+          if (d.text) {
+            t.textContent = d.text;
+            a.textContent = d.at ? "updated " + new Date(d.at).toLocaleString() : "";
+          } else {
+            t.textContent = "No insights yet. Log a few brews and rate them, then Refresh now.";
+            a.textContent = "";
+          }
+        } catch (e) {
+          t.textContent = "Could not load insights.";
+          a.textContent = "";
+        }
+      }
+      async function runInsights() {
+        var t = document.getElementById("insText");
+        var url = WEBHOOK();
+        if (!url) {
+          alert("Connect a sheet first");
+          return;
+        }
+        t.textContent = "Crunching your brews...";
+        try {
+          await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: "action=runInsights",
+          });
+          setTimeout(loadInsights, 1500);
+        } catch (e) {
+          t.textContent = "Could not refresh.";
+        }
+      }
+      function toggleInv() {
+        let p = document.getElementById("invPanel");
+        let show = p.style.display == "none";
+        p.style.display = show ? "block" : "none";
+        if (show) {
+          renderRotModes();
+          renderInvSizes();
+          loadInventory();
+        }
+      }
+      function toggleSettings() {
+        let p = document.getElementById("setPanel");
+        let show = p.style.display == "none";
+        p.style.display = show ? "block" : "none";
+        if (show) {
+          renderWaMethods();
+          renderWaHw();
+          document.getElementById("wakeyrow").style.display =
+            M_HW && M_HW != "none" ? "block" : "none";
+          renderMyGrinders();
+          renderColdStart();
+          renderSheetStatus();
+        }
+      }
+      function loadSetup() {
+        var m = localStorage.getItem("waMethods");
+        if (m) {
+          try {
+            var a = JSON.parse(m);
+            M_ESP = !!a.esp;
+            M_SOUP = !!a.soup;
+            M_FIL = a.fil !== false;
+          } catch (e) {
+            M_ESP = false;
+            M_SOUP = false;
+            M_FIL = true;
+          }
+        } else {
+          M_ESP = false;
+          M_SOUP = false;
+          M_FIL = true;
+        }
+        var h = localStorage.getItem("waHw") || "none";
+        M_HW = h;
+        M_SCALE = h == "scale";
+        M_GAG = h == "gaggiuino";
+      }
+      function saveSetup() {
+        localStorage.setItem("waMethods", JSON.stringify({ esp: M_ESP, soup: M_SOUP, fil: M_FIL }));
+        localStorage.setItem("waHw", M_HW || "none");
+      }
+      function renderWaMethods() {
+        var box = document.getElementById("wamethods");
+        if (!box) return;
+        box.innerHTML = "";
+        [
+          ["esp", "Espresso"],
+          ["soup", "Soup"],
+          ["fil", "Filter"],
+        ].forEach(function (m) {
+          var on = m[0] == "esp" ? M_ESP : m[0] == "soup" ? M_SOUP : M_FIL;
+          var c = document.createElement("div");
+          c.textContent = m[1];
+          c.className = "chip" + (on ? " on" : "");
+          c.onclick = function () {
+            if (m[0] == "esp") M_ESP = !M_ESP;
+            else if (m[0] == "soup") M_SOUP = !M_SOUP;
+            else M_FIL = !M_FIL;
+            if (!M_ESP && !M_SOUP && !M_FIL) M_FIL = true;
+            saveSetup();
+            renderWaMethods();
+            applyNoun();
+            applyHwLocks();
+            renderTier();
+          };
+          box.appendChild(c);
+        });
+      }
+      function renderWaHw() {
+        var box = document.getElementById("wahw");
+        if (!box) return;
+        box.innerHTML = "";
+        [
+          ["none", "No device yet"],
+          ["device", "BrewPilot device"],
+          ["scale", "+ BLE scale"],
+          ["gaggiuino", "+ Gaggiuino"],
+        ].forEach(function (h) {
+          var on = M_HW == h[0];
+          var c = document.createElement("div");
+          c.textContent = h[1];
+          c.className = "chip" + (on ? " hi on" : "");
+          c.onclick = function () {
+            M_HW = h[0];
+            M_SCALE = h[0] == "scale";
+            M_GAG = h[0] == "gaggiuino";
+            saveSetup();
+            renderWaHw();
+            document.getElementById("wakeyrow").style.display = h[0] == "none" ? "none" : "block";
+            applyNoun();
+            applyHwLocks();
+            renderTier();
+          };
+          box.appendChild(c);
+        });
+      }
+      function lockSection(id, label) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.opacity = "0.45";
+        el.style.pointerEvents = "none";
+        if (!el.querySelector(".hwlock")) {
+          var t = document.createElement("div");
+          t.className = "hwlock";
+          t.style.cssText = "color:var(--warn);font-size:11px;margin-top:6px";
+          t.textContent = label;
+          el.appendChild(t);
+        }
+      }
+      function unlockSection(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.opacity = "1";
+        el.style.pointerEvents = "auto";
+        var t = el.querySelector(".hwlock");
+        if (t) t.remove();
+      }
+      function applyHwLocks() {
+        var mo = document.getElementById("machineOnly");
+        if (mo) {
+          if (M_GAG) {
+            mo.style.display = "block";
+            lockSection("machineOnly", "Machine control is available on the BrewPilot device");
+          } else {
+            mo.style.display = "none";
+          }
+        }
+      }
+      function renderSheetStatus() {
+        let el = document.getElementById("sheetStatus");
+        if (!el) return;
+        if (WEBHOOK()) {
+          el.innerHTML =
+            "<span style='color:var(--hi-text)'>Connected - inventory and history are saving</span>";
+          document.getElementById("setWebhook").value = WEBHOOK();
+        } else {
+          el.innerHTML =
+            "<span style='color:var(--warn)'>Not connected - live advice works, but nothing is saved</span>";
+        }
+      }
+      async function saveWebhook() {
+        let v = document.getElementById("setWebhook").value.trim();
+        if (!v) {
+          alert("Paste your Google Sheet /exec URL");
+          return;
+        }
+        localStorage.setItem("webhook", v);
+        WEBHOOK_URL = v;
+        renderSheetStatus();
+        alert("Sheet connected");
+        loadInventory();
+      }
+      function renderRotModes() {
+        let box = document.getElementById("rotmodechips");
+        if (!box) return;
+        box.innerHTML = "";
+        [
+          ["fifo", "Use oldest"],
+          ["variety", "Keep it interesting"],
+          ["freshness", "Peak flavor"],
+          ["balanced", "Balanced"],
+        ].forEach((m) => {
+          let c = document.createElement("div");
+          c.textContent = m[1];
+          let on = m[0] == ROTMODE;
+          c.className = "chip" + (on ? " on" : "");
+          c.onclick = () => {
+            ROTMODE = m[0];
+            localStorage.setItem("rotMode", m[0]);
+            renderRotModes();
+            setRotMode(m[0]);
+          };
+          box.appendChild(c);
+        });
+      }
+      async function setRotMode(mode) {
+        let url = WEBHOOK();
+        if (!url) return;
+        try {
+          await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: "action=setRotationMode&mode=" + mode,
+          });
+        } catch (e) {}
+      }
+      function renderInvSizes() {
+        let box = document.getElementById("invsizechips");
+        if (!box) return;
+        box.innerHTML = "";
+        ["20g", "40g", "60g", "120g", "whole bag"].forEach((s) => {
+          let c = document.createElement("div");
+          c.textContent = s;
+          let on = s == INVSIZE;
+          c.className = "chip sm" + (on ? " on" : "");
+          c.onclick = () => {
+            INVSIZE = s;
+            renderInvSizes();
+          };
+          box.appendChild(c);
+        });
+      }
+      async function freezeCoffee() {
+        let coffee = document.getElementById("invcoffee").value.trim();
+        if (!coffee) {
+          alert("coffee name?");
+          return;
+        }
+        let roaster = document.getElementById("invroaster").value,
+          rdate = document.getElementById("invrdate").value;
+        let qty = document.getElementById("invqty").value || 1;
+        let url = WEBHOOK();
+        if (!url) {
+          alert("Connect a Google Sheet first (Settings) to save inventory.");
+          return;
+        }
+        let body =
+          "action=freeze&coffee=" +
+          encodeURIComponent(coffee) +
+          "&roaster=" +
+          encodeURIComponent(roaster) +
+          "&portion=" +
+          encodeURIComponent(INVSIZE) +
+          "&qty=" +
+          encodeURIComponent(qty) +
+          "&roast_date=" +
+          encodeURIComponent(rdate);
+        try {
+          await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body,
+          });
+          document.getElementById("invcoffee").value = "";
+          document.getElementById("invqty").value = "1";
+          alert("Frozen: " + qty + " x " + INVSIZE + " " + coffee);
+          loadInventory();
+        } catch (e) {
+          alert("save failed");
+        }
+      }
+      function noSheetMsg() {
+        return (
+          "<div style='text-align:left;font-size:12px;color:var(--dim);line-height:1.5'>" +
+          "Inventory, history and trends are saved to your Google Sheet. " +
+          "Connect one in <b>Settings</b> (or the setup wizard) to enable this. " +
+          "Your live dial-in advice works without it.</div>"
+        );
+      }
+      async function loadInventory() {
+        let box = document.getElementById("invList");
+        let url = WEBHOOK();
+        if (!url) {
+          box.innerHTML = noSheetMsg();
+          return;
+        }
+        try {
+          let r = await fetch(url + "?action=inventory");
+          let d = await r.json();
+          if (!d || !d.beans || !d.beans.length) {
+            box.innerHTML =
+              '<div class="mut" style="text-align:left">no bags yet - freeze one above</div>';
+            return;
+          }
+          box.innerHTML = "";
+          d.beans.forEach((b) => {
+            let card = document.createElement("div");
+            card.style.cssText =
+              "border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:6px;background:var(--panel2)";
+            let tot = b.total_g ? " - " + b.total_g + "g" : "";
+            card.innerHTML =
+              '<b style="font-size:13px">' +
+              b.coffee +
+              '</b><span style="float:right;color:var(--hi-text);font-size:11px">' +
+              (b.summary || "") +
+              tot +
+              '</span><div style="color:var(--dim);font-size:11px;margin-top:2px">' +
+              ((b.roaster || "") + (b.age ? " - " + b.age : "")) +
+              "</div>";
+            let acts = document.createElement("div");
+            acts.style.cssText = "display:flex;gap:6px;margin-top:8px;flex-wrap:wrap";
+            if (b.frozen_portion) {
+              let t = document.createElement("span");
+              t.textContent = "Thaw one " + b.frozen_portion;
+              t.style.cssText =
+                "padding:6px 10px;border-radius:14px;font-size:11px;cursor:pointer;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text)";
+              t.onclick = () => invAction("thaw", b.coffee, b.frozen_portion);
+              acts.appendChild(t);
+            }
+            let f = document.createElement("span");
+            f.textContent = "Finished";
+            f.style.cssText =
+              "padding:6px 10px;border-radius:14px;font-size:11px;cursor:pointer;border:1px solid var(--danger-line);background:var(--danger-bg);color:var(--danger-text)";
+            f.onclick = () => invAction("finished", b.coffee, "");
+            acts.appendChild(f);
+            card.appendChild(acts);
+            box.appendChild(card);
+          });
+          if (d.pick) {
+            let p = document.getElementById("rotpick");
+            p.style.display = "block";
+            p.innerHTML = "<b>Suggested:</b> " + d.pick;
+          }
+        } catch (e) {
+          box.innerHTML = '<div class="mut">could not load</div>';
+        }
+      }
+      async function invAction(action, coffee, portion) {
+        let url = WEBHOOK();
+        if (!url) return;
+        try {
+          await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body:
+              "action=" +
+              action +
+              "&coffee=" +
+              encodeURIComponent(coffee) +
+              "&portion=" +
+              encodeURIComponent(portion),
+          });
+          loadInventory();
+        } catch (e) {}
+      }
+      function renderMyGrinders() {
+        let box = document.getElementById("mygrinderchips");
+        if (!box) return;
+        box.innerHTML = "";
+        let owned = ownedGrinders();
+        Object.keys(GRINDERS).forEach((id) => {
+          let g = GRINDERS[id];
+          let c = document.createElement("div");
+          c.textContent = g.n;
+          let on = owned.indexOf(id) >= 0;
+          c.className = "chip xs" + (on ? " on" : "");
+          c.onclick = () => {
+            let o = ownedGrinders();
+            let i = o.indexOf(id);
+            if (i >= 0) o.splice(i, 1);
+            else o.push(id);
+            localStorage.setItem("myGrinders", JSON.stringify(o));
+            renderMyGrinders();
+            renderGrinderChips();
+            renderColdStart();
+          };
+          box.appendChild(c);
+        });
+      }
+      function dialAdvice(best, last, e) {
+        let out = [];
+        let g = GRINDERS[lastGrinder() || (e && e.grinder)];
+        let method = (best && best.type) || (e && e.type) || "soup";
+        let dp = best.peak - last.peak;
+        if (best.gset != null && g) {
+          let unit = g.n == "Motto80" ? "um" : "#";
+          out.push("set " + g.n + " to " + best.gset + unit + " (your best-rated setting)");
+          if (Math.abs(dp) >= 0.25 && last.gset != null) {
+            out.push(
+              "last ran " +
+                last.peak.toFixed(1) +
+                "bar vs best " +
+                best.peak.toFixed(1) +
+                " - nudge " +
+                (dp > 0 ? "finer" : "coarser"),
+            );
+          }
+        } else if (Math.abs(dp) >= 0.2) {
+          let dir = dp > 0 ? "finer" : "coarser";
+          let um = Math.abs(dp) * umBar(method);
+          let src = SENS[method] && SENS[method].n > 0 ? "learned" : "est";
+          if (g && g.um > 0) {
+            let clicks = Math.max(1, Math.round(um / g.um));
+            out.push(
+              "grind " +
+                dir +
+                " ~" +
+                clicks +
+                " click" +
+                (clicks > 1 ? "s" : "") +
+                " on " +
+                g.n +
+                " [" +
+                src +
+                " " +
+                method +
+                "]",
+            );
+          } else if (g && g.n == "Motto80") {
+            out.push(
+              "grind " + dir + " ~" + Math.round(um) + "um on Motto80 [" + src + " " + method + "]",
+            );
+          } else {
+            out.push("grind " + dir + " (pick grinder for click count)");
+          }
+        }
+        if (best.ratio && last.ratio && Math.abs(best.ratio - last.ratio) >= 0.2) {
+          out.push(
+            (best.ratio > last.ratio ? "longer" : "shorter") +
+              " pull to 1:" +
+              best.ratio.toFixed(1) +
+              (best.yield ? " (~" + Math.round(best.yield) + "g)" : ""),
+          );
+        }
+        if (method == "soup" && Math.abs(dp) < 0.2) {
+          out.push("soup: pressure barely tracks grind - lean on ratio, shot time and flow");
+        }
+        if (method == "filter" && !out.length) {
+          out.push("filter: dial by taste + drawdown; pressure is a weak signal here");
+        }
+        if (e && e.roast && atCeiling(e.roast)) {
+          out.push(
+            "temp maxed at " +
+              Math.round(tempCap()) +
+              "C for your altitude - extract via grind/agitation/ratio",
+          );
+        }
+        return out.join("; ");
+      }
+      function setSel(sel, other, val) {
+        if (!val) {
+          document.getElementById(sel).value = "";
+          return;
+        }
+        let s = document.getElementById(sel);
+        let opts = [...s.options].map((o) => o.value);
+        if (opts.includes(val)) {
+          s.value = val;
+          document.getElementById(other).style.display = "none";
+        } else {
+          s.value = "Other";
+          document.getElementById(other).style.display = "block";
+          document.getElementById(other).value = val;
+        }
+      }
+      function fillSame() {
+        if (ROT.length) {
+          fillEntry(ROT[0]);
+        } else {
+          alert("No previous " + NOUN() + " yet");
+        }
+      }
+      function togglePin(i) {
+        ROT[i].pin = !ROT[i].pin;
+        let pins = ROT.filter((x) => x.pin),
+          rest = ROT.filter((x) => !x.pin);
+        ROT = pins.concat(rest);
+        saveRot();
+        renderChips();
+      }
+      function renderChips() {
+        let box = document.getElementById("chips");
+        box.innerHTML = "";
+        if (!ROT.length) {
+          box.innerHTML =
+            "<span style='color:var(--dim);font-size:12px'>none yet - log a " + NOUN() + "</span>";
+          return;
+        }
+        ROT.forEach((e, i) => {
+          let chip = document.createElement("div");
+          chip.style.cssText =
+            "display:flex;align-items:center;gap:4px;padding:8px 10px;border-radius:20px;border:1px solid " +
+            (e.pin ? "var(--hi-line)" : "var(--line)") +
+            ";background:" +
+            (e.pin ? "var(--hi-bg)" : "var(--panel)") +
+            ";font-size:13px";
+          let name = document.createElement("span");
+          name.textContent = (e.pin ? "* " : "") + e.coffee;
+          name.style.cssText = "color:var(--text);cursor:pointer";
+          name.onclick = () => fillEntry(e);
+          let pin = document.createElement("span");
+          pin.textContent = e.pin ? "unpin" : "pin";
+          pin.style.cssText =
+            "color:var(--dim);font-size:11px;cursor:pointer;border-left:1px solid var(--line);padding-left:5px";
+          pin.onclick = () => togglePin(i);
+          chip.appendChild(name);
+          chip.appendChild(pin);
+          box.appendChild(chip);
+        });
+      }
+      var _wh = localStorage.getItem("webhook");
+      if (_wh) WEBHOOK_URL = _wh;
+      loadRot();
+      loadSens();
+      (function () {
+        let lg = localStorage.getItem("grinder");
+        if (lg) {
+          let el = document.getElementById("grinder");
+          if (el) el.value = lg;
+        }
+        renderGsetChips(null);
+        renderGrinderChips(null);
+        renderGWater();
+        renderGTaste();
+        renderPlanBanner();
+        if (!localStorage.getItem("webhook")) {
+          var w = document.getElementById("welcome");
+          if (w) w.style.display = "block";
+        }
+      })();
+      if (location.search.indexOf("rate=") >= 0) {
+        let e = document.getElementById("r");
+        e.focus();
+        e.scrollIntoView();
+      }
+      refresh();
+
+      function setTheme(t) {
+        document.documentElement.setAttribute("data-theme", t);
+        try {
+          localStorage.setItem("theme", t);
+        } catch (e) {}
+        document.querySelectorAll(".tdot").forEach(function (d) {
+          d.classList.toggle("on", d.dataset.t === t);
+        });
+      }
+      function showTab(name) {
+        document.querySelectorAll(".tabpanel").forEach(function (p) {
+          p.classList.toggle("on", p.id === "tab-" + name);
+        });
+        document.querySelectorAll(".tab").forEach(function (t) {
+          t.classList.toggle("on", t.dataset.tab === name);
+        });
+        if (name === "beans") openPanel("invPanel", toggleInv);
+        if (name === "insights") openPanel("insPanel", toggleInsights);
+        window.scrollTo(0, 0);
+      }
+      function openPanel(id, fn) {
+        var p = document.getElementById(id);
+        if (p && p.style.display === "none") fn();
+      }
+      function renderHero() {
+        var box = document.getElementById("heroSpark");
+        if (!box) return;
+        var ratings = [];
+        (typeof ROT !== "undefined" ? ROT : []).forEach(function (e) {
+          var r = (e.best && e.best.rating) || (e.last && e.last.rating);
+          if (r) ratings.push(r);
+        });
+        ratings = ratings.slice(0, 8);
+        var num = document.getElementById("heroNum"),
+          phase = document.getElementById("heroPhase"),
+          sub = document.getElementById("heroSub");
+        if (!ratings.length) {
+          num.textContent = "--";
+          box.innerHTML = "";
+          phase.textContent = t("noShots");
+          sub.textContent = t("logToBegin");
+          return;
+        }
+        num.textContent = ratings[0];
+        phase.textContent = t("lastRating");
+        sub.textContent = ratings.length + " " + (LANG === "es" ? "registrados" : "logged");
+        var cs = getComputedStyle(document.documentElement),
+          w = cs.getPropertyValue("--weight").trim(),
+          a = cs.getPropertyValue("--pressure").trim(),
+          tc = cs.getPropertyValue("--temp").trim();
+        box.innerHTML = "";
+        ratings
+          .slice()
+          .reverse()
+          .forEach(function (v) {
+            var i = document.createElement("i");
+            i.style.height = (v / 10) * 60 + "px";
+            i.style.background = v >= 8 ? w : v >= 6 ? a : tc;
+            box.appendChild(i);
+          });
+      }
+
+      (function () {
+        var t = "graphite";
+        try {
+          t = localStorage.getItem("theme") || "graphite";
+        } catch (e) {}
+        setTheme(t);
+      })();
+
+      var I18N = {
+        en: {
+          insLockT: "Insights need a Google Sheet",
+          insLockB:
+            "Insights read your whole history: timing vs rating, water vs taste, what actually works for you. That history lives in the sheet, so this stays locked until you connect one.",
+          insLockGo: "Connect a sheet (5 min)",
+          csT: "Starting point",
+          csHint: "Then dial by taste.",
+          csPick: "Pick a brewer to see a starting point.",
+          csOn: "on",
+          csClicks: "clicks",
+          csAbs: "absolute",
+          roastLight: "light roast",
+          roastMed: "medium roast",
+          roastDark: "dark roast",
+          csWhy: "Lighter roasts start finer, darker start coarser.",
+          duraT: "Your brews are only in this browser",
+          duraB:
+            "Nothing is backed up. Clearing your browser data, or leaving the site unused for about a week on iPhone, can erase it. Connect a Google Sheet (5 min, one time) to keep your history for good and get better insights.",
+          duraGo: "Connect a sheet (5 min)",
+          duraExp: "Export backup",
+          duraN: "brews stored locally, not backed up",
+          duraSafeT: "Connected. Your history is saved.",
+          duraSafeB: "Every brew goes to your Google Sheet. Insights read your full history.",
+          insNeedSheet:
+            "Insights get much better with a sheet. Locally I can only look at your recent brews; the sheet gives the full history, water and timing correlations.",
+          s2t: "Copy the template",
+          s2a: "The template already has the code inside. A blank sheet will not work.",
+          s2b: "Open the template",
+          s2c: "In the menu: File > Make a copy. The copy is yours, in your Drive.",
+          s3t: "Open the code editor",
+          s3a: "Extensions",
+          s3b: "Apps Script",
+          s3c: "A new tab opens. This is the code that will save your brews.",
+          s4t: "Publish it as a web app",
+          s4a: "Deploy",
+          s4b: "New deployment",
+          s4c: "2. Click the gear icon, choose Web app.",
+          s4d: "3. Execute as: Me",
+          s4e: "4. Who has access: Anyone  <-- this one matters",
+          s4f: "5. Press Deploy.",
+          s5t: "Google will warn you. This is normal.",
+          s5a: "It says Google hasn't verified this app. That is because the app is yours, written by you, not published to the store.",
+          s5b: "Press Advanced, then Go to (unsafe), then Allow.",
+          s6t: "Copy the link and paste it here",
+          s6a: "Copy the Web app URL. It ends in /exec.",
+          wizSetupTitle: "Set up BrewPilot",
+          wizSetupIntro:
+            "Pick what you do. Then connect a Google Sheet: this is what keeps your history from being lost, and it is what makes insights work properly.",
+          wizWhat: "What do you want to do?",
+          wizMethods: "What do you brew?",
+          wizHw: "What gear do you have?",
+          wizGrinders: "Which grinders do you own?",
+          wizDone: "Done, start using it",
+          roleBrew: "Brew and log",
+          roleInv: "Just inventory",
+          hwNone: "Scale + timer",
+          hwScale: "BLE scale",
+          hwGag: "Gaggiuino",
+          mEsp: "Espresso",
+          mSoup: "Soup",
+          mFil: "Filter",
+          noSheetYet: "No sheet connected. Advice still works; nothing is saved.",
+          homeInv: "Your inventory",
+          homeLogged: "logged",
+          homeNone: "Nothing logged yet",
+          homeStart: "Set up to begin",
+          home: "HOME",
+          log: "LOG",
+          beans: "BEANS",
+          insights: "INSIGHTS",
+          readyToLog: "Ready to log",
+          companion: "your coffee companion",
+          lastRating: "Last rating",
+          noShots: "No shots yet",
+          logToBegin: "log one to begin",
+          recentShots: "recent shots",
+          rating: "rating",
+          grindConverter: "Grinder converter",
+          from: "From",
+          to: "To",
+          setting: "Setting",
+          convHint: "Same burr gap, on each grinder's dial.",
+          role: "Role",
+          roleFull: "Full",
+          roleLogMgr: "Log & manage",
+          setupSheet: "Set up your Google Sheet",
+          wizIntro:
+            "Required for durable data. Without it your brews live only in this browser and can be erased. Do this once; it takes about five minutes.",
+          wiz1: "Open the template and choose File, Make a copy.",
+          wizOpenTemplate: "Open the template",
+          wiz2: "In your copy: Extensions, Apps Script, Deploy, New deployment, Web app. Access: Anyone. Deploy and authorize.",
+          wiz3: "Copy the /exec URL and paste it here:",
+          wizVerify: "Verify and connect",
+          close: "Close",
+          verifying: "Checking...",
+          verified: "Connected. Your sheet is saving.",
+          verifyFail: "Could not reach that URL. Check the deployment access is set to Anyone.",
+        },
+        es: {
+          insLockT: "El analisis necesita una Hoja de Google",
+          insLockB:
+            "El analisis lee todo tu historial: tiempo vs nota, agua vs sabor, lo que de verdad te funciona. Ese historial vive en la hoja, asi que esto queda bloqueado hasta que conectes una.",
+          insLockGo: "Conectar una hoja (5 min)",
+          csT: "Punto de partida",
+          csHint: "Luego ajusta por sabor.",
+          csPick: "Elige una cafetera para ver un punto de partida.",
+          csOn: "en",
+          csClicks: "clics",
+          csAbs: "absoluto",
+          roastLight: "tueste claro",
+          roastMed: "tueste medio",
+          roastDark: "tueste oscuro",
+          csWhy: "Los tuestes claros empiezan mas fino; los oscuros, mas grueso.",
+          duraT: "Tus cafes solo estan en este navegador",
+          duraB:
+            "No hay respaldo. Si borras los datos del navegador, o no entras por una semana en iPhone, se pueden borrar. Conecta una Hoja de Google (5 min, una sola vez) para conservar tu historial y tener mejores analisis.",
+          duraGo: "Conectar una hoja (5 min)",
+          duraExp: "Exportar respaldo",
+          duraN: "cafes guardados solo aqui, sin respaldo",
+          duraSafeT: "Conectado. Tu historial esta guardado.",
+          duraSafeB: "Cada cafe va a tu Hoja de Google. El analisis lee todo tu historial.",
+          insNeedSheet:
+            "El analisis mejora mucho con una hoja. Aqui solo veo tus cafes recientes; la hoja da el historial completo y las correlaciones de agua y tiempo.",
+          s2t: "Copia la plantilla",
+          s2a: "La plantilla ya trae el codigo dentro. Una hoja en blanco no funciona.",
+          s2b: "Abrir la plantilla",
+          s2c: "En el menu: Archivo > Hacer una copia. La copia es tuya, en tu Drive.",
+          s3t: "Abre el editor de codigo",
+          s3a: "Extensiones",
+          s3b: "Apps Script",
+          s3c: "Se abre una pestana nueva. Ese es el codigo que guardara tus cafes.",
+          s4t: "Publicalo como app web",
+          s4a: "Implementar",
+          s4b: "Nueva implementacion",
+          s4c: "2. Toca el icono de engrane y elige Aplicacion web.",
+          s4d: "3. Ejecutar como: Yo",
+          s4e: "4. Quien tiene acceso: Cualquier usuario  <-- este importa",
+          s4f: "5. Pulsa Implementar.",
+          s5t: "Google te va a advertir. Es normal.",
+          s5a: "Dice que Google no ha verificado la aplicacion. Es porque la app es tuya, escrita por ti, no esta publicada en la tienda.",
+          s5b: "Pulsa Configuracion avanzada, luego Ir a (no seguro), luego Permitir.",
+          s6t: "Copia el enlace y pegalo aqui",
+          s6a: "Copia la URL de la aplicacion web. Termina en /exec.",
+          wizSetupTitle: "Configura BrewPilot",
+          wizSetupIntro:
+            "Elige que haces. Luego conecta una Hoja de Google: es lo que evita que pierdas tu historial, y lo que hace que el analisis funcione bien.",
+          wizWhat: "Que quieres hacer?",
+          wizMethods: "Que preparas?",
+          wizHw: "Que equipo tienes?",
+          wizGrinders: "Que molinos tienes?",
+          wizDone: "Listo, empezar",
+          roleBrew: "Preparar y registrar",
+          roleInv: "Solo inventario",
+          hwNone: "Bascula + cronometro",
+          hwScale: "Bascula BLE",
+          hwGag: "Gaggiuino",
+          mEsp: "Espresso",
+          mSoup: "Soup",
+          mFil: "Filtrado",
+          noSheetYet: "Sin hoja conectada. Los consejos funcionan; no se guarda nada.",
+          homeInv: "Tu inventario",
+          homeLogged: "registrados",
+          homeNone: "Aun no hay registros",
+          homeStart: "Configura para empezar",
+          home: "INICIO",
+          log: "REGISTRO",
+          beans: "CAFES",
+          insights: "ANALISIS",
+          readyToLog: "Listo para registrar",
+          companion: "tu companero de cafe",
+          lastRating: "Ultima nota",
+          noShots: "Aun no hay shots",
+          logToBegin: "registra uno para empezar",
+          recentShots: "shots recientes",
+          rating: "nota",
+          grindConverter: "Conversor de molienda",
+          from: "De",
+          to: "A",
+          setting: "Ajuste",
+          convHint: "Misma separacion de fresas, en el dial de cada molino.",
+          role: "Perfil",
+          roleFull: "Completo",
+          roleLogMgr: "Solo registro",
+          setupSheet: "Configura tu Hoja de Google",
+          wizIntro:
+            "Necesario para no perder tus datos. Sin esto, tus cafes solo viven en este navegador y se pueden borrar. Hazlo una vez; toma unos cinco minutos.",
+          wiz1: "Abre la plantilla y elige Archivo, Hacer una copia.",
+          wizOpenTemplate: "Abrir la plantilla",
+          wiz2: "En tu copia: Extensiones, Apps Script, Implementar, Nueva implementacion, App web. Acceso: Cualquiera. Implementa y autoriza.",
+          wiz3: "Copia la URL /exec y pegala aqui:",
+          wizVerify: "Verificar y conectar",
+          close: "Cerrar",
+          verifying: "Comprobando...",
+          verified: "Conectado. Tu hoja ya guarda.",
+          verifyFail: "No se pudo acceder a esa URL. Revisa que el acceso sea Cualquiera.",
+        },
+      };
+      var LANG = "es";
+      try {
+        LANG = localStorage.getItem("lang") || "es";
+      } catch (e) {}
+      function t(k) {
+        return (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
+      }
+      function applyLang() {
+        try {
+          loadInventory();
+        } catch (e) {}
+        try {
+          renderRotModes();
+        } catch (e) {}
+        if (typeof uiSchedule === "function") uiSchedule();
+        document.querySelectorAll("[data-i18n]").forEach(function (el) {
+          el.textContent = t(el.getAttribute("data-i18n"));
+        });
+        document.querySelectorAll("[data-i18n-ph]").forEach(function (el) {
+          el.setAttribute("placeholder", t(el.getAttribute("data-i18n-ph")));
+        });
+        var lb = document.getElementById("langBtn");
+        if (lb) lb.textContent = LANG === "es" ? "EN" : "ES";
+        document.documentElement.lang = LANG;
+        try {
+          applyNoun();
+        } catch (e) {}
+        try {
+          renderTier();
+        } catch (e) {}
+        try {
+          renderChips();
+        } catch (e) {}
+        try {
+          convInit();
+        } catch (e) {}
+        try {
+          renderRoleChips();
+        } catch (e) {}
+      }
+      function setLang(l) {
+        LANG = l;
+        try {
+          localStorage.setItem("lang", l);
+        } catch (e) {}
+        applyLang();
+      }
+      var ROLE = "full";
+      try {
+        ROLE = localStorage.getItem("role") || "full";
+      } catch (e) {}
+      function applyRole() {
+        document.body.classList.toggle("role-logmgr", ROLE === "logmgr");
+      }
+      function setRole(r) {
+        ROLE = r;
+        try {
+          localStorage.setItem("role", r);
+        } catch (e) {}
+        applyRole();
+        renderRoleChips();
+        try {
+          renderTier();
+        } catch (e) {}
+      }
+      function renderRoleChips() {
+        var box = document.getElementById("rolechips");
+        if (!box) return;
+        box.innerHTML = "";
+        [
+          ["full", "roleFull"],
+          ["logmgr", "roleLogMgr"],
+        ].forEach(function (m) {
+          var c = document.createElement("div");
+          c.textContent = t(m[1]);
+          c.className = "chip" + (ROLE === m[0] ? " on" : "");
+          c.onclick = function () {
+            setRole(m[0]);
+          };
+          box.appendChild(c);
+        });
+      }
+      function convInit() {
+        var f = document.getElementById("convFrom"),
+          tt = document.getElementById("convTo");
+        if (!f || !tt) return;
+        var keys = Object.keys(GRINDERS),
+          cur = [f.value, tt.value];
+        f.innerHTML = "";
+        tt.innerHTML = "";
+        keys.forEach(function (id) {
+          var o = document.createElement("option");
+          o.value = id;
+          o.textContent = GRINDERS[id].n;
+          f.appendChild(o);
+          tt.appendChild(o.cloneNode(true));
+        });
+        f.value = cur[0] || keys[0];
+        tt.value = cur[1] || keys[1];
+        convCompute();
+      }
+      function convCompute() {
+        var f = document.getElementById("convFrom"),
+          tt = document.getElementById("convTo"),
+          out = document.getElementById("convOut");
+        if (!out) return;
+        var v = parseFloat(document.getElementById("convVal").value);
+        if (isNaN(v)) {
+          out.textContent = "";
+          return;
+        }
+        var r = convertGrind(v, f.value, tt.value),
+          tg = GRINDERS[tt.value];
+        if (r == null) {
+          out.textContent = "-";
+          return;
+        }
+        out.textContent =
+          v +
+          " (" +
+          GRINDERS[f.value].n +
+          ")  ->  " +
+          r +
+          (tg && tg.um === 0 ? "um" : "") +
+          "  (" +
+          tg.n +
+          ")";
+      }
+      function wizVerify() {
+        var url = (document.getElementById("wizUrl").value || "").trim(),
+          msg = document.getElementById("wizMsg");
+        if (url.indexOf("/exec") < 0) {
+          msg.className = "wizerr";
+          msg.textContent = t("verifyFail");
+          return;
+        }
+        localStorage.setItem("webhook", url);
+        WEBHOOK_URL = url;
+        try {
+          renderSheetStatus();
+        } catch (e) {}
+        try {
+          loadInventory();
+        } catch (e) {}
+        msg.className = "wizok";
+        msg.textContent = t("verified");
+        setTimeout(function () {
+          document.getElementById("wizMask").classList.remove("on");
+        }, 1000);
+      }
+      applyRole();
+      renderRoleChips();
+      convInit();
+      /* ---------------------------------------------------------------
+   UI scheduler. No polling: the app's own code rewrites innerHTML at
+   unpredictable times, so we watch for those writes instead of guessing.
+   The observer is disconnected while we render, otherwise our own writes
+   would retrigger it forever.
+   --------------------------------------------------------------- */
+      var UI_OBS = null,
+        UI_T = null,
+        UI_BUSY = false;
+      function uiRender() {
+        if (UI_BUSY) return;
+        UI_BUSY = true;
+        if (UI_OBS) UI_OBS.disconnect();
+        try {
+          trWalk();
+        } catch (e) {}
+        try {
+          rotTips();
+        } catch (e) {}
+        try {
+          insGate();
+        } catch (e) {}
+        try {
+          duraRender();
+        } catch (e) {}
+        try {
+          renderColdStart();
+        } catch (e) {}
+        try {
+          csInline();
+        } catch (e) {}
+        try {
+          renderHero();
+        } catch (e) {}
+        try {
+          homeRender();
+        } catch (e) {}
+        if (UI_OBS)
+          UI_OBS.observe(document.body, { childList: true, subtree: true, characterData: true });
+        UI_BUSY = false;
+      }
+      function uiSchedule() {
+        if (UI_T) return;
+        UI_T = setTimeout(function () {
+          UI_T = null;
+          uiRender();
+        }, 120);
+      }
+      function uiStart() {
+        UI_OBS = new MutationObserver(function (muts) {
+          for (var i = 0; i < muts.length; i++) {
+            var t = muts[i].target;
+            if (t && t.id && (t.id === "heroSpark" || t.id === "duraCount" || t.id === "rotLegend"))
+              continue;
+            return uiSchedule();
+          }
+        });
+        UI_OBS.observe(document.body, { childList: true, subtree: true, characterData: true });
+        uiRender();
+      }
+
+      /* wizard: render its chips when it opens, and only then */
+      (function () {
+        var m = document.getElementById("wizMask");
+        if (!m) return;
+        new MutationObserver(function () {
+          if (m.classList.contains("on")) {
+            try {
+              wizRender();
+            } catch (e) {}
+            uiSchedule();
+          }
+        }).observe(m, { attributes: true, attributeFilter: ["class"] });
+      })();
+
+      /* cold start depends on roast / grinder / brewer: listen instead of poll */
+      document.addEventListener("change", function (e) {
+        if (!e.target || !e.target.id) return;
+        if (["froast", "roast", "grinder", "convFrom", "convTo"].indexOf(e.target.id) >= 0)
+          uiSchedule();
+      });
+      document.addEventListener(
+        "click",
+        function (e) {
+          var el = e.target;
+          if (
+            el &&
+            el.closest &&
+            (el.closest("#brewerchips") || el.closest("#rotmodechips") || el.closest("#grchips"))
+          )
+            uiSchedule();
+        },
+        true,
+      );
+
+      /* state changes that must repaint */
+      [
+        "setLang",
+        "setRole",
+        "setTheme",
+        "wizVerify",
+        "saveWebhook",
+        "logshot",
+        "logFilter",
+        "freezeCoffee",
+        "toggleInv",
+        "toggleInsights",
+        "toggleSettings",
+        "toggleFilter",
+        "showTab",
+      ].forEach(function (fn) {
+        if (typeof window[fn] !== "function") return;
+        var orig = window[fn];
+        window[fn] = function () {
+          var r = orig.apply(this, arguments);
+          uiSchedule();
+          return r;
+        };
+      });
+
+      var UIDICT = {
+        Coffee: "Cafe",
+        Roaster: "Tostador",
+        Roast: "Tueste",
+        "Roast date": "Fecha de tueste",
+        Water: "Agua",
+        "Water (g)": "Agua (g)",
+        Brewer: "Cafetera",
+        Agitation: "Agitacion",
+        "Filter paper": "Filtro de papel",
+        "Dose (g)": "Dosis (g)",
+        "Rating (1-10)": "Nota (1-10)",
+        "Kettle temp (C)": "Temp del agua (C)",
+        "Total time (m:ss)": "Tiempo total (m:ss)",
+        "Bloom time (s, optional)": "Preinfusion (s, opcional)",
+        "Portion size": "Tamano de porcion",
+        "How many": "Cuantas",
+        "How did it taste?": "Como sabe?",
+        "Recipe (tap to prefill)": "Receta (toca para rellenar)",
+        "Rotation style": "Estilo de rotacion",
+        "Your inventory": "Tu inventario",
+        Settings: "Ajustes",
+        Insights: "Analisis",
+        Off: "Apagar",
+        "Warm up": "Calentar",
+        Other: "Otro",
+        "Freeze it": "Congelar",
+        "Freeze coffee": "Congelar cafe",
+        "Refresh now": "Actualizar",
+        "Connect sheet": "Conectar hoja",
+        "Connect my sheet": "Conectar mi hoja",
+        "Save to log": "Guardar registro",
+        "Save filter brew": "Guardar filtrado",
+        "Start (plan now)": "Iniciar (planear)",
+        "Start brew (plan now)": "Iniciar preparacion (planear)",
+        "Same coffee as last shot": "Mismo cafe que el ultimo",
+        "Same coffee / from rotation": "Mismo cafe / de la rotacion",
+        "Log the last shot": "Registrar el ultimo shot",
+        "Finished this bag - suggest next": "Bolsa terminada - sugerir siguiente",
+        "What do you brew?": "Que preparas?",
+        "What hardware do you have?": "Que equipo tienes?",
+        "Which grinders do you own? (shown when logging)":
+          "Que molinos tienes? (se muestran al registrar)",
+        "Google Sheet (enables inventory, history, trends)":
+          "Hoja de Google (activa inventario, historial, tendencias)",
+        "Coffee inventory & rotation": "Inventario y rotacion de cafe",
+        "Coffee inventory &amp; rotation": "Inventario y rotacion de cafe",
+        "Current rotation (tap to fill):": "Rotacion actual (toca para rellenar):",
+        "Grind setting used:": "Molienda usada:",
+        "Grinder (tap to switch, converts setting):":
+          "Molino (toca para cambiar, convierte el ajuste):",
+        "New-bean cold start (per brewer, on your grinder)":
+          "Punto de partida (por cafetera, en tu molino)",
+        "How often should insights arrive?": "Cada cuanto quieres el analisis?",
+        "Welcome to the BrewPilot beta": "Bienvenido a la beta de BrewPilot",
+        "your coffee companion": "tu companero de cafe",
+        "+ Log a filter / non-Gaggia brew": "+ Registrar un filtrado / no-Gaggia",
+        "+ paper / agitation (optional)": "+ papel / agitacion (opcional)",
+        espresso: "espresso",
+        soup: "soup",
+        filter: "filtrado",
+        "loading...": "cargando...",
+        "varietal...": "variedad...",
+        "process...": "proceso...",
+        "roast level...": "nivel de tueste...",
+        "roaster...": "tostador...",
+        "type (auto)": "tipo (auto)",
+        grinder: "molino",
+        "coffee name": "nombre del cafe",
+        "dose g": "dosis g",
+        "grind # / um": "molienda # / um",
+        "paste your /exec URL": "pega tu URL /exec",
+        "type roaster name": "escribe el tostador",
+        "type process": "escribe el proceso",
+        "e.g. Panama Gesha": "ej. Panama Gesha",
+        "device key (from your BrewPilot)": "clave del dispositivo (de tu BrewPilot)",
+        "Logged to your sheet": "Guardado en tu hoja",
+        "Filter brew logged": "Filtrado registrado",
+        "Could not load insights.": "No se pudo cargar el analisis.",
+        "Could not refresh.": "No se pudo actualizar.",
+        "Crunching your brews...": "Analizando tus preparaciones...",
+        "No insights yet. Log a few brews and rate them, then Refresh now.":
+          "Aun no hay analisis. Registra y califica algunas preparaciones, luego Actualizar.",
+        "Connect a sheet first": "Conecta una hoja primero",
+        "Connect your Google Sheet in Settings first.":
+          "Conecta tu Hoja de Google en Ajustes primero.",
+        "Connect a Google Sheet first (Settings) to save inventory.":
+          "Conecta una Hoja de Google (Ajustes) para guardar el inventario.",
+        "Brew planned. Come back and tap Finish when it is done.":
+          "Preparacion planeada. Vuelve y toca Terminar cuando acabe.",
+        "Add at least the coffee name to start a brew":
+          "Anade al menos el nombre del cafe para empezar",
+        "Coffee name?": "Nombre del cafe?",
+        "Discard the planned brew?": "Descartar la preparacion planeada?",
+        "Marked finished. Check Telegram for what to thaw next.":
+          "Marcado como terminado. Revisa Telegram para saber que descongelar.",
+        "No device yet": "Aun sin dispositivo",
+        "Machine control is available on the BrewPilot device":
+          "El control de la maquina esta en el dispositivo BrewPilot",
+        "Machine control needs the BrewPilot device + a Gaggiuino.":
+          "El control de la maquina requiere el dispositivo BrewPilot y un Gaggiuino.",
+        "Use oldest": "Usar el mas viejo",
+        "Keep it interesting": "Manten la variedad",
+        "Peak flavor": "Sabor optimo",
+        Balanced: "Equilibrado",
+        "New-bean cold start (per brewer, on your grinder)":
+          "Punto de partida (por cafetera, en tu molino)",
+        "Grind # (ZP6)": "Molienda # (ZP6)",
+        "Filter brew": "Filtrado",
+        Espresso: "Espresso",
+        Brew: "Preparar",
+        Finish: "Terminar",
+        Discard: "Descartar",
+        "in progress": "en curso",
+        planned: "planeado",
+        Insights: "Analisis",
+        Refresh: "Actualizar",
+        Daily: "Diario",
+        Weekly: "Semanal",
+        "Every 3 days": "Cada 3 dias",
+        Sealed: "Sellado",
+        Open: "Abierto",
+        Freezer: "Congelador",
+        Finished: "Terminado",
+        Thaw: "Descongelar",
+        portions: "porciones",
+        portion: "porcion",
+        "This webapp gives you the full logging, rotation and insights experience. To save your data, connect your own free Google Sheet (2 min). Your data stays in your account.":
+          "Esta webapp te da el registro, la rotacion y el analisis completos. Para guardar tus datos, conecta tu propia Hoja de Google gratis (2 min). Tus datos quedan en tu cuenta.",
+        "No sheet yet? You can still explore - dial-in advice works offline.":
+          "Sin hoja aun? Puedes explorar - los consejos de ajuste funcionan sin conexion.",
+        "You type dose, yield, time - and get history, trends and rotation. You do the logging.":
+          "Tu escribes dosis, salida, tiempo - y obtienes historial, tendencias y rotacion. Tu haces el registro.",
+        "flow curve + yield captured live (no typing), flow-vs-rating insights a webapp can't compute.":
+          "curva de flujo + salida capturadas en vivo (sin escribir), analisis flujo-vs-nota que una webapp no puede calcular.",
+        "The more the device sees, the less you do - and the better it coaches.":
+          "Cuanto mas ve el dispositivo, menos haces tu - y mejor te aconseja.",
+        "Beta: unlocking is on the honor system - device-key validation comes later.":
+          "Beta: el desbloqueo es por confianza - la validacion por clave llega despues.",
+        "Your live dial-in advice works without it.":
+          "Tus consejos de ajuste en vivo funcionan sin ella.",
+        "Log the last brew": "Registrar la ultima preparacion",
+        "none yet - log a brew": "aun ninguno - registra una preparacion",
+        "none yet - log a shot": "aun ninguno - registra un shot",
+        "type your grind # (or um for Motto80) once, then chips appear":
+          "escribe tu molienda # (o um para Motto80) una vez, y apareceran los botones",
+        "Add a BLE scale ->": "Anade una bascula BLE ->",
+        "Add a Gaggiuino ->": "Anade un Gaggiuino ->",
+        "Your setup: Tier 0 - Manual": "Tu configuracion: Nivel 0 - Manual",
+        "Your setup: Tier 1 - BLE scale": "Tu configuracion: Nivel 1 - Bascula BLE",
+        "Your setup: Tier 2 - Gaggiuino": "Tu configuracion: Nivel 2 - Gaggiuino",
+      };
+      function _rev(m) {
+        var r = {};
+        for (var k in m) {
+          if (!(m[k] in r)) r[m[k]] = k;
+        }
+        return r;
+      }
+      var UIREV = _rev(UIDICT);
+      function trWalk() {
+        var m = LANG === "es" ? UIDICT : UIREV;
+        var w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false),
+          n,
+          nodes = [];
+        while ((n = w.nextNode())) nodes.push(n);
+        nodes.forEach(function (tn) {
+          var raw = tn.nodeValue,
+            v = raw.replace(/\s+/g, " ").trim();
+          if (v && m[v] !== undefined && m[v] !== v) {
+            var l = raw.match(/^\s*/)[0],
+              tr = raw.match(/\s*$/)[0];
+            tn.nodeValue = l + m[v] + tr;
+          }
+        });
+        document.querySelectorAll("[placeholder]").forEach(function (el) {
+          var v = (el.getAttribute("placeholder") || "").trim();
+          if (v && m[v] !== undefined && m[v] !== v) el.setAttribute("placeholder", m[v]);
+        });
+      }
+
+      /* rotation tooltips: title on each mode chip + a legend under them */
+      var ROT_HELP = {
+        fifo: {
+          en: "Brew your oldest bag first, less waste.",
+          es: "Prepara primero tu bolsa mas vieja, menos desperdicio.",
+        },
+        variety: {
+          en: "Pick a different bean than what is already open.",
+          es: "Elige un grano distinto al que ya esta abierto.",
+        },
+        freshness: {
+          en: "Pick beans in their peak rest window.",
+          es: "Elige granos en su ventana optima de reposo.",
+        },
+        balanced: {
+          en: "A mix of age, variety and freshness.",
+          es: "Una mezcla de edad, variedad y frescura.",
+        },
+      };
+      function rotTips() {
+        var box = document.getElementById("rotmodechips");
+        if (!box) return;
+        if (box.children.length === 0 && typeof renderRotModes === "function") {
+          try {
+            renderRotModes();
+          } catch (e) {}
+        }
+        var order = ["fifo", "variety", "freshness", "balanced"];
+        Array.prototype.forEach.call(box.children, function (c, i) {
+          var k = order[i];
+          if (k && ROT_HELP[k]) c.title = ROT_HELP[k][LANG] || ROT_HELP[k].en;
+        });
+        var leg = document.getElementById("rotLegend");
+        if (!leg) {
+          leg = document.createElement("div");
+          leg.id = "rotLegend";
+          leg.className = "mut";
+          leg.style.cssText = "text-align:left;margin-top:8px;line-height:1.6";
+          box.parentNode.insertBefore(leg, box.nextSibling);
+        }
+        var lab =
+          LANG === "es"
+            ? {
+                fifo: "Usar el mas viejo",
+                variety: "Manten la variedad",
+                freshness: "Sabor optimo",
+                balanced: "Equilibrado",
+              }
+            : {
+                fifo: "Use oldest",
+                variety: "Keep it interesting",
+                freshness: "Peak flavor",
+                balanced: "Balanced",
+              };
+        leg.innerHTML = order
+          .map(function (k) {
+            return (
+              '<b style="color:var(--text)">' +
+              lab[k] +
+              ":</b> " +
+              (ROT_HELP[k][LANG] || ROT_HELP[k].en)
+            );
+          })
+          .join("<br>");
+      }
+
+      /* settings-first onboarding: new users land on setup, not a log form */
+      (function () {
+        var done = false;
+        try {
+          done = !!localStorage.getItem("onboarded");
+        } catch (e) {}
+        if (typeof saveSetup === "function") {
+          var _ss = saveSetup;
+          saveSetup = function () {
+            var r = _ss.apply(this, arguments);
+            try {
+              localStorage.setItem("onboarded", "1");
+            } catch (e) {}
+            return r;
+          };
+        }
+        if (!done) {
+          setTimeout(function () {
+            try {
+              showTab("insights");
+            } catch (e) {}
+            try {
+              openPanel("setPanel", toggleSettings);
+            } catch (e) {}
+            var w = document.getElementById("welcome");
+            if (w) {
+              var h = document.createElement("div");
+              h.className = "mut";
+              h.style.cssText = "text-align:left;margin:6px 0";
+              h.textContent =
+                LANG === "es"
+                  ? "Empieza aqui: elige lo que preparas y tu equipo. Solo quieres inventario? Tambien funciona."
+                  : "Start here: pick what you brew and your gear. Just want inventory? That works too.";
+            }
+          }, 400);
+        }
+      })();
+
+      applyLang();
+
+      /* EDIT THIS: paste your published template's "Make a copy" link (ends with /copy) */
+      var SHEET_TEMPLATE_URL='https://docs.google.com/spreadsheets/d/16npxL524Iy1F4Wj5TnTpKtgOt1iONztv7WCH4WAoqK8/copy';
+      function wizTemplateLink() {
+        var a = document.getElementById("wizTemplate");
+        if (!a) return;
+        if (SHEET_TEMPLATE_URL) {
+          a.href = SHEET_TEMPLATE_URL;
+          a.removeAttribute("data-off");
+          a.style.opacity = "1";
+        } else {
+          a.href = "#";
+          a.setAttribute("data-off", "1");
+          a.style.opacity = ".5";
+          a.onclick = function (e) {
+            e.preventDefault();
+            alert(
+              LANG === "es"
+                ? "Falta el enlace de la plantilla. Oscar: pon SHEET_TEMPLATE_URL en index.html."
+                : "Template link not set. Oscar: set SHEET_TEMPLATE_URL in index.html.",
+            );
+          };
+        }
+      }
+
+      /* Optional: put these images next to index.html and they appear in the wizard.
+   setup1-copy.png setup2-appsscript.png setup3-deploy.png setup4-warning.png setup5-url.png */
+      var WIZ_SHOTS = {
+        shot1: "setup1-copy.png",
+        shot2: "setup2-appsscript.png",
+        shot3: "setup3-deploy.png",
+        shot4: "setup4-warning.png",
+        shot5: "setup5-url.png",
+      };
+      function wizShots() {
+        Object.keys(WIZ_SHOTS).forEach(function (id) {
+          var el = document.getElementById(id);
+          if (!el || el.dataset.tried) return;
+          el.dataset.tried = "1";
+          var im = new Image();
+          im.onload = function () {
+            el.src = WIZ_SHOTS[id];
+            el.style.display = "block";
+          };
+          im.src = WIZ_SHOTS[id];
+        });
+      }
+
+      /* wizard step 1: role + methods + hardware + grinders, reusing the real app state */
+      function wizRender() {
+        var rb = document.getElementById("wizRole");
+        if (!rb) return;
+        rb.innerHTML = "";
+        [
+          ["full", "roleBrew"],
+          ["logmgr", "roleInv"],
+        ].forEach(function (m) {
+          var c = document.createElement("div");
+          c.textContent = t(m[1]);
+          c.className = "chip" + (ROLE === m[0] ? " on" : "");
+          c.onclick = function () {
+            setRole(m[0]);
+            wizRender();
+          };
+          rb.appendChild(c);
+        });
+        var mw = document.getElementById("wizMethodWrap");
+        if (mw) mw.style.display = ROLE === "logmgr" ? "none" : "";
+        var mb = document.getElementById("wizMethods");
+        if (mb) {
+          mb.innerHTML = "";
+          [
+            [
+              "esp",
+              "mEsp",
+              function () {
+                return M_ESP;
+              },
+              function (v) {
+                M_ESP = v;
+              },
+            ],
+            [
+              "soup",
+              "mSoup",
+              function () {
+                return M_SOUP;
+              },
+              function (v) {
+                M_SOUP = v;
+              },
+            ],
+            [
+              "fil",
+              "mFil",
+              function () {
+                return M_FIL;
+              },
+              function (v) {
+                M_FIL = v;
+              },
+            ],
+          ].forEach(function (m) {
+            var c = document.createElement("div");
+            c.textContent = t(m[1]);
+            c.className = "chip" + (m[2]() ? " hi on" : "");
+            c.onclick = function () {
+              m[3](!m[2]());
+              localStorage.setItem(
+                "waMethods",
+                JSON.stringify({ esp: M_ESP, soup: M_SOUP, fil: M_FIL }),
+              );
+              try {
+                applyNoun();
+              } catch (e) {}
+              try {
+                renderTier();
+              } catch (e) {}
+              wizRender();
+              homeRender();
+            };
+            mb.appendChild(c);
+          });
+        }
+        var hb = document.getElementById("wizHw");
+        if (hb) {
+          hb.innerHTML = "";
+          [
+            ["none", "hwNone"],
+            ["scale", "hwScale"],
+            ["gaggiuino", "hwGag"],
+          ].forEach(function (h) {
+            var c = document.createElement("div");
+            c.textContent = t(h[1]);
+            c.className = "chip" + (M_HW === h[0] ? " on" : "");
+            c.onclick = function () {
+              M_HW = h[0];
+              M_SCALE = h[0] === "scale";
+              M_GAG = h[0] === "gaggiuino";
+              localStorage.setItem("waHw", h[0]);
+              try {
+                applyHwLocks();
+              } catch (e) {}
+              try {
+                renderTier();
+              } catch (e) {}
+              wizRender();
+              homeRender();
+            };
+            hb.appendChild(c);
+          });
+        }
+        var gb = document.getElementById("wizGrinders");
+        if (gb && typeof GRINDERS === "object") {
+          gb.innerHTML = "";
+          var owned = [];
+          try {
+            owned = JSON.parse(localStorage.getItem("myGrinders") || "[]");
+          } catch (e) {}
+          Object.keys(GRINDERS).forEach(function (id) {
+            var c = document.createElement("div");
+            c.textContent = GRINDERS[id].n;
+            var on = owned.indexOf(id) >= 0;
+            c.className = "chip xs" + (on ? " hi on" : "");
+            c.onclick = function () {
+              var i = owned.indexOf(id);
+              if (i >= 0) owned.splice(i, 1);
+              else owned.push(id);
+              localStorage.setItem("myGrinders", JSON.stringify(owned));
+              try {
+                renderMyGrinders();
+              } catch (e) {}
+              try {
+                renderGrinderChips();
+              } catch (e) {}
+              wizRender();
+            };
+            gb.appendChild(c);
+          });
+        }
+      }
+
+      /* localized tier card (replaces the concat version so it cannot fight the translator) */
+      var TIERTXT = {
+        en: [
+          [
+            "Tier 0 - Manual",
+            "You type dose, yield, time. You get history, trends and rotation.",
+            "Add a BLE scale",
+            "Weight, yield and flow captured live, no typing.",
+          ],
+          [
+            "Tier 1 - BLE scale",
+            "Your scale captures weight, yield and live flow. No typing.",
+            "Add a Gaggiuino",
+            "Every shot auto-logs pressure, flow and temp; the device coaches mid-pull.",
+          ],
+          [
+            "Tier 2 - Gaggiuino",
+            "Every shot auto-logs pressure, flow and temp. Zero effort. Top of the ladder.",
+            "",
+            "",
+          ],
+        ],
+        es: [
+          [
+            "Nivel 0 - Manual",
+            "Tu escribes dosis, salida y tiempo. Obtienes historial, tendencias y rotacion.",
+            "Anade una bascula BLE",
+            "Peso, salida y flujo capturados en vivo, sin escribir.",
+          ],
+          [
+            "Nivel 1 - Bascula BLE",
+            "Tu bascula captura peso, salida y flujo en vivo. Sin escribir.",
+            "Anade un Gaggiuino",
+            "Cada shot registra presion, flujo y temperatura solo; el dispositivo te guia.",
+          ],
+          [
+            "Nivel 2 - Gaggiuino",
+            "Cada shot registra presion, flujo y temperatura solo. Cero esfuerzo. Lo maximo.",
+            "",
+            "",
+          ],
+        ],
+      };
+      function renderTier() {
+        var el = document.getElementById("tierCard");
+        if (!el) return;
+        if (typeof TIERTXT === "undefined" || typeof LANG === "undefined") return;
+        var tier =
+          typeof M_GAG !== "undefined" && M_GAG
+            ? 2
+            : typeof M_SCALE !== "undefined" && M_SCALE
+              ? 1
+              : 0;
+        var set = TIERTXT[LANG] || TIERTXT.en;
+        var d = set[tier] || set[0];
+        if (!d) return;
+        var h =
+          "<div style='color:var(--hi-text);font-size:13px;font-weight:600'>" +
+          (LANG === "es" ? "Tu configuracion: " : "Your setup: ") +
+          d[0] +
+          "</div>";
+        h += "<div style='color:var(--dim);font-size:12px;margin:4px 0 8px'>" + d[1] + "</div>";
+        if (d[2]) {
+          h +=
+            "<div style='color:var(--sel-text);font-size:12px;font-weight:600'>" +
+            d[2] +
+            " -></div>";
+          h += "<div style='color:var(--dim);font-size:12px'>" + d[3] + "</div>";
+        }
+        el.innerHTML = h;
+      }
+
+      /* method-agnostic home: no espresso assumption, adapts to role + what you brew */
+      function homeRender() {
+        var phase = document.getElementById("heroPhase"),
+          sub = document.getElementById("heroSub"),
+          num = document.getElementById("heroNum");
+        if (!phase) return;
+        var noun = LNOUN();
+        if (ROLE === "logmgr") {
+          var n = 0;
+          try {
+            n = typeof INV !== "undefined" && INV && INV.length ? INV.length : 0;
+          } catch (e) {
+            n = 0;
+          }
+          phase.textContent = t("homeInv");
+          sub.textContent = n ? n + " " + (LANG === "es" ? "cafes" : "coffees") : t("noSheetYet");
+          num.textContent = n ? String(n) : "--";
+          return;
+        }
+        var ratings = [];
+        (typeof ROT !== "undefined" ? ROT : []).forEach(function (e) {
+          var r = (e.best && e.best.rating) || (e.last && e.last.rating);
+          if (r) ratings.push(r);
+        });
+        if (!ratings.length) {
+          phase.textContent = t("homeNone");
+          sub.textContent = LANG === "es" ? "registra tu primer " + noun : "log your first " + noun;
+          num.textContent = "--";
+          return;
+        }
+        phase.textContent = t("lastRating");
+        sub.textContent = ratings.length + " " + t("homeLogged");
+        num.textContent = ratings[0];
+      }
+
+      function LNOUN() {
+        var f = !M_ESP && !M_SOUP && M_FIL;
+        if (LANG === "es") return f ? "filtrado" : "shot";
+        return f ? "brew" : "shot";
+      }
+      function noSheetMsg() {
+        var es = LANG === "es";
+        return (
+          "<div style='text-align:left;font-size:12px;color:var(--dim);line-height:1.5'>" +
+          (es
+            ? "El inventario, el historial y las tendencias se guardan en tu Hoja de Google. Conecta una en <b>Ajustes</b> (o el asistente) para activarlo. Tus consejos de ajuste en vivo funcionan sin ella."
+            : "Inventory, history and trends are saved to your Google Sheet. Connect one in <b>Settings</b> (or the setup wizard) to enable this. Your live dial-in advice works without it.") +
+          "</div>"
+        );
+      }
+
+      /* local buffer: every logged row is mirrored here so nothing is lost before a sheet exists */
+      function localRows() {
+        try {
+          return JSON.parse(localStorage.getItem("localRows") || "[]");
+        } catch (e) {
+          return [];
+        }
+      }
+      function localPush(row) {
+        try {
+          var a = localRows();
+          a.push({ t: Date.now(), row: row });
+          if (a.length > 400) a = a.slice(-400);
+          localStorage.setItem("localRows", JSON.stringify(a));
+        } catch (e) {}
+      }
+      function exportLocal() {
+        var a = localRows();
+        if (!a.length) {
+          alert(LANG === "es" ? "Aun no hay nada que exportar." : "Nothing to export yet.");
+          return;
+        }
+        var blob = new Blob(
+          [JSON.stringify({ exported: new Date().toISOString(), rows: a }, null, 1)],
+          { type: "application/json" },
+        );
+        var u = URL.createObjectURL(blob),
+          d = document.createElement("a");
+        d.href = u;
+        d.download = "brewpilot-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+        document.body.appendChild(d);
+        d.click();
+        d.remove();
+        setTimeout(function () {
+          URL.revokeObjectURL(u);
+        }, 400);
+      }
+
+      /* mirror logshot/logFilter into the buffer without touching their sheet path */
+      ["logshot", "logFilter"].forEach(function (fn) {
+        if (typeof window[fn] !== "function") return;
+        var orig = window[fn];
+        window[fn] = function () {
+          try {
+            var c = document.getElementById("coffee") || document.getElementById("fcoffee");
+            localPush({ coffee: c ? c.value : "", when: new Date().toISOString() });
+          } catch (e) {}
+          return orig.apply(this, arguments);
+        };
+      });
+
+      /* the banner: honest either way, and it does not hide */
+      function duraRender() {
+        var el = document.getElementById("duraBanner");
+        if (!el) return;
+        var connected = false;
+        try {
+          connected = !!(WEBHOOK && WEBHOOK());
+        } catch (e) {}
+        var n = localRows().length;
+        var hd = el.querySelector(".durahd b"),
+          bd = el.querySelector(".durab"),
+          cnt = document.getElementById("duraCount"),
+          row = el.querySelector(".durarow");
+        if (connected) {
+          el.style.display = "";
+          el.classList.add("durasafe");
+          hd.textContent = t("duraSafeT");
+          bd.textContent = t("duraSafeB");
+          row.style.display = "none";
+          cnt.textContent = "";
+          return;
+        }
+        el.style.display = "";
+        el.classList.remove("durasafe");
+        row.style.display = "";
+        hd.textContent = t("duraT");
+        bd.textContent = t("duraB");
+        cnt.textContent = n ? n + " " + t("duraN") : "";
+      }
+
+      /* insights: say plainly that the sheet makes them better */
+
+      /* ---- insights are a sheet feature: honest lock, not a tease ---- */
+      function insGate() {
+        var p = document.getElementById("insPanel");
+        if (!p) return;
+        var connected = false;
+        try {
+          connected = !!(WEBHOOK && WEBHOOK());
+        } catch (e) {}
+        var old = document.getElementById("insNeedSheet");
+        if (old) old.remove();
+        var lock = document.getElementById("insLock");
+        var kids = Array.prototype.filter.call(p.children, function (c) {
+          return c.id !== "insLock";
+        });
+        if (connected) {
+          if (lock) lock.remove();
+          kids.forEach(function (c) {
+            c.style.display = "";
+          });
+          return;
+        }
+        kids.forEach(function (c) {
+          c.style.display = "none";
+        });
+        if (!lock) {
+          lock = document.createElement("div");
+          lock.id = "insLock";
+          lock.className = "inslock";
+          p.appendChild(lock);
+        }
+        lock.innerHTML =
+          "<div class='inslockT'>" +
+          t("insLockT") +
+          "</div><div class='inslockB'>" +
+          t("insLockB") +
+          "</div>";
+        var btn = document.createElement("button");
+        btn.className = "grn";
+        btn.style.cssText = "width:100%;margin-top:12px";
+        btn.textContent = t("insLockGo");
+        btn.onclick = function () {
+          document.getElementById("wizMask").classList.add("on");
+        };
+        lock.appendChild(btn);
+      }
+
+      /* ---- cold start: contextual, roast-aware, one brewer, where you actually grind ---- */
+      var ROAST_F = {
+        "Ultra Light": 0.9,
+        "Extra Light": 0.94,
+        Light: 1.0,
+        "Light Medium": 1.04,
+        Medium: 1.08,
+        "Medium Dark": 1.13,
+        Dark: 1.18,
+      };
+      function roastWord(r) {
+        if (!r) return t("roastLight");
+        if (/Dark/i.test(r)) return t("roastDark");
+        if (/Medium/i.test(r)) return t("roastMed");
+        return t("roastLight");
+      }
+      function csRoast() {
+        var e = document.getElementById("froast") || document.getElementById("roast");
+        var v = e ? e.value : "";
+        return { v: v, f: ROAST_F[v] || 1.0 };
+      }
+      function csFor(brewer, gid) {
+        var um = typeof BREWER_UM === "object" && BREWER_UM[brewer] ? BREWER_UM[brewer] : 750;
+        var r = csRoast();
+        um = Math.round(um * r.f);
+        var g = typeof GRINDERS === "object" ? GRINDERS[gid] : null;
+        if (!g) return { txt: um + "um", um: um };
+        if (g.um === 0) return { txt: um + "um (" + t("csAbs") + ")", um: um };
+        return { txt: "~" + Math.round(um / g.um) + " " + t("csClicks"), um: um };
+      }
+
+      /* replace the 6-row English dump with a single contextual line */
+      function renderColdStart() {
+        var box = document.getElementById("coldstartbox");
+        if (!box) return;
+        if (typeof GRINDERS !== "object" || typeof BREWER_UM !== "object") {
+          box.innerHTML = "";
+          return;
+        }
+        var gid = null;
+        try {
+          gid = lastGrinder() || ownedGrinders()[0];
+        } catch (e) {}
+        var brewer = typeof FBREWER !== "undefined" && FBREWER ? FBREWER : null;
+        if (!gid || !brewer) {
+          box.innerHTML = "<div class='csS'>" + t("csPick") + "</div>";
+          return;
+        }
+        var g = GRINDERS[gid],
+          r = csRoast(),
+          c = csFor(brewer, gid);
+        box.innerHTML =
+          "<div class='cs'><div class='csHd'>" +
+          t("csT") +
+          "</div>" +
+          "<div class='csV'>" +
+          c.txt +
+          "</div>" +
+          "<div class='csS'>" +
+          brewer +
+          " " +
+          t("csOn") +
+          " " +
+          (g ? g.n : gid) +
+          " · " +
+          roastWord(r.v) +
+          ". " +
+          t("csHint") +
+          "</div></div>";
+      }
+
+      /* mirror it into the filter form next to the grind field, where the decision happens */
+      function csInline() {
+        var host = document.getElementById("fgrind");
+        if (!host) return;
+        var id = "csInline",
+          el = document.getElementById(id);
+        var gid = null;
+        try {
+          gid = lastGrinder() || ownedGrinders()[0];
+        } catch (e) {}
+        var brewer = typeof FBREWER !== "undefined" && FBREWER ? FBREWER : null;
+        if (!gid || !brewer || typeof BREWER_UM !== "object") {
+          if (el) el.remove();
+          return;
+        }
+        if (!el) {
+          el = document.createElement("div");
+          el.id = id;
+          el.className = "cs";
+          host.parentNode.insertBefore(el, host.nextSibling);
+        }
+        var g = GRINDERS[gid],
+          r = csRoast(),
+          c = csFor(brewer, gid);
+        el.innerHTML =
+          "<div class='csHd'>" +
+          t("csT") +
+          "</div><div class='csV'>" +
+          c.txt +
+          "</div>" +
+          "<div class='csS'>" +
+          brewer +
+          " " +
+          t("csOn") +
+          " " +
+          (g ? g.n : gid) +
+          " · " +
+          roastWord(r.v) +
+          ". " +
+          t("csHint") +
+          "</div>";
+      }
+
+      var _rh2 = renderHero;
+      renderHero = function () {
+        try {
+          _rh2();
+        } catch (e) {}
+        try {
+          homeRender();
+        } catch (e) {}
+      };
+
+      /* bootstrap last: every definition exists by now */
+      wizTemplateLink();
+      wizShots();
+      uiStart();
+    </script>
+  </body>
+</html>
