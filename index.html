@@ -1833,6 +1833,10 @@
               <input id="invqty" type="number" value="1" min="1" class="fin" />
             </div>
             <div class="fcell">
+              <div class="fl" data-i18n="invFreezeDate">Freeze date</div>
+              <input id="invfreeze_date" type="date" class="fin" />
+            </div>
+            <div class="fcell">
               <button class="grn" style="width: 100%" onclick="freezeCoffee()">Freeze it</button>
             </div>
           </div>
@@ -3643,6 +3647,7 @@
         let invproc = (document.getElementById("invprocess") || {}).value || "";
         if (invproc == "Other")
           invproc = rememberOther("invprocess", "invprocess_other", "process");
+        var invfd = (document.getElementById("invfreeze_date") || {}).value || "";
         let rdate = document.getElementById("invrdate").value;
         let qty = document.getElementById("invqty").value || 1;
         let url = WEBHOOK();
@@ -3664,7 +3669,9 @@
           "&roast=" +
           encodeURIComponent(invroast) +
           "&process=" +
-          encodeURIComponent(invproc);
+          encodeURIComponent(invproc) +
+          "&freeze_date=" +
+          encodeURIComponent((document.getElementById("invfreeze_date") || {}).value || "");
         try {
           await fetch(url, {
             method: "POST",
@@ -4017,6 +4024,7 @@
 
       var I18N = {
         en: {
+          invFreezeDate: "Freeze date",
           hwGot: "Got it",
           hwFine:
             "The app works fully without it. You type dose, yield and time, and still get history, rotation and insights.",
@@ -4463,6 +4471,9 @@
           invSelectsInit();
         } catch (e) {}
         try {
+          invFreezeDateInit();
+        } catch (e) {}
+        try {
           filterSelectsInit();
         } catch (e) {}
         try {
@@ -4751,6 +4762,7 @@
         "Keep it interesting": "Manten la variedad",
         "Peak flavor": "Sabor óptimo",
         Balanced: "Equilibrado",
+        "Freeze date": "Fecha de congelado",
         "Share my custom roasters": "Compartir mis tostadores",
         "Yield (g)": "Salida (g)",
         "Time (m:ss or s)": "Tiempo (m:ss o s)",
@@ -6487,6 +6499,22 @@
         b2.style.display = gap ? "" : "none";
         document.getElementById("hwClose").textContent = t("hwGot");
         m.classList.add("on");
+      }
+
+      /* Default the freeze date to today so the common case is one tap, while a bag
+   that has been in the freezer a while can be backdated. The freshness rotation
+   scores on this date, so a wrong one quietly skews which bag it suggests. */
+      function invFreezeDateInit() {
+        var el = document.getElementById("invfreeze_date");
+        if (!el) return;
+        if (!el.value) {
+          var d = new Date(),
+            p = function (n) {
+              return (n < 10 ? "0" : "") + n;
+            };
+          el.value = d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+          el.max = el.value; /* you cannot have frozen it in the future */
+        }
       }
       var _rh2 = renderHero;
       renderHero = function () {
