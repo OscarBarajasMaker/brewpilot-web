@@ -1,5 +1,5 @@
 <!doctype html>
-<html data-theme="graphite">
+<html lang="es" data-theme="graphite">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -773,7 +773,7 @@
   </head>
   <body>
     <div class="appbar">
-      <div class="brand">Brew<span>Pilot</span></div>
+      <div class="brand notranslate" translate="no">Brew<span>Pilot</span></div>
       <div class="rightbar">
         <div class="langtoggle" id="langBtn" onclick="setLang(LANG==='es'?'en':'es')">ES</div>
         <div class="themebtns">
@@ -1047,7 +1047,7 @@
             <option>Standout</option>
             <option>Fortitude</option>
           </optgroup>
-          <optgroup label="Other"><option>Other</option></optgroup></select
+          <optgroup label="Other"><option value="Other">Other</option></optgroup></select
         ><input
           id="roaster_other"
           placeholder="type roaster name"
@@ -1133,7 +1133,7 @@
           </optgroup>
           <optgroup label="Other">
             <option>Blend</option>
-            <option>Other</option>
+            <option value="Other">Other</option>
             <option>Unknown</option>
           </optgroup></select
         ><select
@@ -1232,7 +1232,7 @@
             <option>Whiskey Barrel Aged</option>
             <option>Rum Barrel Aged</option>
           </optgroup>
-          <optgroup label="Other"><option>Other</option></optgroup></select
+          <optgroup label="Other"><option value="Other">Other</option></optgroup></select
         ><input
           id="process_other"
           placeholder="type process"
@@ -1350,6 +1350,57 @@
             "
           />
         </div>
+        <div class="frow" style="margin-top: 8px">
+          <div class="fcell">
+            <div class="fl">Yield (g)</div>
+            <input
+              id="gyield"
+              type="number"
+              step="0.1"
+              inputmode="decimal"
+              class="fin"
+              oninput="gRatioLive()"
+            />
+          </div>
+          <div class="fcell">
+            <div class="fl">Time (m:ss or s)</div>
+            <input id="gtime" inputmode="numeric" placeholder="0:28" class="fin" />
+          </div>
+        </div>
+        <div class="frow">
+          <div class="fcell">
+            <div class="fl">Preinfusion (s)</div>
+            <input id="gbloom" type="number" inputmode="numeric" class="fin" />
+          </div>
+          <div class="fcell">
+            <div class="fl">Temp (C)</div>
+            <input id="gtemp" type="number" step="0.5" inputmode="decimal" class="fin" />
+          </div>
+        </div>
+        <div id="gratioLive" class="csS" style="margin: -2px 0 8px 2px"></div>
+        <div
+          onclick="var x=document.getElementById('gadv');x.style.display=x.style.display=='none'?'block':'none'"
+          style="color: var(--dim); font-size: 12px; cursor: pointer; margin-bottom: 6px"
+        >
+          + basket / prep / paper (optional)
+        </div>
+        <div id="gadv" style="display: none">
+          <div class="fl">Basket</div>
+          <div
+            id="gbasketchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+          ></div>
+          <div class="fl">Prep</div>
+          <div
+            id="gprepchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+          ></div>
+          <div class="fl">Paper in basket</div>
+          <div
+            id="gpaperchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+          ></div>
+        </div>
         <div style="margin-top: 8px">
           <div style="color: var(--dim); font-size: 12px; margin-bottom: 5px">Water</div>
           <div
@@ -1413,6 +1464,26 @@
           ></div>
           <div class="fl">Coffee</div>
           <input id="fcoffee" placeholder="e.g. Panama Gesha" class="fin" style="width: 100%" />
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Varietal</div>
+              <select id="fvarietal" class="fin"></select>
+            </div>
+            <div class="fcell">
+              <div class="fl">Process</div>
+              <select
+                id="fprocess"
+                class="fin"
+                onchange="otherToggle('fprocess','fprocess_other')"
+              ></select
+              ><input
+                id="fprocess_other"
+                placeholder="type process"
+                class="fin"
+                style="display: none"
+              />
+            </div>
+          </div>
           <div class="frow">
             <div class="fcell">
               <div class="fl">Roaster</div>
@@ -1620,15 +1691,51 @@
             "
           ></div>
           <div class="fl">Freeze coffee</div>
-          <input id="invcoffee" placeholder="coffee name" class="fin" style="width: 100%" />
+          <input
+            id="invcoffee"
+            placeholder="coffee name"
+            class="fin"
+            style="width: 100%"
+            list="invCoffeeList"
+          /><datalist id="invCoffeeList"></datalist>
           <div class="frow">
             <div class="fcell">
               <div class="fl">Roaster</div>
-              <input id="invroaster" class="fin" />
+              <select
+                id="invroaster"
+                class="fin"
+                onchange="otherToggle('invroaster','invroaster_other')"
+              ></select
+              ><input
+                id="invroaster_other"
+                placeholder="type roaster name"
+                class="fin"
+                style="display: none"
+              />
             </div>
             <div class="fcell">
               <div class="fl">Roast date</div>
               <input id="invrdate" type="date" class="fin" />
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Roast</div>
+              <select id="invroast" class="fin"></select>
+            </div>
+            <div class="fcell">
+              <div class="fl">Process</div>
+              <select
+                id="invprocess"
+                class="fin"
+                onchange="otherToggle('invprocess','invprocess_other')"
+              ></select
+              ><input
+                id="invprocess_other"
+                placeholder="type process"
+                class="fin"
+                style="display: none"
+              />
             </div>
           </div>
           <div class="fl">Portion size</div>
@@ -1973,6 +2080,11 @@
         if (!isNaN(gsetN) && grn) {
           localStorage.setItem("gset_" + grn, gsetN);
         }
+        let gy = g("gyield"),
+          gt = toSecs(document.getElementById("gtime").value),
+          gtemp = g("gtemp"),
+          gbloom = g("gbloom");
+        let gratio = d && gy ? (parseFloat(gy) / parseFloat(d)).toFixed(2) : "";
         let cols = [
           "",
           "",
@@ -1983,22 +2095,23 @@
           ro,
           t || "",
           d,
+          gy || "",
+          gratio,
+          gt || "",
           "",
           "",
-          "",
-          "",
-          "",
-          "",
+          gtemp || "",
           r || "",
-          "",
+          GBASKET || "",
           gs || "",
           GWATER || "",
-          "",
-          "",
+          GPREP || "",
+          GPAPER || "",
           GTASTE || "",
-          "",
+          gbloom || "",
         ];
-        let csv = "CSV," + cols.join(",");
+        let csv = "CSV," + cols.map(csvSafe).join(",");
+        let _body = colsToParams(cols);
         let url = WEBHOOK();
         if (!url) {
           alert("Connect your Google Sheet in Settings first.");
@@ -2008,7 +2121,7 @@
           await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: "csv=" + encodeURIComponent(csv),
+            body: _body,
           });
         } catch (e) {
           alert("save failed");
@@ -2028,12 +2141,34 @@
             water: GWATER || "",
             taste: GTASTE || "",
           },
-          {},
+          {
+            yieldG: gy ? parseFloat(gy) : undefined,
+            ratio: gratio ? parseFloat(gratio) : undefined,
+            durationS: gt ? parseFloat(gt) : undefined,
+          },
           r,
         );
-        ["coffee", "varietal", "dose", "r", "gset", "roaster_other", "process_other"].forEach(
-          (i) => (document.getElementById(i).value = ""),
-        );
+        [
+          "coffee",
+          "varietal",
+          "dose",
+          "r",
+          "gset",
+          "roaster_other",
+          "process_other",
+          "gyield",
+          "gtime",
+          "gtemp",
+          "gbloom",
+        ].forEach((i) => {
+          var _el = document.getElementById(i);
+          if (_el) _el.value = "";
+        });
+        GPREP = "";
+        GPAPER = "";
+        try {
+          gRatioLive();
+        } catch (e) {}
         GTASTE = "";
         renderGWater();
         renderGTaste();
@@ -2569,13 +2704,16 @@
           roast = document.getElementById("froast").value;
         let ratio = dose && water ? (water / dose).toFixed(1) : "";
         let bloom = document.getElementById("fbloom").value || "";
+        let fvar = (document.getElementById("fvarietal") || {}).value || "";
+        let fproc = (document.getElementById("fprocess") || {}).value || "";
+        if (fproc == "Other") fproc = (document.getElementById("fprocess_other") || {}).value || "";
         let cols = [
           "",
           "",
           coffee,
           roaster,
-          "",
-          "",
+          fvar,
+          fproc,
           roast,
           "filter",
           dose,
@@ -2594,7 +2732,8 @@
           FTASTE || "",
           bloom,
         ];
-        let csv = "CSV," + cols.join(",");
+        let csv = "CSV," + cols.map(csvSafe).join(",");
+        let _body = colsToParams(cols);
         let url = WEBHOOK();
         if (!url) {
           alert("no webhook configured");
@@ -2604,12 +2743,14 @@
           await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: "csv=" + encodeURIComponent(csv),
+            body: _body,
           });
           pushRotation(
             {
               coffee: coffee,
               roaster: roaster,
+              varietal: fvar,
+              process: fproc,
               roast: roast,
               type: "filter",
               dose: dose,
@@ -3406,8 +3547,14 @@
           alert("coffee name?");
           return;
         }
-        let roaster = document.getElementById("invroaster").value,
-          rdate = document.getElementById("invrdate").value;
+        let roaster = document.getElementById("invroaster").value;
+        if (roaster == "Other")
+          roaster = (document.getElementById("invroaster_other") || {}).value || "";
+        let invroast = (document.getElementById("invroast") || {}).value || "";
+        let invproc = (document.getElementById("invprocess") || {}).value || "";
+        if (invproc == "Other")
+          invproc = (document.getElementById("invprocess_other") || {}).value || "";
+        let rdate = document.getElementById("invrdate").value;
         let qty = document.getElementById("invqty").value || 1;
         let url = WEBHOOK();
         if (!url) {
@@ -3424,7 +3571,11 @@
           "&qty=" +
           encodeURIComponent(qty) +
           "&roast_date=" +
-          encodeURIComponent(rdate);
+          encodeURIComponent(rdate) +
+          "&roast=" +
+          encodeURIComponent(invroast) +
+          "&process=" +
+          encodeURIComponent(invproc);
         try {
           await fetch(url, {
             method: "POST",
@@ -3777,6 +3928,9 @@
 
       var I18N = {
         en: {
+          ratioOk: "in the usual band",
+          ratioTight: "tighter than the usual {a}-{b}",
+          ratioLong: "longer than the usual {a}-{b}",
           espWarn:
             "Note: {g} uses filter burrs and cannot grind fine enough for espresso. It is fine for pour over.",
           csTooFine:
@@ -3885,6 +4039,9 @@
           verifyFail: "Could not reach that URL. Check the deployment access is set to Anyone.",
         },
         es: {
+          ratioOk: "dentro del rango habitual",
+          ratioTight: "mas corto que el rango habitual {a}-{b}",
+          ratioLong: "mas largo que el rango habitual {a}-{b}",
           espWarn:
             "Nota: el {g} usa fresas de filtrado y no muele lo bastante fino para espresso. Para vertido va bien.",
           csTooFine:
@@ -4034,6 +4191,9 @@
         } catch (e) {}
       }
       function setLang(l) {
+        try {
+          document.documentElement.lang = l === "es" ? "es" : "en";
+        } catch (e) {}
         LANG = l;
         try {
           localStorage.setItem("lang", l);
@@ -4189,6 +4349,24 @@
         try {
           wireHelp();
         } catch (e) {}
+        try {
+          invSelectsInit();
+        } catch (e) {}
+        try {
+          filterSelectsInit();
+        } catch (e) {}
+        try {
+          renderEspExtras();
+        } catch (e) {}
+        try {
+          renderWaterNotes();
+        } catch (e) {}
+        try {
+          gRatioLive();
+        } catch (e) {}
+        try {
+          protectProperNouns();
+        } catch (e) {}
         if (UI_OBS)
           UI_OBS.observe(document.body, { childList: true, subtree: true, characterData: true });
         UI_BUSY = false;
@@ -4230,6 +4408,11 @@
       /* cold start depends on roast / grinder / brewer: listen instead of poll */
       document.addEventListener("change", function (e) {
         if (!e.target || !e.target.id) return;
+        if (e.target.id === "invcoffee") {
+          try {
+            invPrefill();
+          } catch (x) {}
+        }
         if (["froast", "roast", "grinder", "convFrom", "convTo"].indexOf(e.target.id) >= 0)
           uiSchedule();
       });
@@ -4449,12 +4632,21 @@
         "Keep it interesting": "Manten la variedad",
         "Peak flavor": "Sabor optimo",
         Balanced: "Equilibrado",
+        "Yield (g)": "Salida (g)",
+        "Time (m:ss or s)": "Tiempo (m:ss o s)",
+        "Preinfusion (s)": "Preinfusion (s)",
+        "Temp (C)": "Temp (C)",
+        Basket: "Canasta",
+        Prep: "Preparacion",
+        "Paper in basket": "Papel en canasta",
+        "+ basket / prep / paper (optional)": "+ canasta / preparacion / papel (opcional)",
+        Varietal: "Variedad",
+        Process: "Proceso",
         "New-bean cold start (per brewer, on your grinder)":
           "Punto de partida (por cafetera, en tu molino)",
         "Grind # (ZP6)": "Molienda # (ZP6)",
         "Filter brew": "Filtrado",
         Espresso: "Espresso",
-        Brew: "Preparar",
         Finish: "Terminar",
         Discard: "Descartar",
         "in progress": "en curso",
@@ -4511,6 +4703,13 @@
           nodes = [];
         while ((n = w.nextNode())) nodes.push(n);
         nodes.forEach(function (tn) {
+          /* never translate inside a translate="no" subtree: brand names, proper nouns.
+      "Brew" is both a verb we translate and half of the product name. */
+          var pe = tn.parentElement;
+          while (pe) {
+            if (pe.getAttribute && pe.getAttribute("translate") === "no") return;
+            pe = pe.parentElement;
+          }
           var raw = tn.nodeValue,
             v = raw.replace(/\s+/g, " ").trim();
           if (v && m[v] !== undefined && m[v] !== v) {
@@ -4557,38 +4756,6 @@
           var k = order[i];
           if (k && ROT_HELP[k]) c.title = "";
         });
-        var leg = document.getElementById("rotLegend");
-        if (!leg) {
-          leg = document.createElement("div");
-          leg.id = "rotLegend";
-          leg.className = "mut";
-          leg.style.cssText = "text-align:left;margin-top:8px;line-height:1.6";
-          box.parentNode.insertBefore(leg, box.nextSibling);
-        }
-        var lab =
-          LANG === "es"
-            ? {
-                fifo: "Usar el mas viejo",
-                variety: "Manten la variedad",
-                freshness: "Sabor optimo",
-                balanced: "Equilibrado",
-              }
-            : {
-                fifo: "Use oldest",
-                variety: "Keep it interesting",
-                freshness: "Peak flavor",
-                balanced: "Balanced",
-              };
-        leg.innerHTML = order
-          .map(function (k) {
-            return (
-              '<b style="color:var(--text)">' +
-              lab[k] +
-              ":</b> " +
-              (ROT_HELP[k][LANG] || ROT_HELP[k].en)
-            );
-          })
-          .join("<br>");
       }
 
       /* settings-first onboarding: new users land on setup, not a log form */
@@ -5433,6 +5600,271 @@
         if (wt && wt.parentNode) {
           var hd = wt.parentNode.querySelector("b");
           if (hd) addHelp(hd, "sheet");
+        }
+      }
+
+      /* ---- freeze form now uses the same coffee DB as logging ----
+   The Inventory sheet already had roast and process columns; invFreeze_ already
+   reads p.roast and p.process. Only the form was missing. Options are cloned from
+   the log selects so there is one source of truth. */
+      function cloneOpts(fromId, toId) {
+        var src = document.getElementById(fromId),
+          dst = document.getElementById(toId);
+        if (!src || !dst || !src.options || !src.options.length) return false;
+        if (dst.options.length === src.options.length) return true; // already done
+        var keep = dst.value;
+        dst.innerHTML = "";
+        Array.prototype.forEach.call(src.children, function (node) {
+          dst.appendChild(node.cloneNode(true));
+        });
+        if (keep) dst.value = keep;
+        return true;
+      }
+      function invSelectsInit() {
+        cloneOpts("roaster", "invroaster");
+        cloneOpts("roast", "invroast");
+        cloneOpts("process", "invprocess");
+        /* coffee names you already own, so a second portion of the same bag is one tap */
+        var dl = document.getElementById("invCoffeeList");
+        if (dl && typeof INV !== "undefined" && INV && INV.length) {
+          var seen = {},
+            n = 0;
+          INV.forEach(function (e) {
+            var c = e.coffee || e.name;
+            if (c && !seen[c]) {
+              seen[c] = 1;
+              n++;
+            }
+          });
+          if (dl.children.length !== n) {
+            dl.innerHTML = "";
+            Object.keys(seen).forEach(function (c) {
+              var o = document.createElement("option");
+              o.value = c;
+              dl.appendChild(o);
+            });
+          }
+        }
+      }
+      /* prefill the rest of the bag's details when the coffee name matches one you own */
+      function invPrefill() {
+        var c = document.getElementById("invcoffee");
+        if (!c || typeof INV === "undefined" || !INV) return;
+        var hit = null,
+          v = (c.value || "").trim().toLowerCase();
+        if (!v) return;
+        INV.forEach(function (e) {
+          var n = (e.coffee || e.name || "").toLowerCase();
+          if (n === v && !hit) hit = e;
+        });
+        if (!hit) return;
+        var set = function (id, val) {
+          var el = document.getElementById(id);
+          if (el && val && !el.value) el.value = val;
+        };
+        set("invroaster", hit.roaster);
+        set("invroast", hit.roast);
+        set("invprocess", hit.process);
+        set("invrdate", (hit.roast_date || "").slice(0, 10));
+      }
+
+      /* =====================================================================
+   Espresso extras. GBASKET/GPREP/GPAPER mirror the filter form's
+   FBREWER/FAGIT/FPAPER pattern so both forms behave the same way.
+   ===================================================================== */
+      var GBASKET = "",
+        GPREP = "",
+        GPAPER = "";
+      try {
+        GBASKET = localStorage.getItem("gbasket") || "";
+      } catch (e) {}
+      var BASKETS = ["Stock", "IMS", "Scott Rao Filter3", "VST", "Pesado", "Other"];
+      var PREPS = ["WDT", "WDT + RDT", "RDT", "none"];
+      var BASKET_PAPERS = ["none", "bottom", "top", "top + bottom"];
+      function renderEspExtras() {
+        if (typeof chipRow !== "function") return;
+        chipRow(
+          "gbasketchips",
+          BASKETS,
+          GBASKET,
+          function (v) {
+            GBASKET = v;
+            try {
+              localStorage.setItem("gbasket", v);
+            } catch (e) {}
+          },
+          renderEspExtras,
+        );
+        chipRow(
+          "gprepchips",
+          PREPS,
+          GPREP,
+          function (v) {
+            GPREP = v;
+          },
+          renderEspExtras,
+        );
+        chipRow(
+          "gpaperchips",
+          BASKET_PAPERS,
+          GPAPER,
+          function (v) {
+            GPAPER = v;
+          },
+          renderEspExtras,
+        );
+      }
+      /* live ratio + the band check. RATIO_BAND and ratioInBand() existed but were
+   dead code: no espresso ratio was ever produced, so nothing could call them. */
+      function gRatioLive() {
+        var el = document.getElementById("gratioLive");
+        if (!el) return;
+        var d = parseFloat((document.getElementById("dose") || {}).value);
+        var y = parseFloat((document.getElementById("gyield") || {}).value);
+        if (!d || !y || d <= 0) {
+          el.textContent = "";
+          el.style.color = "";
+          return;
+        }
+        var ratio = y / d;
+        var method = (document.getElementById("type") || {}).value || "";
+        if (!method) method = typeof M_SOUP !== "undefined" && M_SOUP ? "soup" : "espresso";
+        var txt = "1:" + ratio.toFixed(2);
+        var band = typeof RATIO_BAND === "object" ? RATIO_BAND[method] : null;
+        if (band) {
+          if (ratio < band[0])
+            txt += "  " + t("ratioTight").replace("{a}", band[0]).replace("{b}", band[1]);
+          else if (ratio > band[1])
+            txt += "  " + t("ratioLong").replace("{a}", band[0]).replace("{b}", band[1]);
+          else txt += "  " + t("ratioOk");
+        }
+        el.textContent = txt;
+        el.style.color =
+          band && (ratio < band[0] || ratio > band[1]) ? "var(--warn)" : "var(--dim)";
+      }
+
+      /* =====================================================================
+   GAP 2: filter varietal + process, cloned from the espresso selects so
+   there is a single source of truth for the lists.
+   ===================================================================== */
+      function filterSelectsInit() {
+        cloneOpts("varietal", "fvarietal");
+        cloneOpts("process", "fprocess");
+      }
+
+      /* =====================================================================
+   GAP 3: WATERS held acid/body/note per water and was never read once.
+   Show the note under whichever water is selected, on both forms.
+   ===================================================================== */
+      function waterNote(sel) {
+        if (typeof WATERS !== "object" || !sel) return "";
+        var w = WATERS[sel];
+        return w && w.note ? w.note : "";
+      }
+      function renderWaterNotes() {
+        var pairs = [
+          ["gwaterchips", typeof GWATER !== "undefined" ? GWATER : ""],
+          ["fwaterchips", typeof FWATER !== "undefined" ? FWATER : ""],
+        ];
+        pairs.forEach(function (p) {
+          var box = document.getElementById(p[0]);
+          if (!box) return;
+          var id = p[0] + "_note",
+            el = document.getElementById(id);
+          var note = waterNote(p[1]);
+          if (!note) {
+            if (el) el.remove();
+            return;
+          }
+          if (!el) {
+            el = document.createElement("div");
+            el.id = id;
+            el.className = "csS";
+            el.style.cssText = "margin:2px 0 8px 2px;line-height:1.5";
+            box.parentNode.insertBefore(el, box.nextSibling);
+          }
+          if (el.textContent !== note) el.textContent = note;
+        });
+      }
+
+      /* Any comma in a free text field would break LogSink's split(",") parser and
+   shift every later column. Semicolon keeps the meaning readable and guarantees
+   the row stays 23 wide. Newlines would break the row entirely. */
+      function csvSafe(v) {
+        if (v === undefined || v === null) return "";
+        return String(v).replace(/\s+/g, " ").replace(/,/g, ";").trim();
+      }
+
+      /* Column order must match LogSink.gs COLS exactly. If you add a column there,
+   add it here in the same position. */
+      var COLNAMES = [
+        "shot_id",
+        "timestamp",
+        "coffee",
+        "roaster",
+        "varietal",
+        "process",
+        "roast",
+        "type",
+        "dose_g",
+        "yield_g",
+        "ratio",
+        "duration_s",
+        "peak_bar",
+        "avg_flow_mls",
+        "temp_c",
+        "rating",
+        "brewer",
+        "grind_setting",
+        "water",
+        "prep",
+        "paper",
+        "taste_tag",
+        "bloom_s",
+      ];
+      function colsToParams(cols) {
+        var out = [];
+        for (var i = 0; i < COLNAMES.length; i++) {
+          var v = cols[i];
+          if (v === undefined || v === null || v === "") continue;
+          out.push(COLNAMES[i] + "=" + encodeURIComponent(v));
+        }
+        return out.join("&");
+      }
+
+      /* Brand and proper nouns must never be translated, by us or by the browser.
+   Chrome offers to auto-translate any page whose lang it has to guess, and it
+   happily turns "BrewPilot" into "PrepararPilot". Two defences:
+     - <html lang> is declared and kept in sync, so Chrome knows and stops guessing
+     - the brand carries translate="no" so even a manual translate leaves it alone */
+      function protectProperNouns() {
+        var names = [
+          "BrewPilot",
+          "Gaggiuino",
+          "Gaggia",
+          "Google",
+          "Telegram",
+          "GitHub",
+          "V60",
+          "Chemex",
+          "Kalita",
+          "AeroPress",
+        ];
+        document.querySelectorAll(".brand,#appTitle,.appbar b,title").forEach(function (el) {
+          el.setAttribute("translate", "no");
+          el.classList.add("notranslate");
+        });
+        /* the brand contains a <span>, so a childless-only check would miss it */
+        // any element whose entire text is a proper noun
+        var w = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT, null, false),
+          n;
+        while ((n = w.nextNode())) {
+          if (n.children.length) continue;
+          var t = (n.textContent || "").trim();
+          if (t && names.indexOf(t) >= 0 && !n.hasAttribute("translate")) {
+            n.setAttribute("translate", "no");
+            n.classList.add("notranslate");
+          }
         }
       }
       var _rh2 = renderHero;
