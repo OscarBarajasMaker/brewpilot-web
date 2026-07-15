@@ -4049,6 +4049,25 @@
 
       var I18N = {
         en: {
+          insNeedMore: "Only {n} brews logged. Insights need about 6 to say anything honest.",
+          insNothingYet: "Nothing stands out in your data yet. That is a real answer, not a bug.",
+          insSpend: "You spent {v} on coffee in {m}",
+          insSpendAvg: "That averages {v} a month",
+          insPerCup: "A cup costs you {v} on average",
+          insCostUp: "Your higher priced coffees do rate better. The money is buying something.",
+          insCostDown: "Your cheaper coffees rate BETTER than your expensive ones. Worth a look.",
+          insCostFlat:
+            "Price and rating are unrelated across your last {n} brews. You could buy cheaper and not notice.",
+          insValue: "Best value in your rotation: {c}",
+          insWAcidUp: "Across {n} brews you rate Mg-forward, higher acidity waters better",
+          insWAcidDown: "Across {n} brews you rate lower acidity waters better",
+          insWBodyUp: "Across {n} brews you rate Ca-forward, fuller bodied waters better",
+          insWBodyDown: "Across {n} brews you rate lighter, lower body waters better",
+          insWBest: "You rate {w} water highest ({a} vs {b})",
+          insTimeUp: "Longer brews rate better across {n} logs",
+          insTimeDown: "Shorter brews rate better across {n} logs",
+          insRatioUp: "Longer ratios rate better across {n} logs",
+          insRatioDown: "Tighter ratios rate better across {n} logs",
           invBagSize: "Bag size",
           invPrice: "Price per bag",
           invFreezeDate: "Freeze date",
@@ -4532,6 +4551,9 @@
         } catch (e) {}
         try {
           sheetCtas();
+        } catch (e) {}
+        try {
+          renderClientInsights();
         } catch (e) {}
         if (UI_OBS)
           UI_OBS.observe(document.body, { childList: true, subtree: true, characterData: true });
@@ -6683,6 +6705,380 @@
               u.focus({ preventScroll: true });
             } catch (e) {}
         }, 90);
+      }
+
+      /* =====================================================================
+   INSIGHTS ENGINE (client side)
+
+   Reads the raw sheet via action=rows and works out what is worth saying.
+   Every function here takes rows and returns an array of strings. Adding a
+   new insight means adding a function and listing it in INSIGHT_FNS. No
+   Apps Script change, no user action.
+   ===================================================================== */
+      var IROWS = null,
+        IINV = null,
+        ICOLS = null,
+        IINVCOLS = null;
+
+      function iNum(v) {
+        var n = parseFloat(v);
+        return isFinite(n) ? n : null;
+      }
+      function iMean(a) {
+        return a.length
+          ? a.reduce(function (x, y) {
+              return x + y;
+            }, 0) / a.length
+          : NaN;
+      }
+      function iGroup(rows, key) {
+        var g = {};
+        rows.forEach(function (r) {
+          var k = r[key];
+          if (!k) return;
+          (g[k] = g[k] || []).push(r);
+        });
+        return g;
+      }
+      /* Pearson. Small n lies easily, so callers must gate on sample size. */
+      function iCorr(xs, ys) {
+        var n = xs.length;
+        if (n < 4) return null;
+        var mx = iMean(xs),
+          my = iMean(ys);
+        var num = 0,
+          dx = 0,
+          dy = 0;
+        for (var i = 0; i < n; i++) {
+          var a = xs[i] - mx,
+            b = ys[i] - my;
+          num += a * b;
+          dx += a * a;
+          dy += b * b;
+        }
+        if (dx <= 0 || dy <= 0) return null;
+        return num / Math.sqrt(dx * dy);
+      }
+
+      /* Turn the raw arrays into objects keyed by column name. */
+      function iBuild(data) {
+        ICOLS = data.cols || [];
+        IINVCOLS = data.invCols || [];
+        IROWS = (data.shots || []).map(function (r) {
+          var o = {};
+          ICOLS.forEach(function (c, i) {
+            o[c] = r[i];
+          });
+          return o;
+        });
+        IINV = (data.inv || []).map(function (r) {
+          var o = {};
+          IINVCOLS.forEach(function (c, i) {
+            o[c] = r[i];
+          });
+          return o;
+        });
+      }
+      async function iFetch() {
+        var url = WEBHOOK();
+        if (!url) return false;
+        try {
+          var res = await fetch(url + (url.indexOf("?") < 0 ? "?" : "&") + "action=rows&limit=500");
+          var d = await res.json();
+          if (!d || !d.ok) return false;
+          iBuild(d);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+
+      /* ---------------------------------------------------------------- COST */
+      /* Joins Shot Log to Inventory on coffee name. price_per_g comes from the sheet,
+   which is the single source of truth: the client never recomputes it. */
+      function iCostIndex() {
+        var idx = {};
+        (IINV || []).forEach(function (r) {
+          var name = String(r.coffee || "")
+            .trim()
+            .toLowerCase();
+          var ppg = iNum(r.price_per_g);
+          if (!name || ppg === null) return;
+          /* a coffee can be frozen more than once at different prices: keep the latest */
+          idx[name] = {
+            ppg: ppg,
+            ccy: String(r.currency || "USD"),
+            when: String(r.freeze_date || ""),
+          };
+        });
+        return idx;
+      }
+      function iCostOf(row, idx) {
+        var name = String(row.coffee || "")
+          .trim()
+          .toLowerCase();
+        var e = idx[name];
+        if (!e) return null;
+        var dose = iNum(row.dose_g);
+        if (dose === null) return null;
+        return { cost: dose * e.ppg, ccy: e.ccy, ppg: e.ppg };
+      }
+      function insightsCost() {
+        var out = [],
+          idx = iCostIndex();
+        if (!IROWS || !IROWS.length) return out;
+        var priced = [];
+        IROWS.forEach(function (r) {
+          var c = iCostOf(r, idx);
+          if (c) priced.push({ r: r, c: c });
+        });
+        if (priced.length < 3) return out;
+        var ccy = priced[0].c.ccy;
+
+        /* 1. what a month of coffee actually costs */
+        var byMonth = {};
+        priced.forEach(function (p) {
+          var t = String(p.r.timestamp || "");
+          var m = t.slice(0, 7);
+          if (!/^\d{4}-\d{2}$/.test(m)) return;
+          byMonth[m] = (byMonth[m] || 0) + p.c.cost;
+        });
+        var months = Object.keys(byMonth).sort();
+        if (months.length) {
+          var last = months[months.length - 1];
+          out.push(
+            t("insSpend")
+              .replace("{m}", last)
+              .replace("{v}", ccy + " " + byMonth[last].toFixed(0)),
+          );
+          if (months.length >= 3) {
+            var avg = iMean(
+              months.map(function (m) {
+                return byMonth[m];
+              }),
+            );
+            out.push(t("insSpendAvg").replace("{v}", ccy + " " + avg.toFixed(0)));
+          }
+        }
+
+        /* 2. the cost of one cup, which is the number people actually feel */
+        var costs = priced.map(function (p) {
+          return p.c.cost;
+        });
+        out.push(t("insPerCup").replace("{v}", ccy + " " + iMean(costs).toFixed(2)));
+
+        /* 3. does paying more actually buy a better cup?
+        the whole point of tracking cost. Gate hard: needs spread and sample. */
+        var rated = priced.filter(function (p) {
+          return iNum(p.r.rating) !== null;
+        });
+        if (rated.length >= 8) {
+          var ppgs = rated.map(function (p) {
+            return p.c.ppg;
+          });
+          var rats = rated.map(function (p) {
+            return iNum(p.r.rating);
+          });
+          var spread = Math.max.apply(null, ppgs) - Math.min.apply(null, ppgs);
+          if (spread > 0) {
+            var c = iCorr(ppgs, rats);
+            if (c !== null) {
+              if (c >= 0.35) out.push(t("insCostUp"));
+              else if (c <= -0.35) out.push(t("insCostDown"));
+              else out.push(t("insCostFlat").replace("{n}", rated.length));
+            }
+          }
+        }
+
+        /* 4. best value: highest rated per unit cost, when there is a real choice */
+        if (rated.length >= 6) {
+          var byC = {};
+          rated.forEach(function (p) {
+            var k = String(p.r.coffee);
+            (byC[k] = byC[k] || []).push(p);
+          });
+          var rank = Object.keys(byC)
+            .filter(function (k) {
+              return byC[k].length >= 2;
+            })
+            .map(function (k) {
+              return {
+                name: k,
+                avg: iMean(
+                  byC[k].map(function (p) {
+                    return iNum(p.r.rating);
+                  }),
+                ),
+                ppg: byC[k][0].c.ppg,
+              };
+            })
+            .filter(function (x) {
+              return !isNaN(x.avg) && x.ppg > 0;
+            });
+          if (rank.length >= 2) {
+            rank.sort(function (a, b) {
+              return b.avg / b.ppg - a.avg / a.ppg;
+            });
+            out.push(t("insValue").replace("{c}", rank[0].name));
+          }
+        }
+        return out;
+      }
+
+      /* --------------------------------------------------------------- WATER */
+      /* The old .gs version compared water NAMES. WATERS carries acid/body numbers,
+   so we can ask the better question: does the underlying property track your
+   ratings, across every water you have used? That generalises to waters you
+   have not tried yet, which a name comparison never can. */
+      function insightsWater() {
+        var out = [];
+        if (!IROWS || typeof WATERS !== "object") return out;
+        var rated = IROWS.filter(function (r) {
+          return r.water && iNum(r.rating) !== null && WATERS[r.water];
+        });
+        if (rated.length < 6) return out;
+
+        var acid = [],
+          body = [],
+          rats = [];
+        rated.forEach(function (r) {
+          var w = WATERS[r.water];
+          if (typeof w.acid !== "number" || typeof w.body !== "number") return;
+          acid.push(w.acid);
+          body.push(w.body);
+          rats.push(iNum(r.rating));
+        });
+        if (rats.length >= 6) {
+          var ca = iCorr(acid, rats),
+            cb = iCorr(body, rats);
+          /* report the stronger axis only, and only if it is worth a sentence */
+          var best = null;
+          if (ca !== null && (cb === null || Math.abs(ca) >= Math.abs(cb)))
+            best = { ax: "acid", c: ca };
+          else if (cb !== null) best = { ax: "body", c: cb };
+          if (best && Math.abs(best.c) >= 0.4) {
+            var key =
+              best.ax === "acid"
+                ? best.c > 0
+                  ? "insWAcidUp"
+                  : "insWAcidDown"
+                : best.c > 0
+                  ? "insWBodyUp"
+                  : "insWBodyDown";
+            out.push(t(key).replace("{n}", rats.length));
+          }
+        }
+
+        /* which water you actually rate best, when there is a fair comparison */
+        var byW = iGroup(rated, "water");
+        var opts = Object.keys(byW)
+          .map(function (w) {
+            return {
+              w: w,
+              n: byW[w].length,
+              avg: iMean(
+                byW[w].map(function (r) {
+                  return iNum(r.rating);
+                }),
+              ),
+            };
+          })
+          .filter(function (x) {
+            return x.n >= 2 && !isNaN(x.avg);
+          });
+        if (opts.length >= 2) {
+          opts.sort(function (a, b) {
+            return b.avg - a.avg;
+          });
+          if (opts[0].avg - opts[opts.length - 1].avg >= 0.6) {
+            out.push(
+              t("insWBest")
+                .replace("{w}", opts[0].w)
+                .replace("{a}", opts[0].avg.toFixed(1))
+                .replace("{b}", opts[opts.length - 1].avg.toFixed(1)),
+            );
+          }
+        }
+        return out;
+      }
+
+      /* -------------------------------------------------------------- TIMING */
+      function insightsTiming() {
+        var out = [];
+        if (!IROWS) return out;
+        var rows = IROWS.filter(function (r) {
+          return iNum(r.duration_s) !== null && iNum(r.rating) !== null;
+        });
+        if (rows.length >= 6) {
+          var c = iCorr(
+            rows.map(function (r) {
+              return iNum(r.duration_s);
+            }),
+            rows.map(function (r) {
+              return iNum(r.rating);
+            }),
+          );
+          if (c !== null && Math.abs(c) >= 0.4)
+            out.push(t(c > 0 ? "insTimeUp" : "insTimeDown").replace("{n}", rows.length));
+        }
+        var br = IROWS.filter(function (r) {
+          return iNum(r.ratio) !== null && iNum(r.rating) !== null;
+        });
+        if (br.length >= 6) {
+          var c2 = iCorr(
+            br.map(function (r) {
+              return iNum(r.ratio);
+            }),
+            br.map(function (r) {
+              return iNum(r.rating);
+            }),
+          );
+          if (c2 !== null && Math.abs(c2) >= 0.4)
+            out.push(t(c2 > 0 ? "insRatioUp" : "insRatioDown").replace("{n}", br.length));
+        }
+        return out;
+      }
+
+      var INSIGHT_FNS = [insightsCost, insightsWater, insightsTiming];
+      function computeInsights() {
+        var all = [];
+        INSIGHT_FNS.forEach(function (fn) {
+          try {
+            all = all.concat(fn() || []);
+          } catch (e) {}
+        });
+        return all;
+      }
+
+      /* Render client-computed insights into the panel. Falls back to whatever the
+   Apps Script cached, so a user on an older LogSink still sees something. */
+      async function renderClientInsights() {
+        var box = document.getElementById("insBody");
+        if (!box) return;
+        if (!WEBHOOK()) return;
+        var got = await iFetch();
+        if (!got) return;
+        var list = computeInsights();
+        if (!list.length) {
+          var n = (IROWS || []).length;
+          box.textContent = n < 6 ? t("insNeedMore").replace("{n}", n) : t("insNothingYet");
+          return;
+        }
+        box.innerHTML = "";
+        list.forEach(function (x) {
+          var d = document.createElement("div");
+          d.className = "insLine";
+          d.style.cssText =
+            "display:flex;gap:8px;font-size:13px;color:var(--text);line-height:1.55;margin-bottom:7px";
+          var dot = document.createElement("span");
+          dot.style.color = "var(--pressure)";
+          dot.textContent = "·";
+          var tx = document.createElement("span");
+          tx.textContent = x;
+          d.appendChild(dot);
+          d.appendChild(tx);
+          box.appendChild(d);
+        });
       }
       var _rh2 = renderHero;
       renderHero = function () {
