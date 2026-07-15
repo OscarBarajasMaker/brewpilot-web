@@ -579,6 +579,32 @@
       .durasafe .durabolt {
         background: var(--weight);
       }
+      #hwMask.on {
+        display: flex;
+      }
+      .hwT {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 8px;
+        line-height: 1.35;
+      }
+      .hwB {
+        font-size: 13px;
+        color: var(--dim);
+        line-height: 1.6;
+      }
+      .hwOk {
+        font-size: 12.5px;
+        color: var(--text);
+        background: var(--panel2);
+        border: 1px solid var(--line);
+        border-left: 3px solid var(--pressure);
+        border-radius: 0 9px 9px 0;
+        padding: 10px 12px;
+        margin-top: 12px;
+        line-height: 1.55;
+      }
       .helpq {
         display: inline-flex;
         align-items: center;
@@ -3451,6 +3477,11 @@
           c.textContent = h[1];
           c.className = "chip" + (on ? " hi on" : "");
           c.onclick = function () {
+            if (h[0] == "scale" || h[0] == "gaggiuino") {
+              try {
+                hwModal(h[0]);
+              } catch (e) {}
+            }
             M_HW = h[0];
             M_SCALE = h[0] == "scale";
             M_GAG = h[0] == "gaggiuino";
@@ -3957,6 +3988,9 @@
 
       var I18N = {
         en: {
+          hwGot: "Got it",
+          hwFine:
+            "The app works fully without it. You type dose, yield and time, and still get history, rotation and insights.",
           yoursGroup: "Yours",
           shareBtn: "Share my custom roasters",
           shareNone: "You have not added any custom roasters or processes yet.",
@@ -4074,81 +4108,84 @@
           verifyFail: "Could not reach that URL. Check the deployment access is set to Anyone.",
         },
         es: {
+          hwGot: "Entendido",
+          hwFine:
+            "La app funciona completa sin eso. Escribes dosis, salida y tiempo, y sigues teniendo historial, rotación y análisis.",
           yoursGroup: "Tuyos",
           shareBtn: "Compartir mis tostadores",
-          shareNone: "Todavia no has agregado tostadores ni procesos propios.",
+          shareNone: "Todavía no has agregado tostadores ni procesos propios.",
           shareCopied:
-            "Copiado. Pegalo donde quieras, o mandanoslo si quieres que entren en la lista de fabrica.",
+            "Copiado. Pégalo donde quieras, o mándanoslo si quieres que entren en la lista de fábrica.",
           shareManual: "Copia esto:",
           ratioOk: "dentro del rango habitual",
-          ratioTight: "mas corto que el rango habitual {a}-{b}",
-          ratioLong: "mas largo que el rango habitual {a}-{b}",
+          ratioTight: "más corto que el rango habitual {a}-{b}",
+          ratioLong: "más largo que el rango habitual {a}-{b}",
           espWarn:
             "Nota: el {g} usa fresas de filtrado y no muele lo bastante fino para espresso. Para vertido va bien.",
           csTooFine:
-            "El {g} no muele tan fino. Su minimo es como {v} um. Esta cafetera necesita menos, asi que elige otro molino u otro metodo.",
-          csTooCoarse: "El {g} no muele tan grueso. Su maximo es como {v} um.",
-          instT: "Anade BrewPilot a tu pantalla de inicio",
+            "El {g} no muele tan fino. Su mínimo es como {v} um. Este brewer necesita menos, así que elige otro molino u otro método.",
+          csTooCoarse: "El {g} no muele tan grueso. Su máximo es como {v} um.",
+          instT: "Añade BrewPilot a tu pantalla de inicio",
           instB: "Se abre como app, a pantalla completa, y protege mejor tus datos.",
           instGo: "Instalar",
           ios1: "Toca el boton Compartir en Safari",
-          ios2: "Baja y toca Anadir a pantalla de inicio",
-          insLockT: "El analisis necesita una Hoja de Google",
+          ios2: "Baja y toca Añadir a pantalla de inicio",
+          insLockT: "El análisis necesita una Hoja de Google",
           insLockB:
-            "El analisis lee todo tu historial: tiempo vs nota, agua vs sabor, lo que de verdad te funciona. Ese historial vive en la hoja, asi que esto queda bloqueado hasta que conectes una.",
+            "El análisis lee todo tu historial: tiempo vs nota, agua vs sabor, lo que de verdad te funciona. Ese historial vive en la hoja, así que esto queda bloqueado hasta que conectes una.",
           insLockGo: "Conectar una hoja (5 min)",
           csT: "Punto de partida",
           csHint: "Luego ajusta por sabor.",
-          csPick: "Elige una cafetera para ver un punto de partida.",
+          csPick: "Elige un brewer para ver un punto de partida.",
           csOn: "en",
           csClicks: "clics",
           csAbs: "absoluto",
           roastLight: "tueste claro",
           roastMed: "tueste medio",
           roastDark: "tueste oscuro",
-          csWhy: "Los tuestes claros empiezan mas fino; los oscuros, mas grueso.",
-          duraT: "Tus cafes solo estan en este navegador",
+          csWhy: "Los tuestes claros empiezan más fino; los oscuros, más grueso.",
+          duraT: "Tus cafés solo están en este navegador",
           duraB:
-            "No hay respaldo. Si borras los datos del navegador, o no entras por una semana en iPhone, se pueden borrar. Conecta una Hoja de Google (5 min, una sola vez) para conservar tu historial y tener mejores analisis.",
+            "No hay respaldo. Si borras los datos del navegador, o no entras por una semana en iPhone, se pueden borrar. Conecta una Hoja de Google (5 min, una sola vez) para conservar tu historial y tener mejores análisis.",
           duraGo: "Conectar una hoja (5 min)",
           duraExp: "Exportar respaldo",
-          duraN: "cafes guardados solo aqui, sin respaldo",
+          duraN: "cafés guardados solo aquí, sin respaldo",
           duraSafeT: "Conectado. Tu historial esta guardado.",
-          duraSafeB: "Cada cafe va a tu Hoja de Google. El analisis lee todo tu historial.",
+          duraSafeB: "Cada café va a tu Hoja de Google. El análisis lee todo tu historial.",
           insNeedSheet:
-            "El analisis mejora mucho con una hoja. Aqui solo veo tus cafes recientes; la hoja da el historial completo y las correlaciones de agua y tiempo.",
+            "El análisis mejora mucho con una hoja. Aqui solo veo tus cafés recientes; la hoja da el historial completo y las correlaciones de agua y tiempo.",
           s2t: "Copia la plantilla",
-          s2a: "La plantilla ya trae el codigo dentro. Una hoja en blanco no funciona.",
+          s2a: "La plantilla ya trae el código dentro. Una hoja en blanco no funciona.",
           s2b: "Abrir la plantilla",
           s2c: "En el menu: Archivo > Hacer una copia. La copia es tuya, en tu Drive.",
-          s3t: "Abre el editor de codigo",
+          s3t: "Abre el editor de código",
           s3a: "Extensiones",
           s3b: "Apps Script",
-          s3c: "Se abre una pestana nueva. Ese es el codigo que guardara tus cafes.",
+          s3c: "Se abre una pestana nueva. Ese es el código que guardará tus cafés.",
           s4t: "Publicalo como app web",
           s4a: "Implementar",
           s4b: "Nueva implementacion",
-          s4c: "2. Toca el icono de engrane y elige Aplicacion web.",
+          s4c: "2. Toca el icono de engrane y elige Aplicación web.",
           s4d: "3. Ejecutar como: Yo",
           s4e: "4. Quien tiene acceso: Cualquier usuario  <-- este importa",
           s4f: "5. Pulsa Implementar.",
           s5t: "Google te va a advertir. Es normal.",
-          s5a: "Dice que Google no ha verificado la aplicacion. Es porque la app es tuya, escrita por ti, no esta publicada en la tienda.",
-          s5b: "Pulsa Configuracion avanzada, luego Ir a (no seguro), luego Permitir.",
-          s6t: "Copia el enlace y pegalo aqui",
-          s6a: "Copia la URL de la aplicacion web. Termina en /exec.",
+          s5a: "Dice que Google no ha verificado la aplicación. Es porque la app es tuya, escrita por ti, no esta publicada en la tienda.",
+          s5b: "Pulsa Configuración avanzada, luego Ir a (no seguro), luego Permitir.",
+          s6t: "Copia el enlace y pégalo aquí",
+          s6a: "Copia la URL de la aplicación web. Termina en /exec.",
           wizSetupTitle: "Configura BrewPilot",
           wizSetupIntro:
-            "Elige que haces. Luego conecta una Hoja de Google: es lo que evita que pierdas tu historial, y lo que hace que el analisis funcione bien.",
-          wizWhat: "Que quieres hacer?",
-          wizMethods: "Que preparas?",
-          wizHw: "Que equipo tienes?",
-          wizGrinders: "Que molinos tienes?",
+            "Elige que haces. Luego conecta una Hoja de Google: es lo que evita que pierdas tu historial, y lo que hace que el análisis funcione bien.",
+          wizWhat: "¿Que quieres hacer?",
+          wizMethods: "¿Qué preparas?",
+          wizHw: "¿Qué equipo tienes?",
+          wizGrinders: "¿Qué molinos tienes?",
           wizDone: "Listo, empezar",
           roleBrew: "Preparar y registrar",
           roleInv: "Solo inventario",
-          hwNone: "Bascula + cronometro",
-          hwScale: "Bascula BLE",
+          hwNone: "Báscula + cronometro",
+          hwScale: "Báscula BLE",
           hwGag: "Gaggiuino",
           mEsp: "Espresso",
           mSoup: "Soup",
@@ -4163,7 +4200,7 @@
           beans: "CAFES",
           insights: "ANALISIS",
           readyToLog: "Listo para registrar",
-          companion: "tu companero de cafe",
+          companion: "tu compañero de café",
           lastRating: "Ultima nota",
           noShots: "Aun no hay shots",
           logToBegin: "registra uno para empezar",
@@ -4179,11 +4216,11 @@
           roleLogMgr: "Solo registro",
           setupSheet: "Configura tu Hoja de Google",
           wizIntro:
-            "Necesario para no perder tus datos. Sin esto, tus cafes solo viven en este navegador y se pueden borrar. Hazlo una vez; toma unos cinco minutos.",
+            "Necesario para no perder tus datos. Sin esto, tus cafés solo viven en este navegador y se pueden borrar. Hazlo una vez; toma unos cinco minutos.",
           wiz1: "Abre la plantilla y elige Archivo, Hacer una copia.",
           wizOpenTemplate: "Abrir la plantilla",
           wiz2: "En tu copia: Extensiones, Apps Script, Implementar, Nueva implementacion, App web. Acceso: Cualquiera. Implementa y autoriza.",
-          wiz3: "Copia la URL /exec y pegala aqui:",
+          wiz3: "Copia la URL /exec y pegala aquí:",
           wizVerify: "Verificar y conectar",
           close: "Cerrar",
           verifying: "Comprobando...",
@@ -4365,6 +4402,9 @@
         } catch (e) {}
         try {
           rotTips();
+        } catch (e) {}
+        try {
+          renderTier();
         } catch (e) {}
         try {
           insGate();
@@ -4584,57 +4624,57 @@
         "Roast date": "Fecha de tueste",
         Water: "Agua",
         "Water (g)": "Agua (g)",
-        Brewer: "Cafetera",
-        Agitation: "Agitacion",
+        Brewer: "Brewer",
+        Agitation: "Agitación",
         "Filter paper": "Filtro de papel",
         "Dose (g)": "Dosis (g)",
         "Rating (1-10)": "Nota (1-10)",
         "Kettle temp (C)": "Temp del agua (C)",
         "Total time (m:ss)": "Tiempo total (m:ss)",
-        "Bloom time (s, optional)": "Preinfusion (s, opcional)",
-        "Portion size": "Tamano de porcion",
+        "Bloom time (s, optional)": "Preinfusión (s, opcional)",
+        "Portion size": "Tamaño de porcion",
         "How many": "Cuantas",
-        "How did it taste?": "Como sabe?",
+        "How did it taste?": "¿Como sabe?",
         "Recipe (tap to prefill)": "Receta (toca para rellenar)",
-        "Rotation style": "Estilo de rotacion",
+        "Rotation style": "Estilo de rotación",
         "Your inventory": "Tu inventario",
         Settings: "Ajustes",
-        Insights: "Analisis",
+        Insights: "Análisis",
         Off: "Apagar",
         "Warm up": "Calentar",
         Other: "Otro",
         "Freeze it": "Congelar",
-        "Freeze coffee": "Congelar cafe",
+        "Freeze coffee": "Congelar café",
         "Refresh now": "Actualizar",
         "Connect sheet": "Conectar hoja",
         "Connect my sheet": "Conectar mi hoja",
         "Save to log": "Guardar registro",
         "Save filter brew": "Guardar filtrado",
         "Start (plan now)": "Iniciar (planear)",
-        "Start brew (plan now)": "Iniciar preparacion (planear)",
-        "Same coffee as last shot": "Mismo cafe que el ultimo",
-        "Same coffee / from rotation": "Mismo cafe / de la rotacion",
-        "Log the last shot": "Registrar el ultimo shot",
+        "Start brew (plan now)": "Iniciar preparación (planear)",
+        "Same coffee as last shot": "Mismo café que el último",
+        "Same coffee / from rotation": "Mismo café / de la rotación",
+        "Log the last shot": "Registrar el último shot",
         "Finished this bag - suggest next": "Bolsa terminada - sugerir siguiente",
-        "What do you brew?": "Que preparas?",
-        "What hardware do you have?": "Que equipo tienes?",
+        "What do you brew?": "¿Qué preparas?",
+        "What hardware do you have?": "¿Qué equipo tienes?",
         "Which grinders do you own? (shown when logging)":
-          "Que molinos tienes? (se muestran al registrar)",
+          "¿Qué molinos tienes? (se muestran al registrar)",
         "Google Sheet (enables inventory, history, trends)":
           "Hoja de Google (activa inventario, historial, tendencias)",
-        "Coffee inventory & rotation": "Inventario y rotacion de cafe",
-        "Coffee inventory &amp; rotation": "Inventario y rotacion de cafe",
-        "Current rotation (tap to fill):": "Rotacion actual (toca para rellenar):",
+        "Coffee inventory & rotation": "Inventario y rotación de café",
+        "Coffee inventory &amp; rotation": "Inventario y rotación de café",
+        "Current rotation (tap to fill):": "Rotación actual (toca para rellenar):",
         "Grind setting used:": "Molienda usada:",
         "Grinder (tap to switch, converts setting):":
           "Molino (toca para cambiar, convierte el ajuste):",
         "New-bean cold start (per brewer, on your grinder)":
-          "Punto de partida (por cafetera, en tu molino)",
-        "How often should insights arrive?": "Cada cuanto quieres el analisis?",
+          "Punto de partida (por brewer, en tu molino)",
+        "How often should insights arrive?": "¿Cada cuánto quieres el análisis?",
         "Welcome to the BrewPilot beta": "Bienvenido a la beta de BrewPilot",
-        "your coffee companion": "tu companero de cafe",
+        "your coffee companion": "tu copiloto del café",
         "+ Log a filter / non-Gaggia brew": "+ Registrar un filtrado / no-Gaggia",
-        "+ paper / agitation (optional)": "+ papel / agitacion (opcional)",
+        "+ paper / agitation (optional)": "+ papel / agitación (opcional)",
         espresso: "espresso",
         soup: "soup",
         filter: "filtrado",
@@ -4645,7 +4685,7 @@
         "roaster...": "tostador...",
         "type (auto)": "tipo (auto)",
         grinder: "molino",
-        "coffee name": "nombre del cafe",
+        "coffee name": "nombre del café",
         "dose g": "dosis g",
         "grind # / um": "molienda # / um",
         "paste your /exec URL": "pega tu URL /exec",
@@ -4655,46 +4695,46 @@
         "device key (from your BrewPilot)": "clave del dispositivo (de tu BrewPilot)",
         "Logged to your sheet": "Guardado en tu hoja",
         "Filter brew logged": "Filtrado registrado",
-        "Could not load insights.": "No se pudo cargar el analisis.",
+        "Could not load insights.": "No se pudo cargar el análisis.",
         "Could not refresh.": "No se pudo actualizar.",
         "Crunching your brews...": "Analizando tus preparaciones...",
         "No insights yet. Log a few brews and rate them, then Refresh now.":
-          "Aun no hay analisis. Registra y califica algunas preparaciones, luego Actualizar.",
+          "Aun no hay análisis. Registra y califica algunas preparaciones, luego Actualizar.",
         "Connect a sheet first": "Conecta una hoja primero",
         "Connect your Google Sheet in Settings first.":
           "Conecta tu Hoja de Google en Ajustes primero.",
         "Connect a Google Sheet first (Settings) to save inventory.":
           "Conecta una Hoja de Google (Ajustes) para guardar el inventario.",
         "Brew planned. Come back and tap Finish when it is done.":
-          "Preparacion planeada. Vuelve y toca Terminar cuando acabe.",
+          "Preparación planeada. Vuelve y toca Terminar cuando acabe.",
         "Add at least the coffee name to start a brew":
-          "Anade al menos el nombre del cafe para empezar",
-        "Coffee name?": "Nombre del cafe?",
-        "Discard the planned brew?": "Descartar la preparacion planeada?",
+          "Añade al menos el nombre del café para empezar",
+        "Coffee name?": "¿Nombre del café?",
+        "Discard the planned brew?": "Descartar la preparación planeada?",
         "Marked finished. Check Telegram for what to thaw next.":
           "Marcado como terminado. Revisa Telegram para saber que descongelar.",
-        "No device yet": "Aun sin dispositivo",
+        "No device yet": "Aún sin dispositivo",
         "Machine control is available on the BrewPilot device":
-          "El control de la maquina esta en el dispositivo BrewPilot",
+          "El control de la máquina está en el dispositivo BrewPilot",
         "Machine control needs the BrewPilot device + a Gaggiuino.":
-          "El control de la maquina requiere el dispositivo BrewPilot y un Gaggiuino.",
-        "Use oldest": "Usar el mas viejo",
+          "El control de la máquina requiere el dispositivo BrewPilot y un Gaggiuino.",
+        "Use oldest": "Usar el más viejo",
         "Keep it interesting": "Manten la variedad",
-        "Peak flavor": "Sabor optimo",
+        "Peak flavor": "Sabor óptimo",
         Balanced: "Equilibrado",
         "Share my custom roasters": "Compartir mis tostadores",
         "Yield (g)": "Salida (g)",
         "Time (m:ss or s)": "Tiempo (m:ss o s)",
-        "Preinfusion (s)": "Preinfusion (s)",
+        "Preinfusion (s)": "Preinfusión (s)",
         "Temp (C)": "Temp (C)",
         Basket: "Canasta",
-        Prep: "Preparacion",
+        Prep: "Preparación",
         "Paper in basket": "Papel en canasta",
-        "+ basket / prep / paper (optional)": "+ canasta / preparacion / papel (opcional)",
+        "+ basket / prep / paper (optional)": "+ canasta / preparación / papel (opcional)",
         Varietal: "Variedad",
         Process: "Proceso",
         "New-bean cold start (per brewer, on your grinder)":
-          "Punto de partida (por cafetera, en tu molino)",
+          "Punto de partida (por brewer, en tu molino)",
         "Grind # (ZP6)": "Molienda # (ZP6)",
         "Filter brew": "Filtrado",
         Espresso: "Espresso",
@@ -4702,11 +4742,11 @@
         Discard: "Descartar",
         "in progress": "en curso",
         planned: "planeado",
-        Insights: "Analisis",
+        Insights: "Análisis",
         Refresh: "Actualizar",
         Daily: "Diario",
         Weekly: "Semanal",
-        "Every 3 days": "Cada 3 dias",
+        "Every 3 days": "Cada 3 días",
         Sealed: "Sellado",
         Open: "Abierto",
         Freezer: "Congelador",
@@ -4715,29 +4755,29 @@
         portions: "porciones",
         portion: "porcion",
         "This webapp gives you the full logging, rotation and insights experience. To save your data, connect your own free Google Sheet (2 min). Your data stays in your account.":
-          "Esta webapp te da el registro, la rotacion y el analisis completos. Para guardar tus datos, conecta tu propia Hoja de Google gratis (2 min). Tus datos quedan en tu cuenta.",
+          "Esta webapp te da el registro, la rotación y el análisis completos. Para guardar tus datos, conecta tu propia Hoja de Google gratis (2 min). Tus datos quedan en tu cuenta.",
         "No sheet yet? You can still explore - dial-in advice works offline.":
-          "Sin hoja aun? Puedes explorar - los consejos de ajuste funcionan sin conexion.",
+          "¿Sin hoja aún? Puedes explorar - los consejos de ajuste funcionan sin conexión.",
         "You type dose, yield, time - and get history, trends and rotation. You do the logging.":
-          "Tu escribes dosis, salida, tiempo - y obtienes historial, tendencias y rotacion. Tu haces el registro.",
+          "Tu escribes dosis, salida, tiempo - y obtienes historial, tendencias y rotación. Tu haces el registro.",
         "flow curve + yield captured live (no typing), flow-vs-rating insights a webapp can't compute.":
-          "curva de flujo + salida capturadas en vivo (sin escribir), analisis flujo-vs-nota que una webapp no puede calcular.",
+          "curva de flujo + salida capturadas en vivo (sin escribir), análisis flujo-vs-nota que una webapp no puede calcular.",
         "The more the device sees, the less you do - and the better it coaches.":
-          "Cuanto mas ve el dispositivo, menos haces tu - y mejor te aconseja.",
+          "Cuánto más ve el dispositivo, menos haces tú - y mejor te aconseja.",
         "Beta: unlocking is on the honor system - device-key validation comes later.":
-          "Beta: el desbloqueo es por confianza - la validacion por clave llega despues.",
+          "Beta: el desbloqueo es por confianza - la validación por clave llega después.",
         "Your live dial-in advice works without it.":
           "Tus consejos de ajuste en vivo funcionan sin ella.",
-        "Log the last brew": "Registrar la ultima preparacion",
-        "none yet - log a brew": "aun ninguno - registra una preparacion",
+        "Log the last brew": "Registrar la ultima preparación",
+        "none yet - log a brew": "aun ninguno - registra una preparación",
         "none yet - log a shot": "aun ninguno - registra un shot",
         "type your grind # (or um for Motto80) once, then chips appear":
           "escribe tu molienda # (o um para Motto80) una vez, y apareceran los botones",
-        "Add a BLE scale ->": "Anade una bascula BLE ->",
-        "Add a Gaggiuino ->": "Anade un Gaggiuino ->",
-        "Your setup: Tier 0 - Manual": "Tu configuracion: Nivel 0 - Manual",
-        "Your setup: Tier 1 - BLE scale": "Tu configuracion: Nivel 1 - Bascula BLE",
-        "Your setup: Tier 2 - Gaggiuino": "Tu configuracion: Nivel 2 - Gaggiuino",
+        "Add a BLE scale ->": "Añade una báscula BLE ->",
+        "Add a Gaggiuino ->": "Añade un Gaggiuino ->",
+        "Your setup: Tier 0 - Manual": "Tu configuración: Nivel 0 - Manual",
+        "Your setup: Tier 1 - BLE scale": "Tu configuración: Nivel 1 - Báscula BLE",
+        "Your setup: Tier 2 - Gaggiuino": "Tu configuración: Nivel 2 - Gaggiuino",
       };
       function _rev(m) {
         var r = {};
@@ -4779,7 +4819,7 @@
       var ROT_HELP = {
         fifo: {
           en: "Brew your oldest bag first, less waste.",
-          es: "Prepara primero tu bolsa mas vieja, menos desperdicio.",
+          es: "Prepara primero tu bolsa más vieja, menos desperdicio.",
         },
         variety: {
           en: "Pick a different bean than what is already open.",
@@ -4985,6 +5025,11 @@
             c.textContent = t(h[1]);
             c.className = "chip" + (M_HW === h[0] ? " on" : "");
             c.onclick = function () {
+              if (h[0] === "scale" || h[0] === "gaggiuino") {
+                try {
+                  hwModal(h[0]);
+                } catch (e) {}
+              }
               M_HW = h[0];
               M_SCALE = h[0] === "scale";
               M_GAG = h[0] === "gaggiuino";
@@ -5077,19 +5122,19 @@
         es: [
           [
             "Nivel 0 - Manual",
-            "Tu escribes dosis, salida y tiempo. Obtienes historial, tendencias y rotacion.",
-            "Anade una bascula BLE",
+            "Tu escribes dosis, salida y tiempo. Obtienes historial, tendencias y rotación.",
+            "Añade una báscula BLE",
             "Peso, salida y flujo capturados en vivo, sin escribir.",
           ],
           [
-            "Nivel 1 - Bascula BLE",
-            "Tu bascula captura peso, salida y flujo en vivo. Sin escribir.",
-            "Anade un Gaggiuino",
-            "Cada shot registra presion, flujo y temperatura solo; el dispositivo te guia.",
+            "Nivel 1 - Báscula BLE",
+            "Tu báscula captura peso, salida y flujo en vivo. Sin escribir.",
+            "Añade un Gaggiuino",
+            "Cada shot registra presión, flujo y temperatura solo; el dispositivo te guia.",
           ],
           [
             "Nivel 2 - Gaggiuino",
-            "Cada shot registra presion, flujo y temperatura solo. Cero esfuerzo. Lo maximo.",
+            "Cada shot registra presión, flujo y temperatura solo. Cero esfuerzo. Lo maximo.",
             "",
             "",
           ],
@@ -5110,18 +5155,35 @@
         if (!d) return;
         var h =
           "<div style='color:var(--hi-text);font-size:13px;font-weight:600'>" +
-          (LANG === "es" ? "Tu configuracion: " : "Your setup: ") +
+          (LANG === "es" ? "Tu configuración: " : "Your setup: ") +
           d[0] +
           "</div>";
         h += "<div style='color:var(--dim);font-size:12px;margin:4px 0 8px'>" + d[1] + "</div>";
         if (d[2]) {
+          var topic = tier === 0 ? "scale" : "gaggiuino";
           h +=
-            "<div style='color:var(--sel-text);font-size:12px;font-weight:600'>" +
+            "<div class='tierUp' data-topic='" +
+            topic +
+            "' style='color:var(--sel-text);font-size:12px;font-weight:600;cursor:pointer'>" +
             d[2] +
             " -></div>";
           h += "<div style='color:var(--dim);font-size:12px'>" + d[3] + "</div>";
         }
+        /* live nudges are device-only at every tier, so they get their own entry */
+        if (tier < 2 || !(typeof M_HW !== "undefined" && M_HW === "device")) {
+          h +=
+            "<div class='tierUp' data-topic='nudges' style='color:var(--sel-text);font-size:12px;font-weight:600;cursor:pointer;margin-top:6px'>" +
+            (LANG === "es" ? "Avisos en vivo mientras preparas" : "Live nudges while you brew") +
+            " -></div>";
+        }
         el.innerHTML = h;
+        Array.prototype.forEach.call(el.querySelectorAll(".tierUp"), function (a) {
+          a.onclick = function () {
+            try {
+              hwModal(a.getAttribute("data-topic"));
+            } catch (e) {}
+          };
+        });
       }
 
       /* method-agnostic home: no espresso assumption, adapts to role + what you brew */
@@ -5139,7 +5201,7 @@
             n = 0;
           }
           phase.textContent = t("homeInv");
-          sub.textContent = n ? n + " " + (LANG === "es" ? "cafes" : "coffees") : t("noSheetYet");
+          sub.textContent = n ? n + " " + (LANG === "es" ? "cafés" : "coffees") : t("noSheetYet");
           num.textContent = n ? String(n) : "--";
           return;
         }
@@ -5557,23 +5619,23 @@
       var HELP = {
         role: {
           en: "Full gives you brewing, logging and gear. Log & manage hides the machine controls and keeps logging, beans, rotation and insights. Change it any time.",
-          es: "Completo te da preparacion, registro y equipo. Solo registro oculta los controles de la maquina y deja el registro, cafes, rotacion y analisis. Puedes cambiarlo cuando quieras.",
+          es: "Completo te da preparación, registro y equipo. Solo registro oculta los controles de la máquina y deja el registro, cafés, rotación y análisis. Puedes cambiarlo cuando quieras.",
         },
         methods: {
           en: "Espresso is a normal 6 to 9 bar shot. Soup is a low pressure, fast flow shot, usually under 2 bar, common with modern light roasts. Filter is pour over. Pick any combination.",
-          es: "Espresso es un shot normal de 6 a 9 bar. Soup es un shot de baja presion y flujo rapido, normalmente bajo 2 bar, comun con tuestes claros modernos. Filtrado es vertido. Elige las que quieras.",
+          es: "Espresso es un shot normal de 6 a 9 bar. Soup es un shot de baja presión y flujo rápido, normalmente bajo 2 bar, comun con tuestes claros modernos. Filtrado es vertido. Elige las que quieras.",
         },
         hw: {
           en: "This only changes what gets filled in for you. Scale and timer means you type the numbers. A BLE scale fills weight, time and flow. A Gaggiuino fills the whole pressure and flow curve.",
-          es: "Esto solo cambia lo que se rellena solo. Bascula y cronometro significa que tu escribes los numeros. Una bascula BLE rellena peso, tiempo y flujo. Un Gaggiuino rellena toda la curva de presion y flujo.",
+          es: "Esto solo cambia lo que se rellena solo. Báscula y cronometro significa que tu escribes los números. Una báscula BLE rellena peso, tiempo y flujo. Un Gaggiuino rellena toda la curva de presión y flujo.",
         },
         grinders: {
           en: "Pick the ones you own. Only those appear when logging, so the list stays short. It also lets the converter translate a setting between your grinders.",
-          es: "Elige los que tienes. Solo esos aparecen al registrar, asi la lista queda corta. Tambien deja que el conversor traduzca un ajuste entre tus molinos.",
+          es: "Elige los que tienes. Solo esos aparecen al registrar, así la lista queda corta. Tambien deja que el conversor traduzca un ajuste entre tus molinos.",
         },
         rotation: {
           en: "How the next coffee is suggested. Use oldest brews your oldest bag first, less waste. Keep it interesting picks something different from what is open. Peak flavor picks beans in their best rest window. Balanced mixes all three.",
-          es: "Como se sugiere el siguiente cafe. Usar el mas viejo prepara primero tu bolsa mas vieja, menos desperdicio. Manten la variedad elige algo distinto a lo abierto. Sabor optimo elige granos en su mejor ventana de reposo. Equilibrado mezcla los tres.",
+          es: "Cómo se sugiere el siguiente café. Usar el más viejo prepara primero tu bolsa más vieja, menos desperdicio. Manten la variedad elige algo distinto a lo abierto. Sabor óptimo elige granos en su mejor ventana de reposo. Equilibrado mezcla los tres.",
         },
         conv: {
           en: "Same burr gap, different dial. Enter a setting on one grinder and get the equivalent on another. It is a starting point, not a guarantee: burr shape changes the cup even at the same gap.",
@@ -5581,19 +5643,19 @@
         },
         water: {
           en: "Water changes taste more than most people expect. Magnesium lifts acidity and clarity. Calcium adds body and sweetness. High alkalinity flattens and mutes. Log it and the insights will correlate it with your ratings.",
-          es: "El agua cambia el sabor mas de lo que la gente espera. El magnesio levanta la acidez y la claridad. El calcio da cuerpo y dulzor. La alcalinidad alta aplana y apaga. Registrala y el analisis la correlacionara con tus notas.",
+          es: "El agua cambia el sabor más de lo que la gente espera. El magnesio levanta la acidez y la claridad. El calcio da cuerpo y dulzor. La alcalinidad alta aplana y apaga. Registrala y el análisis la correlacionara con tus notas.",
         },
         freq: {
           en: "How often the insights digest is generated. It needs a few rated brews before it can say anything useful. Off stops it entirely.",
-          es: "Cada cuanto se genera el analisis. Necesita varias preparaciones calificadas antes de decir algo util. Apagar lo detiene del todo.",
+          es: "Cada cuánto se genera el análisis. Necesita varias preparaciones calificadas antes de decir algo útil. Apagar lo detiene del todo.",
         },
         sheet: {
           en: "Your data lives in your own Google Sheet, in your own Google account. Nobody else can read it, including me. It is what keeps your history when your browser clears itself.",
-          es: "Tus datos viven en tu propia Hoja de Google, en tu propia cuenta. Nadie mas puede leerlos, ni yo. Es lo que conserva tu historial cuando el navegador se limpia solo.",
+          es: "Tus datos viven en tu propia Hoja de Google, en tu propia cuenta. Nadie más puede leerlos, ni yo. Es lo que conserva tu historial cuando el navegador se limpia solo.",
         },
         roast: {
           en: "Roast level shifts the starting grind. Lighter roasts are denser and start finer; darker roasts are more soluble and start coarser. It is a nudge, not a rule.",
-          es: "El nivel de tueste mueve la molienda inicial. Los tuestes claros son mas densos y empiezan mas fino; los oscuros son mas solubles y empiezan mas grueso. Es un empujon, no una regla.",
+          es: "El nivel de tueste mueve la molienda inicial. Los tuestes claros son más densos y empiezan más fino; los oscuros son más solubles y empiezan más grueso. Es un empujon, no una regla.",
         },
       };
       function helpToggle(key, btn) {
@@ -6139,6 +6201,90 @@
         Array.prototype.forEach.call(dead, function (b) {
           b.style.display = "none";
         });
+      }
+
+      /* =====================================================================
+   Hardware upsell.
+
+   Tapping "+ BLE scale" or "+ Gaggiuino" used to set M_HW, reveal a device
+   key field and grey some labels. It LOOKED like it did something, but the
+   webapp cannot talk to a BLE scale or a Gaggiuino: no device, no capture.
+   Selecting it changed nothing you could feel, which is worse than saying no.
+
+   Now the tap explains what the hardware actually does, admits plainly that
+   the webapp alone cannot do it, and says the app is fine without it. That is
+   the honest version of the upsell: no fake scarcity, no dark pattern.
+   ===================================================================== */
+      var HWINFO = {
+        scale: {
+          t: {
+            en: "A BLE scale needs the BrewPilot device",
+            es: "Una báscula BLE necesita el dispositivo BrewPilot",
+          },
+          b: {
+            en: "The device reads the scale live: weight, time and flow land in your log by themselves.",
+            es: "El dispositivo lee la báscula en vivo: peso, tiempo y flujo entran solos a tu registro.",
+          },
+          gap: {
+            en: "Without it: you type every number from memory after the fact, and flow never gets recorded at all. Flow is what explains why a shot ran fast, and there is no way to write it down by hand.",
+            es: "Sin él: escribes cada número de memoria cuando ya acabaste, y el flujo no queda registrado nunca. El flujo es lo que explica por qué un shot corrió rápido, y no hay forma de anotarlo a mano.",
+          },
+        },
+        gaggiuino: {
+          t: {
+            en: "Gaggiuino capture needs the BrewPilot device",
+            es: "Capturar del Gaggiuino necesita el dispositivo BrewPilot",
+          },
+          b: {
+            en: "Wired to your Gaggiuino, every shot logs itself with the full pressure and flow curve, temperature included. You add taste and a rating, nothing else.",
+            es: "Conectado a tu Gaggiuino, cada shot se registra solo con la curva completa de presión y flujo, con temperatura. Tú pones sabor y nota, nada más.",
+          },
+          gap: {
+            en: "Without it: you have the result but not the curve. You know the shot was good. You cannot see why, or repeat it on purpose.",
+            es: "Sin él: tienes el resultado pero no la curva. Sabes que el shot salió bueno. No ves por qué, ni puedes repetirlo a propósito.",
+          },
+        },
+        nudges: {
+          t: {
+            en: "Live nudges need the BrewPilot device",
+            es: "Los avisos en vivo necesitan el dispositivo BrewPilot",
+          },
+          b: {
+            en: "The device watches the shot as it pours and speaks up while you can still act: running fast at 12 seconds, channelling, pressure dropping early. A light on the machine, not a notification you read afterwards.",
+            es: "El dispositivo mira el shot mientras corre y te avisa cuando todavía puedes hacer algo: vas rápido a los 12 segundos, hay canalización, la presión cae temprano. Una luz en la máquina, no una notificación que lees después.",
+          },
+          gap: {
+            en: "Without it: every correction arrives one brew late. You find out it ran fast by tasting it, then guess the grind for tomorrow. The app can tell you what happened; only the device can tell you while it is happening.",
+            es: "Sin él: cada corrección llega un café tarde. Te enteras de que corrió rápido probándolo, y adivinas la molienda para mañana. La app te dice qué pasó; solo el dispositivo te avisa mientras está pasando.",
+          },
+        },
+      };
+      function hwModal(kind) {
+        var info = HWINFO[kind];
+        if (!info) return;
+        var m = document.getElementById("hwMask");
+        if (!m) {
+          m = document.createElement("div");
+          m.id = "hwMask";
+          m.className = "wizmask";
+          m.innerHTML =
+            "<div class='wizcard'><div class='hwT' id='hwT'></div><div class='hwB' id='hwB'></div>" +
+            "<div class='hwOk' id='hwB2'></div>" +
+            "<button class='grn' id='hwClose' style='width:100%;margin-top:14px'></button></div>";
+          document.body.appendChild(m);
+          m.onclick = function (e) {
+            if (e.target === m) m.classList.remove("on");
+          };
+          document.getElementById("hwClose").onclick = function () {
+            m.classList.remove("on");
+          };
+        }
+        document.getElementById("hwT").textContent = info.t[LANG] || info.t.en;
+        document.getElementById("hwB").textContent = info.b[LANG] || info.b.en;
+        document.getElementById("hwB2").textContent =
+          (info.gap && (info.gap[LANG] || info.gap.en)) || "";
+        document.getElementById("hwClose").textContent = t("hwGot");
+        m.classList.add("on");
       }
       var _rh2 = renderHero;
       renderHero = function () {
