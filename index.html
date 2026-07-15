@@ -965,11 +965,7 @@
             This webapp gives you the full logging, rotation and insights experience. To save your
             data, connect your own free Google Sheet (2 min). Your data stays in your account.
           </div>
-          <button
-            class="grn"
-            style="width: 100%"
-            onclick="document.getElementById('setPanel').style.display='block';toggleSettings();document.getElementById('setPanel').scrollIntoView({behavior:'smooth'})"
-          >
+          <button class="grn" style="width: 100%" onclick="goConnectSheet()">
             Connect my sheet
           </button>
           <div style="color: var(--dim); font-size: 11px; margin-top: 6px">
@@ -6654,6 +6650,39 @@
               " " +
               per18.toFixed(2) +
               " per 18g shot";
+      }
+
+      /* "Connect my sheet" on the Home welcome card did nothing at all. Two bugs:
+
+   1. The welcome card is in tab-home; setPanel is in tab-insights. Before the
+      tabbed shell this was one long scrolling page, so scrollIntoView worked.
+      Now the panel sits inside a hidden tabpanel, so display:block on it changes
+      nothing you can see and scrollIntoView has nothing to scroll to.
+   2. The handler set display='block' and THEN called toggleSettings(), which
+      toggles. Seeing "not none", it set display='none' again. The button closed
+      the very panel it was trying to open.
+
+   openPanel(id, fn) already exists and ensures-open rather than toggling. Use it. */
+      function goConnectSheet() {
+        try {
+          showTab("insights");
+        } catch (e) {}
+        try {
+          openPanel("setPanel", toggleSettings);
+        } catch (e) {}
+        /* showTab does scrollTo(0,0); let that land before scrolling to the panel */
+        setTimeout(function () {
+          var p = document.getElementById("setPanel");
+          if (p)
+            try {
+              p.scrollIntoView({ behavior: "smooth", block: "start" });
+            } catch (e) {}
+          var u = document.getElementById("setWebhook");
+          if (u)
+            try {
+              u.focus({ preventScroll: true });
+            } catch (e) {}
+        }, 90);
       }
       var _rh2 = renderHero;
       renderHero = function () {
