@@ -550,6 +550,48 @@
       .durasafe .durabolt {
         background: var(--weight);
       }
+      .helpq {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 17px;
+        height: 17px;
+        margin-left: 6px;
+        border: 1px solid var(--line);
+        border-radius: 50%;
+        color: var(--dim);
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        vertical-align: middle;
+        -webkit-tap-highlight-color: transparent;
+      }
+      .helpq.on {
+        border-color: var(--sel-line);
+        color: var(--sel-text);
+        background: var(--sel-bg);
+      }
+      .helpbox {
+        background: var(--panel2);
+        border: 1px solid var(--sel-line);
+        border-left: 3px solid var(--sel-line);
+        border-radius: 8px;
+        padding: 9px 11px;
+        margin: 7px 0;
+        font-size: 12px;
+        line-height: 1.55;
+        color: var(--dim);
+        font-weight: 400;
+      }
+      .csbad {
+        border-color: var(--warn);
+      }
+      .cswarn {
+        color: var(--warn);
+        font-size: 11.5px;
+        margin-top: 7px;
+        line-height: 1.5;
+      }
       .inst {
         border: 1px solid var(--sel-line);
         background: var(--panel);
@@ -1788,6 +1830,7 @@
               Which grinders do you own?
             </div>
             <div class="rolerow" id="wizGrinders" style="max-height: 132px; overflow: auto"></div>
+            <div class="cswarn" id="wizEspNote" style="display: none"></div>
           </div>
         </div>
         <div class="wiztitle" data-i18n="setupSheet">Set up your Google Sheet</div>
@@ -2616,7 +2659,16 @@
         Comandante: { n: "Comandante", um: 30 },
         Ode2: { n: "Ode 2", um: 13 },
         Encore: { n: "Encore", um: 38 },
-        Sculptor078S: { n: "Sculptor 078S", um: 25 },
+        Sculptor078S: { n: "Sculptor 078S", um: 25, off: 235, min: 235, max: 1235 },
+        Sculptor078: {
+          n: "Sculptor 078 (filter)",
+          um: 25,
+          off: 370,
+          min: 370,
+          max: 1270,
+          esp: false,
+        },
+        TimemoreS3: { n: "Timemore S3", um: 15, off: 0, min: 15, max: 1200 },
         FemobookA4Z: { n: "Femobook A4Z", um: 8 },
         ZernoZ1: { n: "Zerno Z1", um: 22 },
         ZernoZ2: { n: "Zerno Z2", um: 22 },
@@ -3725,6 +3777,11 @@
 
       var I18N = {
         en: {
+          espWarn:
+            "Note: {g} uses filter burrs and cannot grind fine enough for espresso. It is fine for pour over.",
+          csTooFine:
+            "{g} cannot grind this fine. Its finest is about {v} um. This brewer needs less than that, so pick a different grinder or method.",
+          csTooCoarse: "{g} cannot grind this coarse. Its coarsest is about {v} um.",
           instT: "Add BrewPilot to your home screen",
           instB: "Opens like an app, full screen, and keeps your data safer.",
           instGo: "Install",
@@ -3828,6 +3885,11 @@
           verifyFail: "Could not reach that URL. Check the deployment access is set to Anyone.",
         },
         es: {
+          espWarn:
+            "Nota: el {g} usa fresas de filtrado y no muele lo bastante fino para espresso. Para vertido va bien.",
+          csTooFine:
+            "El {g} no muele tan fino. Su minimo es como {v} um. Esta cafetera necesita menos, asi que elige otro molino u otro metodo.",
+          csTooCoarse: "El {g} no muele tan grueso. Su maximo es como {v} um.",
           instT: "Anade BrewPilot a tu pantalla de inicio",
           instB: "Se abre como app, a pantalla completa, y protege mejor tus datos.",
           instGo: "Instalar",
@@ -4124,6 +4186,9 @@
         try {
           instRender();
         } catch (e) {}
+        try {
+          wireHelp();
+        } catch (e) {}
         if (UI_OBS)
           UI_OBS.observe(document.body, { childList: true, subtree: true, characterData: true });
         UI_BUSY = false;
@@ -4207,6 +4272,78 @@
         };
       });
 
+      /* ---- update safety ----
+   Every release runs this before anything reads storage. It snapshots all keys
+   first, so a bad migration can be undone, and it never deletes keys it does not
+   recognise. Renamed grinder ids get aliased instead of dropped. */
+      var SCHEMA = 2;
+      var GRINDER_ALIASES = {
+        Sculptor078s: "Sculptor078S",
+        TimemoreSculptor078S: "Sculptor078S",
+        S3: "TimemoreS3",
+      };
+      function snapshotStorage() {
+        var all = {};
+        try {
+          for (var i = 0; i < localStorage.length; i++) {
+            var k = localStorage.key(i);
+            if (k.indexOf("backup_") === 0) continue;
+            all[k] = localStorage.getItem(k);
+          }
+        } catch (e) {}
+        return all;
+      }
+      function migrate() {
+        var v = 0;
+        try {
+          v = parseInt(localStorage.getItem("schema") || "0", 10) || 0;
+        } catch (e) {
+          return;
+        }
+        if (v === SCHEMA) return;
+        var snap = snapshotStorage();
+        try {
+          localStorage.setItem(
+            "backup_v" + v,
+            JSON.stringify({ at: new Date().toISOString(), data: snap }),
+          );
+        } catch (e) {}
+        try {
+          // v0/v1 -> v2: grinder ids may have been renamed. Map, never drop.
+          var raw = localStorage.getItem("myGrinders");
+          if (raw) {
+            var list = JSON.parse(raw),
+              out = [],
+              changed = false;
+            list.forEach(function (id) {
+              var n = GRINDER_ALIASES[id] || id;
+              if (n !== id) changed = true;
+              if (out.indexOf(n) < 0) out.push(n);
+            });
+            if (changed) localStorage.setItem("myGrinders", JSON.stringify(out));
+          }
+          var lg = localStorage.getItem("grinder");
+          if (lg && GRINDER_ALIASES[lg]) localStorage.setItem("grinder", GRINDER_ALIASES[lg]);
+        } catch (e) {
+          /* leave storage untouched on any error */
+        }
+        try {
+          localStorage.setItem("schema", String(SCHEMA));
+        } catch (e) {}
+      }
+      function restoreBackup(v) {
+        try {
+          var b = JSON.parse(localStorage.getItem("backup_v" + v) || "null");
+          if (!b) return false;
+          Object.keys(b.data).forEach(function (k) {
+            localStorage.setItem(k, b.data[k]);
+          });
+          return true;
+        } catch (e) {
+          return false;
+        }
+      }
+      migrate();
       var UIDICT = {
         Coffee: "Cafe",
         Roaster: "Tostador",
@@ -4418,7 +4555,7 @@
         var order = ["fifo", "variety", "freshness", "balanced"];
         Array.prototype.forEach.call(box.children, function (c, i) {
           var k = order[i];
-          if (k && ROT_HELP[k]) c.title = ROT_HELP[k][LANG] || ROT_HELP[k].en;
+          if (k && ROT_HELP[k]) c.title = "";
         });
         var leg = document.getElementById("rotLegend");
         if (!leg) {
@@ -4645,6 +4782,27 @@
             };
             hb.appendChild(c);
           });
+        }
+        var espNote = document.getElementById("wizEspNote");
+        if (espNote) {
+          var owned0 = [];
+          try {
+            owned0 = JSON.parse(localStorage.getItem("myGrinders") || "[]");
+          } catch (e) {}
+          var bad = owned0.filter(function (id) {
+            return GRINDERS[id] && GRINDERS[id].esp === false;
+          });
+          if ((M_ESP || M_SOUP) && bad.length) {
+            espNote.style.display = "";
+            espNote.textContent = t("espWarn").replace(
+              "{g}",
+              bad
+                .map(function (id) {
+                  return GRINDERS[id].n;
+                })
+                .join(", "),
+            );
+          } else espNote.style.display = "none";
         }
         var gb = document.getElementById("wizGrinders");
         if (gb && typeof GRINDERS === "object") {
@@ -4954,9 +5112,18 @@
         var r = csRoast();
         um = Math.round(um * r.f);
         var g = typeof GRINDERS === "object" ? GRINDERS[gid] : null;
-        if (!g) return { txt: um + "um", um: um };
-        if (g.um === 0) return { txt: um + "um (" + t("csAbs") + ")", um: um };
-        return { txt: "~" + Math.round(um / g.um) + " " + t("csClicks"), um: um };
+        if (!g) return { txt: um + "um", um: um, warn: null };
+        var range = gRange(um, gid);
+        if (g.um === 0) return { txt: um + "um (" + t("csAbs") + ")", um: um, warn: range };
+        var c = umToClicks(um, gid);
+        return { txt: "~" + Math.round(c) + " " + t("csClicks"), um: um, warn: range };
+      }
+      function csWarnText(w, gid) {
+        if (!w || w === "ok") return "";
+        var g = GRINDERS[gid];
+        var n = g ? g.n : gid;
+        if (w === "fine") return t("csTooFine").replace("{g}", n).replace("{v}", g.min);
+        return t("csTooCoarse").replace("{g}", n).replace("{v}", g.max);
       }
 
       /* replace the 6-row English dump with a single contextual line */
@@ -4979,12 +5146,15 @@
         var g = GRINDERS[gid],
           r = csRoast(),
           c = csFor(brewer, gid);
+        var w = csWarnText(c.warn, gid);
         box.innerHTML =
-          "<div class='cs'><div class='csHd'>" +
+          "<div class='cs" +
+          (w ? " csbad" : "") +
+          "'><div class='csHd'>" +
           t("csT") +
           "</div>" +
           "<div class='csV'>" +
-          c.txt +
+          (w ? "--" : c.txt) +
           "</div>" +
           "<div class='csS'>" +
           brewer +
@@ -4996,7 +5166,9 @@
           roastWord(r.v) +
           ". " +
           t("csHint") +
-          "</div></div>";
+          "</div>" +
+          (w ? "<div class='cswarn'>" + w + "</div>" : "") +
+          "</div>";
       }
 
       /* mirror it into the filter form next to the grind field, where the decision happens */
@@ -5023,11 +5195,13 @@
         var g = GRINDERS[gid],
           r = csRoast(),
           c = csFor(brewer, gid);
+        var w = csWarnText(c.warn, gid);
+        el.className = "cs" + (w ? " csbad" : "");
         el.innerHTML =
           "<div class='csHd'>" +
           t("csT") +
           "</div><div class='csV'>" +
-          c.txt +
+          (w ? "--" : c.txt) +
           "</div>" +
           "<div class='csS'>" +
           brewer +
@@ -5039,7 +5213,8 @@
           roastWord(r.v) +
           ". " +
           t("csHint") +
-          "</div>";
+          "</div>" +
+          (w ? "<div class='cswarn'>" + w + "</div>" : "");
       }
 
       /* ---- add to home screen ----
@@ -5121,6 +5296,144 @@
         window.addEventListener("load", function () {
           navigator.serviceWorker.register("sw.js").catch(function () {});
         });
+      }
+
+      /* ---- grinder math with a zero-point offset ----
+   Old model: um = clicks * step. That assumes click 0 is burr contact, which is
+   true for the hand grinders but wrong for the Sculptors (the 078 bottoms out at
+   370um, the 078S at 235um). off defaults to 0, so anything without measured data
+   behaves exactly as before. */
+      function gOff(g) {
+        return g && typeof g.off === "number" ? g.off : 0;
+      }
+      function clicksToUm(clicks, gid) {
+        var g = GRINDERS[gid];
+        if (!g) return null;
+        if (g.um === 0) return clicks;
+        return gOff(g) + clicks * g.um;
+      }
+      function umToClicks(um, gid) {
+        var g = GRINDERS[gid];
+        if (!g) return null;
+        if (g.um === 0) return Math.round(um);
+        return (um - gOff(g)) / g.um;
+      }
+      /* out of range? returns null when we have no measured range for that grinder */
+      function gRange(um, gid) {
+        var g = GRINDERS[gid];
+        if (!g || typeof g.min !== "number" || typeof g.max !== "number") return null;
+        if (um < g.min) return "fine";
+        if (um > g.max) return "coarse";
+        return "ok";
+      }
+      function convertGrind(val, fromId, toId) {
+        var um = clicksToUm(val, fromId);
+        if (um == null) return null;
+        var c = umToClicks(um, toId);
+        if (c == null) return null;
+        var g = GRINDERS[toId];
+        if (g && g.um === 0) return Math.round(um);
+        return Math.round(c * 10) / 10;
+      }
+
+      var HELP = {
+        role: {
+          en: "Full gives you brewing, logging and gear. Log & manage hides the machine controls and keeps logging, beans, rotation and insights. Change it any time.",
+          es: "Completo te da preparacion, registro y equipo. Solo registro oculta los controles de la maquina y deja el registro, cafes, rotacion y analisis. Puedes cambiarlo cuando quieras.",
+        },
+        methods: {
+          en: "Espresso is a normal 6 to 9 bar shot. Soup is a low pressure, fast flow shot, usually under 2 bar, common with modern light roasts. Filter is pour over. Pick any combination.",
+          es: "Espresso es un shot normal de 6 a 9 bar. Soup es un shot de baja presion y flujo rapido, normalmente bajo 2 bar, comun con tuestes claros modernos. Filtrado es vertido. Elige las que quieras.",
+        },
+        hw: {
+          en: "This only changes what gets filled in for you. Scale and timer means you type the numbers. A BLE scale fills weight, time and flow. A Gaggiuino fills the whole pressure and flow curve.",
+          es: "Esto solo cambia lo que se rellena solo. Bascula y cronometro significa que tu escribes los numeros. Una bascula BLE rellena peso, tiempo y flujo. Un Gaggiuino rellena toda la curva de presion y flujo.",
+        },
+        grinders: {
+          en: "Pick the ones you own. Only those appear when logging, so the list stays short. It also lets the converter translate a setting between your grinders.",
+          es: "Elige los que tienes. Solo esos aparecen al registrar, asi la lista queda corta. Tambien deja que el conversor traduzca un ajuste entre tus molinos.",
+        },
+        rotation: {
+          en: "How the next coffee is suggested. Use oldest brews your oldest bag first, less waste. Keep it interesting picks something different from what is open. Peak flavor picks beans in their best rest window. Balanced mixes all three.",
+          es: "Como se sugiere el siguiente cafe. Usar el mas viejo prepara primero tu bolsa mas vieja, menos desperdicio. Manten la variedad elige algo distinto a lo abierto. Sabor optimo elige granos en su mejor ventana de reposo. Equilibrado mezcla los tres.",
+        },
+        conv: {
+          en: "Same burr gap, different dial. Enter a setting on one grinder and get the equivalent on another. It is a starting point, not a guarantee: burr shape changes the cup even at the same gap.",
+          es: "Misma separacion de fresas, otro dial. Escribe un ajuste de un molino y obten el equivalente en otro. Es un punto de partida, no una garantia: la forma de las fresas cambia la taza aunque la separacion sea igual.",
+        },
+        water: {
+          en: "Water changes taste more than most people expect. Magnesium lifts acidity and clarity. Calcium adds body and sweetness. High alkalinity flattens and mutes. Log it and the insights will correlate it with your ratings.",
+          es: "El agua cambia el sabor mas de lo que la gente espera. El magnesio levanta la acidez y la claridad. El calcio da cuerpo y dulzor. La alcalinidad alta aplana y apaga. Registrala y el analisis la correlacionara con tus notas.",
+        },
+        freq: {
+          en: "How often the insights digest is generated. It needs a few rated brews before it can say anything useful. Off stops it entirely.",
+          es: "Cada cuanto se genera el analisis. Necesita varias preparaciones calificadas antes de decir algo util. Apagar lo detiene del todo.",
+        },
+        sheet: {
+          en: "Your data lives in your own Google Sheet, in your own Google account. Nobody else can read it, including me. It is what keeps your history when your browser clears itself.",
+          es: "Tus datos viven en tu propia Hoja de Google, en tu propia cuenta. Nadie mas puede leerlos, ni yo. Es lo que conserva tu historial cuando el navegador se limpia solo.",
+        },
+        roast: {
+          en: "Roast level shifts the starting grind. Lighter roasts are denser and start finer; darker roasts are more soluble and start coarser. It is a nudge, not a rule.",
+          es: "El nivel de tueste mueve la molienda inicial. Los tuestes claros son mas densos y empiezan mas fino; los oscuros son mas solubles y empiezan mas grueso. Es un empujon, no una regla.",
+        },
+      };
+      function helpToggle(key, btn) {
+        var box = btn.nextSibling;
+        if (box && box.className === "helpbox") {
+          box.parentNode.removeChild(box);
+          btn.classList.remove("on");
+          return;
+        }
+        var d = document.createElement("div");
+        d.className = "helpbox";
+        d.textContent = (HELP[key] && HELP[key][LANG]) || (HELP[key] && HELP[key].en) || "";
+        btn.parentNode.insertBefore(d, btn.nextSibling);
+        btn.classList.add("on");
+      }
+      function addHelp(el, key) {
+        if (!el || el.dataset.help) return;
+        el.dataset.help = "1";
+        var b = document.createElement("span");
+        b.className = "helpq";
+        b.textContent = "?";
+        b.setAttribute("role", "button");
+        b.setAttribute("aria-label", "help");
+        b.onclick = function (e) {
+          e.stopPropagation();
+          helpToggle(key, b);
+        };
+        el.appendChild(b);
+      }
+      function wireHelp() {
+        var map = [
+          ["#wizRole", "role"],
+          ["#rolechips", "role"],
+          ["#wizMethods", "methods"],
+          ["#wizHw", "hw"],
+          ["#wizGrinders", "grinders"],
+          ["#rotmodechips", "rotation"],
+          ["#convTool .toolhd", "conv"],
+          ["#insfreqchips", "freq"],
+          ["#gwaterchips", "water"],
+          ["#wahw", "hw"],
+        ];
+        map.forEach(function (m) {
+          var el = document.querySelector(m[0]);
+          if (!el) return;
+          var host = el.previousElementSibling;
+          if (host && /^(DIV|LABEL|SPAN|B)$/.test(host.tagName) && host.textContent.length < 60)
+            addHelp(host, m[1]);
+          else addHelp(el, m[1]);
+        });
+        var froast = document.getElementById("froast");
+        if (froast && froast.previousElementSibling)
+          addHelp(froast.previousElementSibling, "roast");
+        var wt = document.getElementById("wizTemplate");
+        if (wt && wt.parentNode) {
+          var hd = wt.parentNode.querySelector("b");
+          if (hd) addHelp(hd, "sheet");
+        }
       }
       var _rh2 = renderHero;
       renderHero = function () {
