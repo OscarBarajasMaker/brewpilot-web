@@ -594,6 +594,35 @@
         color: var(--dim);
         line-height: 1.6;
       }
+      .hwGH {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--dim);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin: 14px 0 6px;
+      }
+      .hwGHlink {
+        color: var(--sel-text);
+        cursor: pointer;
+      }
+      .hwList {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      .hwLi {
+        display: flex;
+        gap: 8px;
+        font-size: 13px;
+        color: var(--text);
+        line-height: 1.5;
+      }
+      .hwDot {
+        color: var(--pressure);
+        font-weight: 900;
+        flex: 0 0 auto;
+      }
       .hwOk {
         font-size: 12.5px;
         color: var(--text);
@@ -3477,7 +3506,7 @@
           c.textContent = h[1];
           c.className = "chip" + (on ? " hi on" : "");
           c.onclick = function () {
-            if (h[0] == "scale" || h[0] == "gaggiuino") {
+            if (h[0] == "scale" || h[0] == "gaggiuino" || h[0] == "device") {
               try {
                 hwModal(h[0]);
               } catch (e) {}
@@ -6216,15 +6245,122 @@
    the honest version of the upsell: no fake scarcity, no dark pattern.
    ===================================================================== */
       var HWINFO = {
+        device: {
+          t: { en: "What the BrewPilot device does", es: "Qué hace el dispositivo BrewPilot" },
+          b: {
+            en: "It sits on the counter and does the part you do not want to do: watch, measure and write it down. What it is worth depends on what you connect to it.",
+            es: "Se queda en la barra y hace la parte que no quieres hacer: mirar, medir y anotar. Lo que vale depende de lo que le conectes.",
+          },
+          groups: [
+            {
+              h: { en: "On its own", es: "Solo el dispositivo" },
+              i: [
+                {
+                  en: "LED ring on the machine: state at a glance, no phone in your hand",
+                  es: "Anillo LED en la máquina: el estado de un vistazo, sin sacar el teléfono",
+                },
+                {
+                  en: "Alerts to your phone when something needs you",
+                  es: "Avisos al teléfono cuando algo te necesita",
+                },
+                {
+                  en: "Its own panel at brewpilot.local, no internet needed",
+                  es: "Su propio panel en brewpilot.local, sin internet",
+                },
+              ],
+            },
+            {
+              h: { en: "With a BLE scale", es: "Con una báscula BLE" },
+              topic: "scale",
+              i: [
+                { en: "Live weight while the shot pours", es: "Peso en vivo mientras cae el shot" },
+                {
+                  en: "Flow worked out from the weight curve, not just the final number",
+                  es: "Flujo calculado de la curva de peso, no solo el número final",
+                },
+                {
+                  en: "Brew seconds counted for you, start to stop",
+                  es: "Segundos de extracción contados solos, de inicio a fin",
+                },
+                {
+                  en: "Yield and time land in your log without typing",
+                  es: "Salida y tiempo entran a tu registro sin escribir",
+                },
+                {
+                  en: "Nudge mid pour when the flow runs away",
+                  es: "Aviso a media extracción cuando el flujo se dispara",
+                },
+              ],
+            },
+            {
+              h: { en: "With your Gaggiuino", es: "Con tu Gaggiuino" },
+              topic: "gaggiuino",
+              i: [
+                {
+                  en: "Knows when the machine is really at temperature, not just the light",
+                  es: "Sabe cuándo la máquina está de verdad en temperatura, no solo la luz",
+                },
+                {
+                  en: "Predictive warm-up: starts heating before you walk in",
+                  es: "Calentamiento predictivo: empieza a calentar antes de que llegues",
+                },
+                {
+                  en: "Auto-off when you walk away and forget",
+                  es: "Apagado automático cuando te vas y se te olvida",
+                },
+                {
+                  en: "Full pressure, flow and temperature curve for every shot",
+                  es: "Curva completa de presión, flujo y temperatura en cada shot",
+                },
+                {
+                  en: "Spots the shot by itself, no buttons",
+                  es: "Detecta el shot solo, sin botones",
+                },
+                {
+                  en: "Reads the curve and tells you what kind of shot that was",
+                  es: "Lee la curva y te dice qué tipo de shot fue",
+                },
+              ],
+            },
+          ],
+        },
         scale: {
           t: {
             en: "A BLE scale needs the BrewPilot device",
             es: "Una báscula BLE necesita el dispositivo BrewPilot",
           },
           b: {
-            en: "The device reads the scale live: weight, time and flow land in your log by themselves.",
-            es: "El dispositivo lee la báscula en vivo: peso, tiempo y flujo entran solos a tu registro.",
+            en: "The device reads the scale live and writes the numbers down for you.",
+            es: "El dispositivo lee la báscula en vivo y anota los números por ti.",
           },
+          groups: [
+            {
+              h: { en: "What you get", es: "Lo que obtienes" },
+              i: [
+                { en: "Live weight while the shot pours", es: "Peso en vivo mientras cae el shot" },
+                {
+                  en: "Flow worked out from the weight curve, the number you cannot write by hand",
+                  es: "Flujo calculado de la curva de peso, el número que no puedes anotar a mano",
+                },
+                {
+                  en: "Brew seconds counted start to stop",
+                  es: "Segundos de extracción contados de inicio a fin",
+                },
+                {
+                  en: "Yield, time and flow logged without typing",
+                  es: "Salida, tiempo y flujo registrados sin escribir",
+                },
+                {
+                  en: "A nudge mid pour when the flow runs away",
+                  es: "Un aviso a media extracción cuando el flujo se dispara",
+                },
+                {
+                  en: "Works for filter too, no espresso machine needed",
+                  es: "Sirve para filtrado también, sin máquina de espresso",
+                },
+              ],
+            },
+          ],
           gap: {
             en: "Without it: you type every number from memory after the fact, and flow never gets recorded at all. Flow is what explains why a shot ran fast, and there is no way to write it down by hand.",
             es: "Sin él: escribes cada número de memoria cuando ya acabaste, y el flujo no queda registrado nunca. El flujo es lo que explica por qué un shot corrió rápido, y no hay forma de anotarlo a mano.",
@@ -6236,9 +6372,37 @@
             es: "Capturar del Gaggiuino necesita el dispositivo BrewPilot",
           },
           b: {
-            en: "Wired to your Gaggiuino, every shot logs itself with the full pressure and flow curve, temperature included. You add taste and a rating, nothing else.",
-            es: "Conectado a tu Gaggiuino, cada shot se registra solo con la curva completa de presión y flujo, con temperatura. Tú pones sabor y nota, nada más.",
+            en: "Wired to your Gaggiuino, the device sees the machine itself, not just the cup.",
+            es: "Conectado a tu Gaggiuino, el dispositivo ve la máquina misma, no solo la taza.",
           },
+          groups: [
+            {
+              h: { en: "What you get", es: "Lo que obtienes" },
+              i: [
+                {
+                  en: "Full pressure, flow and temperature curve for every shot",
+                  es: "Curva completa de presión, flujo y temperatura en cada shot",
+                },
+                {
+                  en: "Shots log themselves. You add taste and a rating, nothing else",
+                  es: "Los shots se registran solos. Tú pones sabor y nota, nada más",
+                },
+                {
+                  en: "Knows when the machine is really at temperature",
+                  es: "Sabe cuándo la máquina está de verdad en temperatura",
+                },
+                {
+                  en: "Predictive warm-up before you walk in",
+                  es: "Calentamiento predictivo antes de que llegues",
+                },
+                { en: "Auto-off when you forget", es: "Apagado automático cuando se te olvida" },
+                {
+                  en: "Reads the curve and names the shot type",
+                  es: "Lee la curva y nombra el tipo de shot",
+                },
+              ],
+            },
+          ],
           gap: {
             en: "Without it: you have the result but not the curve. You know the shot was good. You cannot see why, or repeat it on purpose.",
             es: "Sin él: tienes el resultado pero no la curva. Sabes que el shot salió bueno. No ves por qué, ni puedes repetirlo a propósito.",
@@ -6269,7 +6433,7 @@
           m.className = "wizmask";
           m.innerHTML =
             "<div class='wizcard'><div class='hwT' id='hwT'></div><div class='hwB' id='hwB'></div>" +
-            "<div class='hwOk' id='hwB2'></div>" +
+            "<div id='hwGroups'></div><div class='hwOk' id='hwB2'></div>" +
             "<button class='grn' id='hwClose' style='width:100%;margin-top:14px'></button></div>";
           document.body.appendChild(m);
           m.onclick = function (e) {
@@ -6279,10 +6443,48 @@
             m.classList.remove("on");
           };
         }
-        document.getElementById("hwT").textContent = info.t[LANG] || info.t.en;
-        document.getElementById("hwB").textContent = info.b[LANG] || info.b.en;
-        document.getElementById("hwB2").textContent =
-          (info.gap && (info.gap[LANG] || info.gap.en)) || "";
+        var L = typeof LANG !== "undefined" ? LANG : "en";
+        var pick = function (o) {
+          return o ? o[L] || o.en : "";
+        };
+        document.getElementById("hwT").textContent = pick(info.t);
+        document.getElementById("hwB").textContent = pick(info.b);
+
+        /* the feature ladder. Each group can point at another topic, so the device
+     modal doubles as the way into the BLE and Gaggiuino pitches. */
+        var g = document.getElementById("hwGroups");
+        g.innerHTML = "";
+        (info.groups || []).forEach(function (grp) {
+          var head = document.createElement("div");
+          head.className = "hwGH" + (grp.topic ? " hwGHlink" : "");
+          head.textContent = pick(grp.h) + (grp.topic ? "  →" : "");
+          if (grp.topic) {
+            head.onclick = function () {
+              hwModal(grp.topic);
+            };
+          }
+          g.appendChild(head);
+          var ul = document.createElement("div");
+          ul.className = "hwList";
+          (grp.i || []).forEach(function (it) {
+            var li = document.createElement("div");
+            li.className = "hwLi";
+            var d = document.createElement("span");
+            d.className = "hwDot";
+            d.textContent = "·";
+            var tx = document.createElement("span");
+            tx.textContent = pick(it);
+            li.appendChild(d);
+            li.appendChild(tx);
+            ul.appendChild(li);
+          });
+          g.appendChild(ul);
+        });
+
+        var b2 = document.getElementById("hwB2");
+        var gap = pick(info.gap);
+        b2.textContent = gap;
+        b2.style.display = gap ? "" : "none";
         document.getElementById("hwClose").textContent = t("hwGot");
         m.classList.add("on");
       }
