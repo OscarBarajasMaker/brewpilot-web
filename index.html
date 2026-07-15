@@ -4414,6 +4414,9 @@
         try {
           placeShareBtn();
         } catch (e) {}
+        try {
+          sheetCtas();
+        } catch (e) {}
         if (UI_OBS)
           UI_OBS.observe(document.body, { childList: true, subtree: true, characterData: true });
         UI_BUSY = false;
@@ -5232,12 +5235,13 @@
           connected = !!(WEBHOOK && WEBHOOK());
         } catch (e) {}
         var n = localRows().length;
+        /* visibility is decided by sheetCtas(), which enforces one prompt at a time.
+    duraRender only fills in the text. */
         var hd = el.querySelector(".durahd b"),
           bd = el.querySelector(".durab"),
           cnt = document.getElementById("duraCount"),
           row = el.querySelector(".durarow");
         if (connected) {
-          el.style.display = "";
           el.classList.add("durasafe");
           hd.textContent = t("duraSafeT");
           bd.textContent = t("duraSafeB");
@@ -5245,7 +5249,6 @@
           cnt.textContent = "";
           return;
         }
-        el.style.display = "";
         el.classList.remove("durasafe");
         row.style.display = "";
         hd.textContent = t("duraT");
@@ -6087,6 +6090,55 @@
         b.textContent = t("shareBtn");
         b.onclick = shareCustom;
         panel.appendChild(b);
+      }
+
+      /* =====================================================================
+   One sheet prompt at a time.
+
+   Before this, a user with no sheet saw: the durability banner on all four
+   tabs, plus a welcome card on Home, plus TWO "Set up your Google Sheet"
+   buttons and a lock card on Insights. Four prompts on one screen, five
+   across the app, all asking for the same thing. It read as desperate.
+
+   Worse, duraRender showed the banner unconditionally, so a brand new user
+   with zero brews was warned that their brews might be lost. Nothing to lose.
+
+   Rules now:
+     - nothing logged and no sheet  -> welcome card, Home only, once
+     - brews at risk and no sheet   -> durability banner, Home only (real risk)
+     - Insights tab and no sheet    -> the lock card, because that IS the reason
+     - connected                    -> the confirmation, Home only
+     - the standalone setup buttons  -> gone, they duplicated whatever card was up
+   Settings always has a connect field; that is a control, not a nag.
+   ===================================================================== */
+      function sheetCtas() {
+        var connected = false;
+        try {
+          connected = !!(WEBHOOK && WEBHOOK());
+        } catch (e) {}
+        var rows = 0;
+        try {
+          rows = localRows().length;
+        } catch (e) {}
+        var panel = document.querySelector(".tabpanel.on");
+        var tab = panel ? panel.id : "";
+        var onHome = tab === "tab-home";
+
+        var dura = document.getElementById("duraBanner");
+        var wel = document.getElementById("welcome");
+
+        /* the banner earns its place only when something can actually be lost */
+        var atRisk = !connected && rows > 0;
+        if (dura) dura.style.display = onHome && (atRisk || connected) ? "" : "none";
+
+        /* welcome: only before anything is at risk, so the two never stack */
+        if (wel) wel.style.display = onHome && !connected && !atRisk ? "" : "none";
+
+        /* these duplicated whichever card was already on screen */
+        var dead = document.querySelectorAll('[data-i18n="setupSheet"]');
+        Array.prototype.forEach.call(dead, function (b) {
+          b.style.display = "none";
+        });
       }
       var _rh2 = renderHero;
       renderHero = function () {
