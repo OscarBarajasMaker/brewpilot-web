@@ -340,6 +340,9 @@
       }
       .fin {
         width: 100%;
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
         padding: 12px;
         font-size: 15px;
         border-radius: 10px;
@@ -347,6 +350,37 @@
         background: var(--panel);
         color: var(--text);
         margin-bottom: 8px;
+      }
+      /* Defensive box sizing. NOTE: min-width:0 was measured to make no difference
+   in Chromium; width:100% already lets these shrink. It is kept as standard
+   flex hygiene, not as the fix for the iOS overlap.
+   The actual iOS lever is -webkit-appearance: iOS gives date inputs a native
+   intrinsic size that ignores width:100% (same family as the select colour
+   bug and the system-blue buttons). Cannot be reproduced headless. */
+      input,
+      select,
+      textarea,
+      button {
+        min-width: 0;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+      input[type="date"] {
+        -webkit-appearance: none;
+        appearance: none;
+        width: 100%;
+        min-width: 0;
+      }
+      input[type="date"]::-webkit-date-and-time-value {
+        text-align: left;
+        margin: 0;
+      }
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        margin-left: 2px;
+      }
+      /* a cell that must own its line */
+      .fcell.fullrow {
+        flex: 1 1 100%;
       }
       .frow {
         display: flex;
@@ -1855,7 +1889,7 @@
               <div class="fl" data-i18n="invFreezeDate">Freeze date</div>
               <input id="invfreeze_date" type="date" class="fin" />
             </div>
-            <div class="fcell">
+            <div class="fcell fullrow">
               <button class="grn" style="width: 100%" onclick="freezeCoffee()">Freeze it</button>
             </div>
           </div>
