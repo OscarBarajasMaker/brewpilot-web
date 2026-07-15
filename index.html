@@ -283,6 +283,11 @@
       .grn {
         background: var(--weight);
       }
+      /* iOS Safari applies its own native rendering to form controls and ignores
+   `color`, which is what made the grinder select render gold instead of white.
+   -webkit-text-fill-color is the property it actually honours. Same class of bug
+   as the buttons rendering system-blue before appearance was reset. Cannot be
+   reproduced in headless Chromium, which computes the correct colour. */
       select {
         flex: 2;
         padding: 15px;
@@ -291,6 +296,30 @@
         border: 1px solid var(--line);
         background: var(--panel);
         color: var(--text);
+        -webkit-text-fill-color: var(--text);
+        opacity: 1;
+      }
+      select option {
+        color: var(--text);
+        background: var(--panel);
+        -webkit-text-fill-color: var(--text);
+      }
+      input,
+      textarea {
+        -webkit-text-fill-color: var(--text);
+        opacity: 1;
+      }
+      input::placeholder,
+      textarea::placeholder {
+        color: var(--dim);
+        -webkit-text-fill-color: var(--dim);
+        opacity: 1;
+      }
+      /* Safari tints autofilled fields yellow and ignores background; this holds the theme */
+      input:-webkit-autofill,
+      select:-webkit-autofill {
+        -webkit-text-fill-color: var(--text);
+        box-shadow: 0 0 0 1000px var(--panel) inset;
       }
       label {
         color: var(--dim);
@@ -995,7 +1024,7 @@
           "
         >
           <option value="">roaster...</option>
-          <optgroup label="Yours">
+          <optgroup label="Specialty">
             <option>September</option>
             <option>Sey</option>
             <option>Luna</option>
@@ -2055,9 +2084,9 @@
       async function logshot() {
         let g = (id) => document.getElementById(id).value.trim();
         let c = g("coffee"),
-          rst = pick("roaster", "roaster_other"),
+          rst = rememberOther("roaster", "roaster_other", "roaster"),
           v = g("varietal"),
-          pr = pick("process", "process_other"),
+          pr = rememberOther("process", "process_other", "process"),
           ro = document.getElementById("roast").value,
           t = document.getElementById("type").value,
           d = g("dose"),
@@ -3549,11 +3578,11 @@
         }
         let roaster = document.getElementById("invroaster").value;
         if (roaster == "Other")
-          roaster = (document.getElementById("invroaster_other") || {}).value || "";
+          roaster = rememberOther("invroaster", "invroaster_other", "roaster");
         let invroast = (document.getElementById("invroast") || {}).value || "";
         let invproc = (document.getElementById("invprocess") || {}).value || "";
         if (invproc == "Other")
-          invproc = (document.getElementById("invprocess_other") || {}).value || "";
+          invproc = rememberOther("invprocess", "invprocess_other", "process");
         let rdate = document.getElementById("invrdate").value;
         let qty = document.getElementById("invqty").value || 1;
         let url = WEBHOOK();
@@ -3928,6 +3957,12 @@
 
       var I18N = {
         en: {
+          yoursGroup: "Yours",
+          shareBtn: "Share my custom roasters",
+          shareNone: "You have not added any custom roasters or processes yet.",
+          shareCopied:
+            "Copied. Paste it wherever you like, or send it to us if you want them in the built in list.",
+          shareManual: "Copy this:",
           ratioOk: "in the usual band",
           ratioTight: "tighter than the usual {a}-{b}",
           ratioLong: "longer than the usual {a}-{b}",
@@ -4039,6 +4074,12 @@
           verifyFail: "Could not reach that URL. Check the deployment access is set to Anyone.",
         },
         es: {
+          yoursGroup: "Tuyos",
+          shareBtn: "Compartir mis tostadores",
+          shareNone: "Todavia no has agregado tostadores ni procesos propios.",
+          shareCopied:
+            "Copiado. Pegalo donde quieras, o mandanoslo si quieres que entren en la lista de fabrica.",
+          shareManual: "Copia esto:",
           ratioOk: "dentro del rango habitual",
           ratioTight: "mas corto que el rango habitual {a}-{b}",
           ratioLong: "mas largo que el rango habitual {a}-{b}",
@@ -4367,6 +4408,12 @@
         try {
           protectProperNouns();
         } catch (e) {}
+        try {
+          syncAllYours();
+        } catch (e) {}
+        try {
+          placeShareBtn();
+        } catch (e) {}
         if (UI_OBS)
           UI_OBS.observe(document.body, { childList: true, subtree: true, characterData: true });
         UI_BUSY = false;
@@ -4632,6 +4679,7 @@
         "Keep it interesting": "Manten la variedad",
         "Peak flavor": "Sabor optimo",
         Balanced: "Equilibrado",
+        "Share my custom roasters": "Compartir mis tostadores",
         "Yield (g)": "Salida (g)",
         "Time (m:ss or s)": "Tiempo (m:ss o s)",
         "Preinfusion (s)": "Preinfusion (s)",
@@ -5866,6 +5914,179 @@
             n.classList.add("notranslate");
           }
         }
+      }
+
+      /* =====================================================================
+   Custom roasters / processes persist locally.
+
+   The lists are per-browser (localStorage). They are NOT sent anywhere:
+   there is no central server in this design, every user owns their own
+   Sheet. shareCustom() lets a tester volunteer the list if they want to.
+   ===================================================================== */
+      var MYLIST_KEYS = {
+        roaster: "myRoasters",
+        process: "myProcesses",
+        invroaster: "myRoasters",
+        fprocess: "myProcesses",
+      };
+
+      function myList(kind) {
+        try {
+          var v = JSON.parse(localStorage.getItem(MYLIST_KEYS[kind] || "my_" + kind) || "[]");
+          return Array.isArray(v) ? v : [];
+        } catch (e) {
+          return [];
+        }
+      }
+      function myListAdd(kind, val) {
+        val = String(val || "").trim();
+        if (!val) return false;
+        if (val.length > 60) val = val.slice(0, 60);
+        var key = MYLIST_KEYS[kind] || "my_" + kind;
+        var list = myList(kind);
+        /* case-insensitive dedupe, and never shadow one already in the shipped DB */
+        var lower = list.map(function (x) {
+          return x.toLowerCase();
+        });
+        if (lower.indexOf(val.toLowerCase()) >= 0) return false;
+        var base = document.getElementById(
+          kind === "invroaster" ? "roaster" : kind === "fprocess" ? "process" : kind,
+        );
+        if (base) {
+          var exists = Array.prototype.some.call(base.options, function (o) {
+            return o.value && o.value.toLowerCase() === val.toLowerCase() && o.value !== "Other";
+          });
+          if (exists) return false;
+        }
+        list.push(val);
+        try {
+          localStorage.setItem(key, JSON.stringify(list));
+        } catch (e) {
+          return false;
+        }
+        return true;
+      }
+      function myListRemove(kind, val) {
+        var key = MYLIST_KEYS[kind] || "my_" + kind;
+        var list = myList(kind).filter(function (x) {
+          return x !== val;
+        });
+        try {
+          localStorage.setItem(key, JSON.stringify(list));
+        } catch (e) {}
+      }
+      /* Insert a "Yours" optgroup at the top of a select and keep it in sync. */
+      function syncYours(selId, kind) {
+        var sel = document.getElementById(selId);
+        if (!sel) return;
+        var list = myList(kind);
+        var og = sel.querySelector("optgroup[data-yours]");
+        if (!list.length) {
+          if (og) og.remove();
+          return;
+        }
+        if (!og) {
+          og = document.createElement("optgroup");
+          og.setAttribute("data-yours", "1");
+          var first = sel.querySelector("optgroup");
+          if (first) sel.insertBefore(og, first);
+          else sel.appendChild(og);
+        }
+        og.label = t("yoursGroup");
+        var want = list.join("|");
+        if (og.getAttribute("data-sig") === want) return;
+        og.setAttribute("data-sig", want);
+        og.innerHTML = "";
+        list.forEach(function (v) {
+          var o = document.createElement("option");
+          o.value = v;
+          o.textContent = v;
+          o.setAttribute("translate", "no");
+          og.appendChild(o);
+        });
+      }
+      function syncAllYours() {
+        syncYours("roaster", "roaster");
+        syncYours("invroaster", "roaster");
+        syncYours("process", "process");
+        syncYours("fprocess", "process");
+        syncYours("invprocess", "process");
+      }
+      /* Capture whatever was typed into an Other box, then select it next time. */
+      function rememberOther(selId, inpId, kind) {
+        var sel = document.getElementById(selId),
+          inp = document.getElementById(inpId);
+        if (!sel || !inp) return "";
+        if (sel.value !== "Other") return sel.value;
+        var v = (inp.value || "").trim();
+        if (!v) return "";
+        if (myListAdd(kind, v)) {
+          syncAllYours();
+        }
+        try {
+          sel.value = v;
+        } catch (e) {}
+        return v;
+      }
+      /* Consent based: copies the list so a tester can send it if they choose. */
+      function shareCustom() {
+        var NL = String.fromCharCode(10);
+        var r = myList("roaster"),
+          p = myList("process");
+        if (!r.length && !p.length) {
+          alert(t("shareNone"));
+          return;
+        }
+        var txt = "BrewPilot custom entries" + NL;
+        if (r.length)
+          txt +=
+            NL +
+            "Roasters:" +
+            NL +
+            r
+              .map(function (x) {
+                return "- " + x;
+              })
+              .join(NL);
+        if (p.length)
+          txt +=
+            NL +
+            NL +
+            "Processes:" +
+            NL +
+            p
+              .map(function (x) {
+                return "- " + x;
+              })
+              .join(NL);
+        var done = function () {
+          alert(t("shareCopied"));
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(txt).then(done, function () {
+            prompt(t("shareManual"), txt);
+          });
+        } else {
+          prompt(t("shareManual"), txt);
+        }
+      }
+
+      /* Placed at runtime rather than in the markup: the settings panel is built by
+   the shell and is always reachable, unlike the durability banner which hides
+   itself once a sheet is connected. */
+      function placeShareBtn() {
+        if (document.getElementById("shareCustomBtn")) return;
+        var panel = document.getElementById("setPanel");
+        if (!panel) return;
+        if (!myList("roaster").length && !myList("process").length)
+          return; /* nothing to share yet */
+        var b = document.createElement("button");
+        b.id = "shareCustomBtn";
+        b.className = "off";
+        b.style.cssText = "width:100%;margin-top:10px";
+        b.textContent = t("shareBtn");
+        b.onclick = shareCustom;
+        panel.appendChild(b);
       }
       var _rh2 = renderHero;
       renderHero = function () {
