@@ -3744,34 +3744,52 @@
         var invfd = (document.getElementById("invfreeze_date") || {}).value || "";
         let rdate = document.getElementById("invrdate").value;
         let qty = document.getElementById("invqty").value || 1;
-        try {
-          iLocalInvPush({
+        if (dataMode() === "local") {
+          alert(t("gSaveFirst"));
+          return;
+        }
+        if (dataMode() === "google") {
+          var _fo = {
             coffee: coffee,
             roaster: roaster,
+            portion: INVSIZE,
+            qty: qty,
+            roast_date: rdate,
             roast: invroast,
             process: invproc,
-            portion_g: INVSIZE,
-            qty: qty,
-            location: "Freezer",
-            status: "Sealed",
             freeze_date: (document.getElementById("invfreeze_date") || {}).value || "",
-            roast_date: rdate,
-            bean_id: String(coffee).toLowerCase().replace(/ /g, "-"),
             bag_g: INVBAG,
             price: (document.getElementById("invprice") || {}).value || "",
             currency: INVCCY,
-            price_per_g: (function () {
-              var p = parseFloat((document.getElementById("invprice") || {}).value),
-                b = parseFloat(INVBAG);
-              return p && b ? Math.round((p / b) * 10000) / 10000 : "";
-            })(),
-          });
-        } catch (e) {}
-        let url = WEBHOOK();
-        if (!url) {
-          alert("Connect a Google Sheet first (Settings) to save inventory.");
+          };
+          var _saved = false;
+          try {
+            await gFreeze(_fo);
+            _saved = true;
+          } catch (e) {
+            if (String(e.message).indexOf("needs-gesture") >= 0) {
+              var _k = await gAuth(true);
+              if (_k) {
+                try {
+                  await gFreeze(_fo);
+                  _saved = true;
+                } catch (e2) {}
+              }
+            }
+          }
+          if (!_saved) {
+            alert(t("gSaveFailed"));
+            return;
+          }
+          /* repaint OUTSIDE the save try: a render error must never be reported as a failed save, or people freeze the same bag twice */ try {
+            iLocalInvPush(_fo);
+          } catch (e) {}
+          try {
+            renderInv();
+          } catch (e) {}
           return;
         }
+        let url = WEBHOOK();
         let body =
           "action=freeze&coffee=" +
           encodeURIComponent(coffee) +
@@ -3825,8 +3843,13 @@
           return;
         }
         try {
-          let r = await fetch(url + "?action=inventory");
-          let d = await r.json();
+          let d;
+          if (dataMode() === "google") {
+            d = await gInvList();
+          } else {
+            let r = await fetch(url + "?action=inventory");
+            d = await r.json();
+          }
           if (!d || !d.beans || !d.beans.length) {
             box.innerHTML =
               '<div class="mut" style="text-align:left">no bags yet - freeze one above</div>';
@@ -7489,7 +7512,7 @@
    Public by design: a client ID is not a secret, it is an identifier. The
    origin allowlist is what actually protects it. While empty, the Google
    option stays hidden and nothing changes for anyone. */
-      var GOOGLE_CLIENT_ID = "380224424258-stc6p0eapng5bqcb8o04dh47446o9ln3.apps.googleusercontent.com";
+      var GOOGLE_CLIENT_ID = "";
       var GSCOPE = "https://www.googleapis.com/auth/drive.file";
       var GTOKEN = null,
         GTOKEN_EXP = 0,
@@ -7836,6 +7859,115 @@
             else a.style.display = "none";
           }
         });
+      }
+
+      /* =====================================================================
+   INVENTORY ON DRIVE
+
+   Ported from LogSink.gs invFreeze_ / invList_. Same schema, same rules, same
+   portion parsing. It runs in the browser now, against the user's own sheet,
+   because the .gs only existed to be the thing holding the sheet open.
+   ===================================================================== */
+      function gPortionG(p) {
+        var s = String(p || "").toLowerCase();
+        if (s.indexOf("whole") >= 0 || s.indexOf("bolsa") >= 0) return parseFloat(INVBAG) || 250;
+        var n = parseFloat(s.replace(/[^0-9.]/g, ""));
+        return isFinite(n) && n > 0 ? n : 40;
+      }
+      /* Same order as INV_COLNAMES. Position matters: the sheet is written by index. */
+      function gInvRow(o) {
+        var ppg = (function () {
+          var p = parseFloat(o.price),
+            b = parseFloat(o.bag_g);
+          return p && b && b > 0 ? Math.round((p / b) * 10000) / 10000 : "";
+        })();
+        var map = {
+          coffee: o.coffee,
+          roaster: o.roaster || "",
+          roast: o.roast || "",
+          process: o.process || "",
+          portion_g: gPortionG(o.portion),
+          qty: parseInt(o.qty || "1", 10),
+          location: "Freezer",
+          status: "Sealed",
+          freeze_date: gFreezeStr(o.freeze_date),
+          roast_date: o.roast_date || "",
+          bean_id: String(o.coffee || "")
+            .toLowerCase()
+            .replace(/\s+/g, "-"),
+          bag_g: o.bag_g || "",
+          price: o.price || "",
+          currency: o.currency || "USD",
+          price_per_g: ppg,
+        };
+        return INV_COLNAMES.map(function (c) {
+          return map[c] !== undefined ? map[c] : "";
+        });
+      }
+      /* Ported from freezeStr_: blank means now, a past date gets 00:00, today keeps
+   the clock time, a full stamp passes through. The freshness maths depends on
+   this being honest, so it is worth the ten lines. */
+      function gFreezeStr(fd) {
+        var pad = function (n) {
+          return (n < 10 ? "0" : "") + n;
+        };
+        var now = new Date();
+        var stamp = function (d, withTime) {
+          return (
+            d.getFullYear() +
+            "-" +
+            pad(d.getMonth() + 1) +
+            "-" +
+            pad(d.getDate()) +
+            " " +
+            (withTime ? pad(d.getHours()) + ":" + pad(d.getMinutes()) : "00:00")
+          );
+        };
+        var s = String(fd || "").trim();
+        if (!s) return stamp(now, true);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+          var today = stamp(now, false).slice(0, 10);
+          return s === today ? stamp(now, true) : s + " 00:00";
+        }
+        return s;
+      }
+      async function gFreeze(o) {
+        return gAppend(INV_TAB, gInvRow(o));
+      }
+      /* Ported from invList_: group by bean, skip Finished, sum quantities. */
+      async function gInvList() {
+        var rows = await gRead(INV_TAB);
+        if (rows.length < 2) return { ok: true, beans: [] };
+        var head = rows[0],
+          idx = {};
+        head.forEach(function (h, i) {
+          idx[String(h)] = i;
+        });
+        var by = {};
+        for (var r = 1; r < rows.length; r++) {
+          var row = rows[r];
+          var name = row[idx["coffee"]];
+          if (!name) continue;
+          if (String(row[idx["status"]] || "") === "Finished") continue;
+          var key = String(name).toLowerCase();
+          if (!by[key])
+            by[key] = { coffee: name, roaster: row[idx["roaster"]] || "", portions: [], total: 0 };
+          var q = parseInt(row[idx["qty"]] || "0", 10) || 0;
+          if (q <= 0) continue;
+          by[key].portions.push({
+            portion_g: row[idx["portion_g"]],
+            qty: q,
+            freeze_date: row[idx["freeze_date"]] || "",
+            roast_date: row[idx["roast_date"]] || "",
+          });
+          by[key].total += q;
+        }
+        return {
+          ok: true,
+          beans: Object.keys(by).map(function (k) {
+            return by[k];
+          }),
+        };
       }
       var _rh2 = renderHero;
       renderHero = function () {
