@@ -3,7 +3,13 @@
 // on their next load. The cache is only a fallback for when they are offline.
 // Chrome also requires a real fetch handler before it will offer to install.
 
-var CACHE = 'brewpilot-v1';
+// Cache name carries the build stamp, injected by update.ps1. It used to be a
+// fixed 'brewpilot-v1', so the activate handler's cleanup could never fire:
+// every build reused the same cache and old entries lived forever. Network
+// first meant they were only served offline, so this was survivable rather than
+// visible, which is the worst kind of bug. A new build now gets a new cache and
+// the old one is deleted on activate.
+var CACHE = 'brewpilot-2026-07-16-1611-e5c6b4';
 
 self.addEventListener('install', function (e) {
   self.skipWaiting();

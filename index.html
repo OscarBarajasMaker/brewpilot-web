@@ -4170,6 +4170,8 @@
 
       var I18N = {
         en: {
+          instBA:
+            "Installed, BrewPilot opens like a real app, works offline, and keeps you signed in to Google. One tap.",
           gSaveFirst: "Save your brews to Google Drive first, in Settings.",
           welTitleG: "Welcome to the BrewPilot beta",
           welBodyG:
@@ -4241,8 +4243,9 @@
           csTooFine:
             "{g} cannot grind this fine. Its finest is about {v} um. This brewer needs less than that, so pick a different grinder or method.",
           csTooCoarse: "{g} cannot grind this coarse. Its coarsest is about {v} um.",
-          instT: "Add BrewPilot to your home screen",
-          instB: "Opens like an app, full screen, and keeps your data safer.",
+          instT: "Install BrewPilot, or Safari will log you out",
+          instB:
+            "In a Safari tab, iOS makes you sign in to Google again every few hours, and erases your brews after 7 days unused. Installed to the home screen, neither happens. Same app, one tap to add.",
           instGo: "Install",
           ios1: "Tap the Share button in Safari",
           ios2: "Scroll down and tap Add to Home Screen",
@@ -4361,7 +4364,7 @@
           csTooFine:
             "El {g} no muele tan fino. Su mínimo es como {v} um. Este brewer necesita menos, así que elige otro molino u otro método.",
           csTooCoarse: "El {g} no muele tan grueso. Su máximo es como {v} um.",
-          instT: "Añade BrewPilot a tu pantalla de inicio",
+          instT: "Instala BrewPilot, o Safari te va a desconectar",
           instB: "Se abre como app, a pantalla completa, y protege mejor tus datos.",
           instGo: "Instalar",
           ios1: "Toca el boton Compartir en Safari",
@@ -4716,6 +4719,9 @@
         } catch (e) {}
         try {
           renderBuild();
+        } catch (e) {}
+        try {
+          renderInstallCard();
         } catch (e) {}
         try {
           requestPersistence();
@@ -7976,7 +7982,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-16-1606-1db3b5";
+      var BUILD = "2026-07-16-1611-e5c6b4";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -7990,6 +7996,188 @@
         d.textContent = "build " + BUILD;
         d.title = "Compare this with what update.ps1 printed when you published.";
         host.appendChild(d);
+      }
+
+      /* Android fires beforeinstallprompt and we can install in one tap. iOS never
+   fires it and forbids programmatic install, so it gets the manual steps. The
+   card previously showed the same vague pitch to both. */
+      var DEFERRED_PROMPT = null;
+      window.addEventListener("beforeinstallprompt", function (e) {
+        e.preventDefault();
+        DEFERRED_PROMPT = e;
+        try {
+          renderInstallCard();
+        } catch (err) {}
+      });
+      function renderInstallCard() {
+        var card = document.getElementById("instCard");
+        if (!card) return;
+        /* already installed: nothing to sell */
+        if (isStandalone()) {
+          card.style.display = "none";
+          return;
+        }
+        var dismissed = false;
+        try {
+          dismissed = localStorage.getItem("instDismiss") === "1";
+        } catch (e) {}
+        var rows = 0;
+        try {
+          rows = localRows().length;
+        } catch (e) {}
+        /* Once there is data, or Google is connected, this stops being optional:
+     both are the things a Safari tab will take away. */
+        var stakes = rows > 0 || gConnected();
+        if (dismissed && !stakes) {
+          card.style.display = "none";
+          return;
+        }
+        card.style.display = "";
+        var sub = document.getElementById("instSub");
+        if (sub) sub.textContent = isIOS() ? t("instB") : t("instBA");
+        var steps = document.getElementById("instSteps");
+        var btn = document.getElementById("instGoBtn");
+        if (steps) steps.style.display = isIOS() ? "" : "none";
+        if (btn) {
+          btn.style.display = !isIOS() && DEFERRED_PROMPT ? "" : "none";
+          btn.onclick = async function () {
+            if (!DEFERRED_PROMPT) return;
+            DEFERRED_PROMPT.prompt();
+            try {
+              await DEFERRED_PROMPT.userChoice;
+            } catch (e) {}
+            DEFERRED_PROMPT = null;
+            renderInstallCard();
+          };
+        }
+      }
+
+      /* =====================================================================
+   ROTATION ADVISOR (ported from RotationAdvisor.gs)
+
+   Same model, same weights, same maths. It lived in Apps Script only because
+   that is where the sheet was. It runs here now, on rows we already have.
+
+   The mode was a Script Property, which is precisely why this needed a server
+   at all. It is a preference, so it lives in localStorage.
+   ===================================================================== */
+      var REST_MIN_DAYS = 7;
+      function rotWeights() {
+        var mode = "balanced";
+        try {
+          mode = localStorage.getItem("rotmode") || "balanced";
+        } catch (e) {}
+        switch (mode) {
+          case "fifo":
+            return { fifo: 100, variety: 10, fresh: 5, rest: 5 };
+          case "variety":
+            return { fifo: 20, variety: 80, fresh: 15, rest: 10 };
+          case "freshness":
+            return { fifo: 15, variety: 15, fresh: 60, rest: 40 };
+          default:
+            return { fifo: 40, variety: 30, fresh: 30, rest: 25 };
+        }
+      }
+      function rotProfileKey(b) {
+        return String(b.varietal || "").toLowerCase() + "|" + String(b.process || "").toLowerCase();
+      }
+      function rotDaysSince(d) {
+        if (!d) return null;
+        var t = Date.parse(d);
+        if (isNaN(t)) return null;
+        return Math.floor((Date.now() - t) / 86400000);
+      }
+      function rotIsNum(v) {
+        return typeof v === "number" && isFinite(v);
+      }
+
+      /* Faithful port of scoreBag_. Every branch matches the .gs. */
+      function rotScoreBag(b, liveProfiles, allFrozen) {
+        var W = rotWeights(),
+          score = 0;
+        /* 1. FIFO: longest frozen wins, normalised against the oldest in the stash */
+        var fd = rotDaysSince(b.freeze_date);
+        var maxFd =
+          Math.max.apply(
+            null,
+            allFrozen.map(function (x) {
+              return rotDaysSince(x.freeze_date) || 0;
+            }),
+          ) || 1;
+        score += W.fifo * ((fd || 0) / maxFd);
+        /* 2. variety: bonus when this profile is not already open */
+        var mine = rotProfileKey(b);
+        var clash = liveProfiles.filter(function (k) {
+          return k === mine;
+        }).length;
+        score += clash === 0 ? W.variety : clash === 1 ? W.variety * 0.25 : 0;
+        /* 3. roast freshness: decays over about four months */
+        var rd = rotDaysSince(b.roast_date);
+        if (rotIsNum(rd)) score += W.fresh * Math.max(0, 1 - rd / 120);
+        /* 4. rest window: penalise a bag that has not rested since roast */
+        if (rotIsNum(rd) && rd < REST_MIN_DAYS) score -= W.rest * 0.4;
+        return score;
+      }
+      /* Ported from suggestRotation: read the freezer, score, return the winner. */
+      async function rotSuggest() {
+        var rows = [];
+        if (gConnected()) {
+          try {
+            rows = await gRead(INV_TAB);
+          } catch (e) {}
+        }
+        if (rows.length < 2) {
+          var li = iLocalInv();
+          if (!li.length) return null;
+          rows = [INV_COLNAMES].concat(
+            li.map(function (o) {
+              return INV_COLNAMES.map(function (c) {
+                return o[c] !== undefined ? o[c] : "";
+              });
+            }),
+          );
+        }
+        var head = rows[0],
+          idx = {};
+        head.forEach(function (h, i) {
+          idx[String(h)] = i;
+        });
+        var frozen = [];
+        for (var r = 1; r < rows.length; r++) {
+          var row = rows[r];
+          if (String(row[idx["location"]]) !== "Freezer") continue;
+          if (String(row[idx["status"]] || "") === "Finished") continue;
+          if ((parseInt(row[idx["qty"]] || "0", 10) || 0) <= 0) continue;
+          frozen.push({
+            coffee: row[idx["coffee"]],
+            roaster: row[idx["roaster"]] || "",
+            varietal: "",
+            process: row[idx["process"]] || "",
+            freeze_date: row[idx["freeze_date"]] || "",
+            roast_date: row[idx["roast_date"]] || "",
+            portion_g: row[idx["portion_g"]],
+            qty: row[idx["qty"]],
+          });
+        }
+        if (!frozen.length) return null;
+        /* what is already open, so variety can avoid a clash */
+        var live = [];
+        try {
+          live = (ROT || []).map(rotProfileKey);
+        } catch (e) {}
+        var scored = frozen.map(function (b) {
+          return { bag: b, score: rotScoreBag(b, live, frozen) };
+        });
+        scored.sort(function (a, b) {
+          return b.score - a.score;
+        });
+        return {
+          pick: scored[0].bag,
+          score: Math.round(scored[0].score),
+          runners: scored.slice(1, 3).map(function (x) {
+            return x.bag.coffee;
+          }),
+        };
       }
       var _rh2 = renderHero;
       renderHero = function () {
