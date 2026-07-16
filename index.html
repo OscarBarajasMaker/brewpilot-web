@@ -934,7 +934,7 @@
             onclick="document.getElementById('wizMask').classList.add('on')"
             data-i18n="duraGo"
           >
-            Connect a sheet (5 min)</button
+            Save to Google Drive</button
           ><button class="durabtn2" onclick="exportLocal()" data-i18n="duraExp">
             Export backup
           </button>
@@ -1001,7 +1001,7 @@
             data, connect your own free Google Sheet (2 min). Your data stays in your account.
           </div>
           <button class="grn" style="width: 100%" onclick="goConnectSheet()">
-            Connect my sheet
+            Save my brews to Google Drive
           </button>
           <div style="color: var(--dim); font-size: 11px; margin-top: 6px">
             No sheet yet? You can still explore - dial-in advice works offline.
@@ -2065,7 +2065,7 @@
       <div class="wizcard">
         <div class="wiztitle" data-i18n="wizSetupTitle">Set up BrewPilot</div>
         <div class="mut" style="text-align: left" data-i18n="wizSetupIntro">
-          Two minutes. Pick what you do, then connect a sheet if you want your data saved.
+          Pick what you do. Everything works right away. Save to Google Drive when you want it kept.
         </div>
         <div class="wizstep">
           <span class="wizn">1</span><b data-i18n="wizWhat">What do you want to do?</b>
@@ -3496,7 +3496,7 @@
         var t = document.getElementById("insText");
         var url = WEBHOOK();
         if (!url) {
-          alert("Connect a sheet first");
+          alert(t("gSaveFirst"));
           return;
         }
         t.textContent = "Crunching your brews...";
@@ -4147,6 +4147,7 @@
 
       var I18N = {
         en: {
+          gSaveFirst: "Save your brews to Google Drive first, in Settings.",
           welTitleG: "Welcome to the BrewPilot beta",
           welBodyG:
             "Log a brew and you get insights straight away, no setup. To keep your history safe and synced across devices, save it to your own Google Drive: one tap, and the sheet is yours.",
@@ -4168,7 +4169,7 @@
             "{n} brews are in your Google Sheet. Clearing this browser will not lose them.",
           durIOSTabT: "iOS will delete your brews",
           durIOSTabB:
-            "Safari wipes a site’s data after 7 days of not opening it. That is iOS policy and no setting in this app can stop it. Add BrewPilot to your home screen, or connect a sheet. {n} brews at stake.",
+            "Safari wipes a site’s data after 7 days of not opening it. That is iOS policy and no setting in this app can stop it. Add BrewPilot to your home screen, or save your brews to Google Drive. {n} brews at stake.",
           durInstalledT: "Installed, so your brews stay",
           durInstalledB:
             "Home screen apps are exempt from the 7 day wipe. {n} brews stored on this device. A sheet still protects you if the phone is lost.",
@@ -4177,7 +4178,7 @@
             "Storage is marked persistent, so it will not be cleared to free space. {n} brews on this device. Clearing browsing data by hand still erases them.",
           durBestEffortT: "Your brews are on this device only",
           durBestEffortB:
-            "The browser may clear them when space runs low, and clearing browsing data erases them. {n} brews at stake. Install to the home screen, or connect a sheet.",
+            "The browser may clear them when space runs low, and clearing browsing data erases them. {n} brews at stake. Install to the home screen, or save them to Google Drive.",
           insNeedMore: "Only {n} brews logged. Insights need about 6 to say anything honest.",
           insNothingYet: "Nothing stands out in your data yet. That is a real answer, not a bug.",
           insSpend: "You spent {v} on coffee in {m}",
@@ -4222,10 +4223,10 @@
           instGo: "Install",
           ios1: "Tap the Share button in Safari",
           ios2: "Scroll down and tap Add to Home Screen",
-          insLockT: "Insights need a Google Sheet",
+          insLockT: "Log a few brews and this fills up",
           insLockB:
-            "Insights read your whole history: timing vs rating, water vs taste, what actually works for you. That history lives in the sheet, so this stays locked until you connect one.",
-          insLockGo: "Connect a sheet (5 min)",
+            "Insights compare your brews against each other: timing vs rating, water vs taste, what a cup actually costs you. That needs about six logs before it can say anything honest. No setup, no sheet, nothing to connect.",
+          insLockGo: "Log a brew",
           csT: "Starting point",
           csHint: "Then dial by taste.",
           csPick: "Pick a brewer to see a starting point.",
@@ -4238,8 +4239,8 @@
           csWhy: "Lighter roasts start finer, darker start coarser.",
           duraT: "Your brews are only in this browser",
           duraB:
-            "Nothing is backed up. Clearing your browser data, or leaving the site unused for about a week on iPhone, can erase it. Connect a Google Sheet (5 min, one time) to keep your history for good and get better insights.",
-          duraGo: "Connect a sheet (5 min)",
+            "Nothing is backed up. Clearing your browser data, or leaving the site unused for about a week on iPhone, can erase it. Save your brews to your own Google Drive to keep them for good.",
+          duraGo: "Save to Google Drive",
           duraExp: "Export backup",
           duraN: "brews stored locally, not backed up",
           duraSafeT: "Connected. Your history is saved.",
@@ -4268,7 +4269,7 @@
           s6a: "Copy the Web app URL. It ends in /exec.",
           wizSetupTitle: "Set up BrewPilot",
           wizSetupIntro:
-            "Pick what you do. Then connect a Google Sheet: this is what keeps your history from being lost, and it is what makes insights work properly.",
+            "Pick what you do. Everything works straight away with nothing connected. When you want your history kept safe and synced across devices, save it to your own Google Drive in one tap.",
           wizWhat: "What do you want to do?",
           wizMethods: "What do you brew?",
           wizHw: "What gear do you have?",
@@ -4342,10 +4343,10 @@
           instGo: "Instalar",
           ios1: "Toca el boton Compartir en Safari",
           ios2: "Baja y toca Añadir a pantalla de inicio",
-          insLockT: "El análisis necesita una Hoja de Google",
+          insLockT: "Registra unos cafés y esto se llena",
           insLockB:
-            "El análisis lee todo tu historial: tiempo vs nota, agua vs sabor, lo que de verdad te funciona. Ese historial vive en la hoja, así que esto queda bloqueado hasta que conectes una.",
-          insLockGo: "Conectar una hoja (5 min)",
+            "El análisis compara tus cafés entre sí: tiempo vs nota, agua vs sabor, cuánto te cuesta una taza de verdad. Necesita unos seis registros para decir algo honesto. Sin configurar nada, sin hoja, sin conectar nada.",
+          insLockGo: "Registrar un café",
           csT: "Punto de partida",
           csHint: "Luego ajusta por sabor.",
           csPick: "Elige un brewer para ver un punto de partida.",
@@ -4358,8 +4359,8 @@
           csWhy: "Los tuestes claros empiezan más fino; los oscuros, más grueso.",
           duraT: "Tus cafés solo están en este navegador",
           duraB:
-            "No hay respaldo. Si borras los datos del navegador, o no entras por una semana en iPhone, se pueden borrar. Conecta una Hoja de Google (5 min, una sola vez) para conservar tu historial y tener mejores análisis.",
-          duraGo: "Conectar una hoja (5 min)",
+            "No hay respaldo. Si borras los datos del navegador, o no entras por una semana en iPhone, se puede borrar. Guarda tus cafés en tu propio Google Drive para conservarlos.",
+          duraGo: "Guardar en Google Drive",
           duraExp: "Exportar respaldo",
           duraN: "cafés guardados solo aquí, sin respaldo",
           duraSafeT: "Conectado. Tu historial esta guardado.",
@@ -4388,7 +4389,7 @@
           s6a: "Copia la URL de la aplicación web. Termina en /exec.",
           wizSetupTitle: "Configura BrewPilot",
           wizSetupIntro:
-            "Elige que haces. Luego conecta una Hoja de Google: es lo que evita que pierdas tu historial, y lo que hace que el análisis funcione bien.",
+            "Elige qué haces. Todo funciona de inmediato sin conectar nada. Cuando quieras conservar tu historial y sincronizarlo entre dispositivos, guárdalo en tu propio Google Drive con un toque.",
           wizWhat: "¿Que quieres hacer?",
           wizMethods: "¿Qué preparas?",
           wizHw: "¿Qué equipo tienes?",
@@ -4895,8 +4896,8 @@
         "Freeze it": "Congelar",
         "Freeze coffee": "Congelar café",
         "Refresh now": "Actualizar",
-        "Connect sheet": "Conectar hoja",
-        "Connect my sheet": "Conectar mi hoja",
+        "Save to Google Drive": "Guardar en Google Drive",
+        "Save my brews to Google Drive": "Guardar mis cafés en Google Drive",
         "Save to log": "Guardar registro",
         "Save filter brew": "Guardar filtrado",
         "Start (plan now)": "Iniciar (planear)",
@@ -4949,7 +4950,7 @@
         "Crunching your brews...": "Analizando tus preparaciones...",
         "No insights yet. Log a few brews and rate them, then Refresh now.":
           "Aun no hay análisis. Registra y califica algunas preparaciones, luego Actualizar.",
-        "Connect a sheet first": "Conecta una hoja primero",
+        "Save to Google Drive first": "Conecta una hoja primero",
         "Connect your Google Sheet in Settings first.":
           "Conecta tu Hoja de Google en Ajustes primero.",
         "Connect a Google Sheet first (Settings) to save inventory.":
@@ -5546,7 +5547,7 @@
         if (!el) return;
         var connected = false;
         try {
-          connected = !!(WEBHOOK && WEBHOOK());
+          connected = dataMode() !== "local";
         } catch (e) {}
         var n = localRows().length;
         /* visibility is decided by sheetCtas(), which enforces one prompt at a time.
@@ -5582,7 +5583,7 @@
 
         var connected = false;
         try {
-          connected = !!(WEBHOOK && WEBHOOK());
+          connected = dataMode() !== "local";
         } catch (e) {}
         try {
           if (!connected && localRows().length > 0) connected = true;
@@ -6451,7 +6452,13 @@
 
         /* the banner earns its place only when something can actually be lost */
         var atRisk = !connected && rows > 0;
-        if (dura) dura.style.display = onHome && (atRisk || connected) ? "" : "none";
+        /* Nothing logged anywhere means nothing to protect. A '0 brews are in your
+     Google Sheet' banner is noise, and it was permanently parked on Home. */
+        var known = rows;
+        try {
+          known = Math.max(rows, (IROWS || []).length);
+        } catch (e) {}
+        if (dura) dura.style.display = onHome && known > 0 && (atRisk || connected) ? "" : "none";
 
         /* welcome: only before anything is at risk, so the two never stack */
         if (wel) wel.style.display = onHome && !connected && !atRisk ? "" : "none";
@@ -7447,7 +7454,7 @@
         var v = storageVerdict();
         var rows = 0;
         try {
-          rows = localRows().length;
+          rows = Math.max(localRows().length, (IROWS || []).length);
         } catch (e) {}
         t1.removeAttribute("data-i18n");
         t2.removeAttribute("data-i18n");
@@ -7481,7 +7488,7 @@
    Public by design: a client ID is not a secret, it is an identifier. The
    origin allowlist is what actually protects it. While empty, the Google
    option stays hidden and nothing changes for anyone. */
-      var GOOGLE_CLIENT_ID = "380224424258-stc6p0eapng5bqcb8o04dh47446o9ln3.apps.googleusercontent.com";
+      var GOOGLE_CLIENT_ID = "";
       var GSCOPE = "https://www.googleapis.com/auth/drive.file";
       var GTOKEN = null,
         GTOKEN_EXP = 0,
@@ -7806,14 +7813,16 @@
           btn.setAttribute("onclick", "");
         });
         /* the lock card on Insights */
+        /* The lock only shows when there is NO data. The useful action is therefore
+     to log a brew, not to connect anything: insights run on local rows. */
         var lock = document.getElementById("insLock");
         if (lock) {
           var lb = lock.querySelector("button");
           if (lb) {
-            lb.textContent = t("gConnect");
+            lb.textContent = t("insLockGo");
             lb.onclick = function (ev) {
               ev.preventDefault();
-              goConnectSheet();
+              showTab("log");
             };
             lb.setAttribute("onclick", "");
           }
