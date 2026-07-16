@@ -5680,8 +5680,7 @@
         try {
           if (!connected && localRows().length > 0) connected = true;
         } catch (e) {}
-        var old = document.getElementById("insNeedSheet");
-        if (old) old.remove();
+
         var lock = document.getElementById("insLock");
         var kids = Array.prototype.filter.call(p.children, function (c) {
           return c.id !== "insLock";
@@ -8072,7 +8071,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-16-1624-9d6431";
+      var BUILD = "2026-07-16-1634-acd886";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -8125,8 +8124,8 @@
         card.style.display = "";
         var sub = document.getElementById("instSub");
         if (sub) sub.textContent = isIOS() ? t("instB") : t("instBA");
-        var steps = document.getElementById("instSteps");
-        var btn = document.getElementById("instGoBtn");
+        var steps = document.getElementById("instIos");
+        var btn = document.getElementById("instBtn");
         if (steps) steps.style.display = isIOS() ? "" : "none";
         if (btn) {
           btn.style.display = !isIOS() && DEFERRED_PROMPT ? "" : "none";
