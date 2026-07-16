@@ -4171,7 +4171,7 @@
       var I18N = {
         en: {
           instBA:
-            "Installed, BrewPilot opens like a real app, works offline, and keeps you signed in to Google. One tap.",
+            "A browser tab gets discarded, so you sign in to Google again every so often. Installed, BrewPilot stays signed in, opens like a real app and works offline. One tap.",
           gSaveFirst: "Save your brews to Google Drive first, in Settings.",
           welTitleG: "Welcome to the BrewPilot beta",
           welBodyG:
@@ -4243,9 +4243,9 @@
           csTooFine:
             "{g} cannot grind this fine. Its finest is about {v} um. This brewer needs less than that, so pick a different grinder or method.",
           csTooCoarse: "{g} cannot grind this coarse. Its coarsest is about {v} um.",
-          instT: "Install BrewPilot, or Safari will log you out",
+          instT: "Install BrewPilot and stop signing in again",
           instB:
-            "In a Safari tab, iOS makes you sign in to Google again every few hours, and erases your brews after 7 days unused. Installed to the home screen, neither happens. Same app, one tap to add.",
+            "A browser tab gets discarded, so you sign in to Google again every so often. On iPhone a tab also loses your brews after 7 days unused. Installed, it stays open, stays signed in, and works offline. Same app, one tap.",
           instGo: "Install",
           ios1: "Tap the Share button in Safari",
           ios2: "Scroll down and tap Add to Home Screen",
@@ -4347,6 +4347,64 @@
           verifyFail: "Could not reach that URL. Check the deployment access is set to Anyone.",
         },
         es: {
+          durSheetT: "Tus cafés están respaldados",
+          durSheetB: "{n} cafés están en tu Hoja de Google. Borrar este navegador no los pierde.",
+          durIOSTabT: "iOS va a borrar tus cafés",
+          durIOSTabB:
+            "Safari borra los datos de un sitio después de 7 días sin abrirlo. Es política de iOS y ningún ajuste de esta app lo evita. Añade BrewPilot a tu pantalla de inicio, o guarda tus cafés en Google Drive. {n} cafés en riesgo.",
+          durInstalledT: "Instalada, así que tus cafés se quedan",
+          durInstalledB:
+            "Las apps en pantalla de inicio no sufren el borrado de 7 días. {n} cafés guardados en este dispositivo. Una hoja te protege además si pierdes el teléfono.",
+          durGrantedT: "Este navegador aceptó guardar tus cafés",
+          durGrantedB:
+            "El almacenamiento está marcado como persistente, no se borrará para liberar espacio. {n} cafés en este dispositivo. Borrar los datos a mano sí los elimina.",
+          durBestEffortT: "Tus cafés están solo en este dispositivo",
+          durBestEffortB:
+            "El navegador puede borrarlos cuando falte espacio, y borrar los datos del navegador los elimina. {n} cafés en riesgo. Instala en la pantalla de inicio, o guárdalos en Google Drive.",
+          gConnect: "Guardar mis cafés en Google Drive",
+          gConnectSub:
+            "Un toque. BrewPilot crea una hoja en tu Drive y escribe ahí. Sin copiar, sin scripts, sin pegar URLs.",
+          gConnected: "Guardando en tu Google Drive",
+          gConnectedSub:
+            "Tus cafés van a BrewPilot Log en tu Drive. Ábrela cuando quieras, es una hoja normal que te pertenece.",
+          gOpenSheet: "Abrir mi hoja",
+          gDisconnect: "Desconectar",
+          gNotSetUp: "El acceso con Google aún no está configurado en esta versión.",
+          gAuthFailed: "El acceso con Google no se completó. No se guardó nada en Drive.",
+          gSaveFailed:
+            "No se pudo guardar en Drive. Tu café sigue en este dispositivo y se sincronizará la próxima vez.",
+          gSaveFirst: "Primero guarda tus cafés en Google Drive, en Ajustes.",
+          welTitleG: "Bienvenido a la beta de BrewPilot",
+          welBodyG:
+            "Registra un café y obtienes análisis de inmediato, sin configurar nada. Para conservar tu historial y sincronizarlo entre dispositivos, guárdalo en tu propio Google Drive: un toque, y la hoja es tuya.",
+          welFootG: "¿Ahora no? Todo funciona sin conexión y se queda en este dispositivo.",
+          insSpend: "Gastaste {v} en café en {m}",
+          insSpendAvg: "Eso promedia {v} al mes",
+          insPerCup: "Una taza te cuesta {v} en promedio",
+          insCostUp:
+            "Tus cafés más caros sí salen mejor calificados. El dinero está comprando algo.",
+          insCostDown: "Tus cafés más baratos salen MEJOR que los caros. Vale la pena revisarlo.",
+          insCostFlat:
+            "El precio y la nota no se relacionan en tus últimos {n} cafés. Podrías comprar más barato y no notarlo.",
+          insValue: "Mejor valor de tu rotación: {c}",
+          insWAcidUp: "En {n} cafés calificas mejor las aguas con más Mg y más acidez",
+          insWAcidDown: "En {n} cafés calificas mejor las aguas de menos acidez",
+          insWBodyUp: "En {n} cafés calificas mejor las aguas con más Ca y más cuerpo",
+          insWBodyDown: "En {n} cafés calificas mejor las aguas más ligeras",
+          insWBest: "Calificas más alto el agua {w} ({a} vs {b})",
+          insTimeUp: "Los cafés más largos salen mejor calificados en {n} registros",
+          insTimeDown: "Los cafés más cortos salen mejor calificados en {n} registros",
+          insRatioUp: "Las proporciones más largas salen mejor en {n} registros",
+          insRatioDown: "Las proporciones más cortas salen mejor en {n} registros",
+          insNeedMore:
+            "Solo {n} cafés registrados. El análisis necesita unos 6 para decir algo honesto.",
+          insNothingYet:
+            "Todavía no destaca nada en tus datos. Eso es una respuesta real, no un error.",
+          invBagSize: "Tamaño de bolsa",
+          invPrice: "Precio por bolsa",
+          invFreezeDate: "Fecha de congelado",
+          instBA:
+            "Una pestaña del navegador se descarta, así que vuelves a iniciar sesión cada tanto. Instalada, BrewPilot mantiene la sesión, se abre como una app real y funciona sin conexión. Un toque.",
           hwGot: "Entendido",
           hwFine:
             "La app funciona completa sin eso. Escribes dosis, salida y tiempo, y sigues teniendo historial, rotación y análisis.",
@@ -4364,8 +4422,9 @@
           csTooFine:
             "El {g} no muele tan fino. Su mínimo es como {v} um. Este brewer necesita menos, así que elige otro molino u otro método.",
           csTooCoarse: "El {g} no muele tan grueso. Su máximo es como {v} um.",
-          instT: "Instala BrewPilot, o Safari te va a desconectar",
-          instB: "Se abre como app, a pantalla completa, y protege mejor tus datos.",
+          instT: "Instala BrewPilot y deja de iniciar sesión",
+          instB:
+            "Una pestaña del navegador se descarta, así que vuelves a iniciar sesión en Google cada tanto. En iPhone además pierde tus cafés a los 7 días sin usar. Instalada, se mantiene abierta, con la sesión iniciada, y funciona sin conexión. La misma app, un toque.",
           instGo: "Instalar",
           ios1: "Toca el boton Compartir en Safari",
           ios2: "Baja y toca Añadir a pantalla de inicio",
@@ -7541,12 +7600,35 @@
         return !!(GSHEET && gConfigured());
       }
 
+      function gSaveToken() {
+        try {
+          if (GTOKEN && GTOKEN_EXP) {
+            localStorage.setItem("gtok", GTOKEN);
+            localStorage.setItem("gtokexp", String(GTOKEN_EXP));
+          } else {
+            localStorage.removeItem("gtok");
+            localStorage.removeItem("gtokexp");
+          }
+        } catch (e) {}
+      }
       function gInit() {
         try {
           GSHEET = localStorage.getItem("gsheet") || null;
         } catch (e) {}
         try {
           GNAME = localStorage.getItem("gsheetname") || "";
+        } catch (e) {}
+        /* restore the token so a reload inside the hour costs nothing at all */
+        try {
+          var t = localStorage.getItem("gtok"),
+            e2 = parseInt(localStorage.getItem("gtokexp") || "0", 10);
+          if (t && e2 && Date.now() < e2 - 60000) {
+            GTOKEN = t;
+            GTOKEN_EXP = e2;
+          } else {
+            localStorage.removeItem("gtok");
+            localStorage.removeItem("gtokexp");
+          }
         } catch (e) {}
       }
       function gForget() {
@@ -7556,7 +7638,12 @@
         } catch (e) {}
         GSHEET = null;
         GTOKEN = null;
+        GTOKEN_EXP = 0;
         GNAME = "";
+        try {
+          localStorage.removeItem("gtok");
+          localStorage.removeItem("gtokexp");
+        } catch (e) {}
       }
 
       /* interactive=true shows the account chooser. Otherwise we try silently, which
@@ -7591,6 +7678,7 @@
                   if (r && r.access_token) {
                     GTOKEN = r.access_token;
                     GTOKEN_EXP = Date.now() + (r.expires_in || 3600) * 1000;
+                    gSaveToken();
                     if (GRESOLVE) GRESOLVE(true);
                   } else if (GRESOLVE) GRESOLVE(false);
                   GRESOLVE = null;
@@ -7631,6 +7719,8 @@
         var r = await fetch(url, opts);
         if (r.status === 401) {
           GTOKEN = null;
+          GTOKEN_EXP = 0;
+          gSaveToken();
           throw new Error("needs-gesture");
         }
         var txt = await r.text();
@@ -7982,7 +8072,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-16-1611-e5c6b4";
+      var BUILD = "2026-07-16-1624-9d6431";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
