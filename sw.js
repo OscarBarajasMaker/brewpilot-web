@@ -9,7 +9,7 @@
 // first meant they were only served offline, so this was survivable rather than
 // visible, which is the worst kind of bug. A new build now gets a new cache and
 // the old one is deleted on activate.
-var CACHE = 'brewpilot-2026-07-16-1648-386c26';
+var CACHE = 'brewpilot-2026-07-16-1656-f987ff';
 
 self.addEventListener('install', function (e) {
   self.skipWaiting();

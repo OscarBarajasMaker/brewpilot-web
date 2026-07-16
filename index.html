@@ -3451,6 +3451,9 @@
         document.getElementById("frechips").appendChild(note);
       }
       let BREWER_UM = {
+        Espresso: 340,
+        Soup: 500,
+        "Soup <2 bar": 560,
         V60: 700,
         "V60 Switch": 850,
         "V60 Neo": 720,
@@ -3847,7 +3850,7 @@
             iLocalInvPush(_fo);
           } catch (e) {}
           try {
-            renderInv();
+            loadInventory();
           } catch (e) {}
           return;
         }
@@ -4232,6 +4235,7 @@
 
       var I18N = {
         en: {
+          csConical: "Click counts are approximate: makers quote burr travel, not grind size.",
           wShot: "shot",
           wBrew: "brew",
           logEntry: "Log a {w}",
@@ -4429,6 +4433,8 @@
           verifyFail: "Could not reach that URL. Check the deployment access is set to Anyone.",
         },
         es: {
+          csConical:
+            "Los clics son aproximados: los fabricantes indican recorrido de la fresa, no tamaño de molienda.",
           wShot: "shot",
           wBrew: "café",
           logEntry: "Registrar un {w}",
@@ -8180,7 +8186,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-16-1648-386c26";
+      var BUILD = "2026-07-16-1656-f987ff";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -8519,6 +8525,56 @@
         lab.textContent = t("logEntry").replace("{w}", methodWord());
         var head = lab.parentElement;
         if (head) head.style.display = form.style.display === "none" ? "" : "none";
+      }
+
+      /* The cold start advisor only knew filter brewers, so a soup user got nothing.
+   Targets and their provenance are in GRIND_RESEARCH.md. Short version:
+     espresso 340um  measured median, dialled-in classical shot, 24 grinders
+     soup     500um  DERIVED between that and the 600um ceiling cited for
+                     experimental shots. No measured median exists for turbo.
+   Oscar runs under 2 bar, below published turbo, so his own soup is plausibly
+   coarser still. This is a starting point, not a target. */
+      function logBrewerFor() {
+        try {
+          if (typeof FBREWER !== "undefined" && FBREWER) return FBREWER;
+          if (M_SOUP) return "Soup";
+          if (M_ESP) return "Espresso";
+        } catch (e) {}
+        return null;
+      }
+      function renderLogPlan() {
+        var box = document.getElementById("planBox");
+        if (!box) return;
+        if (LOGMODE !== "before") {
+          box.innerHTML = "";
+          return;
+        }
+        var gid = null;
+        try {
+          gid = lastGrinder() || ownedGrinders()[0];
+        } catch (e) {}
+        var brewer = logBrewerFor();
+        if (!gid || !brewer) {
+          box.innerHTML = "<div class='csS'>" + t("csPick") + "</div>";
+          return;
+        }
+        var c = csFor(brewer, gid);
+        var g = typeof GRINDERS === "object" ? GRINDERS[gid] : null;
+        box.innerHTML =
+          "<div class='cs'><div class='csHd'>" +
+          t("csT") +
+          " &middot; " +
+          brewer +
+          (g ? " &middot; " + g.n : "") +
+          "</div>" +
+          "<div class='csV'>" +
+          c.txt +
+          "</div>" +
+          "<div class='csS'>" +
+          t("csHint") +
+          " " +
+          t("csConical") +
+          "</div></div>";
       }
       var _rh2 = renderHero;
       renderHero = function () {
