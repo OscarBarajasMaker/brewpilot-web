@@ -4147,6 +4147,10 @@
 
       var I18N = {
         en: {
+          welTitleG: "Welcome to the BrewPilot beta",
+          welBodyG:
+            "Log a brew and you get insights straight away, no setup. To keep your history safe and synced across devices, save it to your own Google Drive: one tap, and the sheet is yours.",
+          welFootG: "Not now? Everything works offline and stays on this device.",
           gSaveFailed:
             "Could not save to Drive. Your brew is still on this device and will sync next time.",
           gNotSetUp: "Google sign-in is not configured in this build yet.",
@@ -4676,6 +4680,9 @@
         } catch (e) {}
         try {
           sheetCtas();
+        } catch (e) {}
+        try {
+          retitleCtas();
         } catch (e) {}
         try {
           gInit();
@@ -6426,9 +6433,10 @@
    Settings always has a connect field; that is a control, not a nag.
    ===================================================================== */
       function sheetCtas() {
+        /* Was WEBHOOK() only, which meant a Google connected user still saw 'connect a sheet' everywhere. dataMode() knows about all three backends. */
         var connected = false;
         try {
-          connected = !!(WEBHOOK && WEBHOOK());
+          connected = dataMode() !== "local";
         } catch (e) {}
         var rows = 0;
         try {
@@ -6836,7 +6844,24 @@
       the very panel it was trying to open.
 
    openPanel(id, fn) already exists and ensures-open rather than toggling. Use it. */
-      function goConnectSheet() {
+      async function goConnectSheet() {
+        /* One tap when Google is available. The old path (switch tab, open settings,
+     paste an /exec you obtained by copying a template and deploying a script)
+     only survives for people already on it. */
+        try {
+          if (gConfigured() && !gConnected()) {
+            var ok = await gConnect();
+            if (ok) {
+              try {
+                sheetCtas();
+              } catch (e) {}
+              try {
+                renderGoogleCard();
+              } catch (e) {}
+              return;
+            }
+          }
+        } catch (e) {}
         try {
           showTab("insights");
         } catch (e) {}
@@ -7724,6 +7749,42 @@
           box.appendChild(b);
         }
         host.insertBefore(box, host.firstChild);
+      }
+
+      /* The CTA copy was written for a world where connecting meant copying a
+   template and deploying a script. When Google sign-in is live that is a lie:
+   it is one tap. Rewrite the visible strings rather than leave the old promise
+   on screen. */
+      function retitleCtas() {
+        if (!gConfigured()) return;
+        var wel = document.getElementById("welcome");
+        if (wel && !gConnected()) {
+          var h = wel.querySelector("div");
+          if (h) h.textContent = t("welTitleG");
+          var subs = wel.querySelectorAll("div");
+          if (subs[1]) subs[1].textContent = t("welBodyG");
+          var b = wel.querySelector("button");
+          if (b) b.textContent = t("gConnect");
+          var foot = wel.querySelector("div:last-child");
+          if (foot && /explore|explorar/i.test(foot.textContent || ""))
+            foot.textContent = t("welFootG");
+        }
+        var dg = document.getElementById("duraGoBtn");
+        if (dg) dg.textContent = t("gConnect");
+        /* the lock card on Insights */
+        var lock = document.getElementById("insLock");
+        if (lock) {
+          var lb = lock.querySelector("button");
+          if (lb) lb.textContent = t("gConnect");
+        }
+        /* the template copy link belongs to the old world entirely */
+        document.querySelectorAll("a").forEach(function (a) {
+          if (a.href && a.href.indexOf("/copy") > 0) {
+            var row = a.closest("div");
+            if (row) row.style.display = "none";
+            else a.style.display = "none";
+          }
+        });
       }
       var _rh2 = renderHero;
       renderHero = function () {
