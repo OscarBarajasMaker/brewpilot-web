@@ -1001,7 +1001,7 @@
             data, connect your own free Google Sheet (2 min). Your data stays in your account.
           </div>
           <button class="grn" style="width: 100%" onclick="goConnectSheet()">
-            Save my brews to Google Drive
+            Connect my sheet
           </button>
           <div style="color: var(--dim); font-size: 11px; margin-top: 6px">
             No sheet yet? You can still explore - dial-in advice works offline.
@@ -4897,6 +4897,7 @@
         "Freeze coffee": "Congelar café",
         "Refresh now": "Actualizar",
         "Save to Google Drive": "Guardar en Google Drive",
+        "Connect my sheet": "Conectar mi hoja",
         "Save my brews to Google Drive": "Guardar mis cafés en Google Drive",
         "Save to log": "Guardar registro",
         "Save filter brew": "Guardar filtrado",
@@ -7488,7 +7489,7 @@
    Public by design: a client ID is not a secret, it is an identifier. The
    origin allowlist is what actually protects it. While empty, the Google
    option stays hidden and nothing changes for anyone. */
-      var GOOGLE_CLIENT_ID = "";
+      var GOOGLE_CLIENT_ID = "380224424258-stc6p0eapng5bqcb8o04dh47446o9ln3.apps.googleusercontent.com";
       var GSCOPE = "https://www.googleapis.com/auth/drive.file";
       var GTOKEN = null,
         GTOKEN_EXP = 0,
