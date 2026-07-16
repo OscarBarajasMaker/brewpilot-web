@@ -888,6 +888,44 @@
       .wizerr {
         color: var(--danger-text);
       }
+      .logmoderow {
+        display: flex;
+        gap: 8px;
+        margin: 0 0 12px;
+      }
+      .logmoderow button {
+        flex: 1;
+        padding: 11px 8px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .ratechips {
+        display: flex;
+        gap: 5px;
+        flex-wrap: nowrap;
+        margin: 2px 0 4px;
+      }
+      .ratechip {
+        flex: 1;
+        min-width: 0;
+        padding: 10px 0;
+        border-radius: 8px;
+        font:
+          600 13px/1 ui-monospace,
+          monospace;
+        cursor: pointer;
+      }
+      .ratewordlbl {
+        font-size: 12px;
+        color: var(--dim);
+        min-height: 16px;
+        margin-bottom: 6px;
+      }
+      .planbox {
+        margin: 0 0 12px;
+      }
     </style>
   </head>
   <body>
@@ -1029,6 +1067,24 @@
         </div>
       </div>
       <div class="tabpanel" id="tab-log">
+        <div id="logModeRow" class="logmoderow">
+          <button
+            data-mode="before"
+            class="off"
+            onclick="setLogMode('before')"
+            data-i18n="logModeBefore"
+          >
+            About to brew</button
+          ><button
+            data-mode="after"
+            class="on"
+            onclick="setLogMode('after')"
+            data-i18n="logModeAfter"
+          >
+            Already brewed
+          </button>
+        </div>
+        <div id="planBox" class="planbox" style="display: none"></div>
         <label id="logLabel">Log the last shot</label>
         <div id="rotwrap" style="margin-bottom: 10px">
           <button
@@ -1437,6 +1493,10 @@
           <div style="color: var(--dim); font-size: 12px; margin-bottom: 5px">
             Grinder (tap to switch, converts setting):
           </div>
+          <div class="frow">
+            <label data-i18n="fRegion">Region</label
+            ><input id="fregion" class="fin" data-i18n-ph="fRegionPh" placeholder="Rwanda, Huye" />
+          </div>
           <div
             id="grchips"
             style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
@@ -1688,9 +1748,11 @@
                 min="1"
                 max="10"
                 inputmode="numeric"
-                placeholder="8"
                 class="fin"
+                style="display: none"
               />
+              <div id="rateChips" class="ratechips"></div>
+              <div id="rateWord" class="ratewordlbl">Tap to rate</div>
             </div>
           </div>
           <div class="fl">Water</div>
@@ -4170,6 +4232,26 @@
 
       var I18N = {
         en: {
+          wShot: "shot",
+          wBrew: "brew",
+          logEntry: "Log a {w}",
+          logModeBefore: "About to brew",
+          logModeAfter: "Already brewed",
+          logStartBtn: "Start this brew",
+          logSaveBtn2: "Save this brew",
+          rateNone: "Tap to rate",
+          rate1: "Undrinkable",
+          rate2: "Bad",
+          rate3: "Poor",
+          rate4: "Meh",
+          rate5: "Okay",
+          rate6: "Fine",
+          rate7: "Good",
+          rate8: "Very good",
+          rate9: "Excellent",
+          rate10: "Best yet",
+          fRegion: "Region",
+          fRegionPh: "Rwanda, Huye",
           instBA:
             "A browser tab gets discarded, so you sign in to Google again every so often. Installed, BrewPilot stays signed in, opens like a real app and works offline. One tap.",
           gSaveFirst: "Save your brews to Google Drive first, in Settings.",
@@ -4347,6 +4429,26 @@
           verifyFail: "Could not reach that URL. Check the deployment access is set to Anyone.",
         },
         es: {
+          wShot: "shot",
+          wBrew: "café",
+          logEntry: "Registrar un {w}",
+          logModeBefore: "Voy a preparar",
+          logModeAfter: "Ya lo preparé",
+          logStartBtn: "Empezar este café",
+          logSaveBtn2: "Guardar este café",
+          rateNone: "Toca para calificar",
+          rate1: "Intomable",
+          rate2: "Malo",
+          rate3: "Pobre",
+          rate4: "Regular",
+          rate5: "Aceptable",
+          rate6: "Bien",
+          rate7: "Bueno",
+          rate8: "Muy bueno",
+          rate9: "Excelente",
+          rate10: "El mejor",
+          fRegion: "Región",
+          fRegionPh: "Ruanda, Huye",
           durSheetT: "Tus cafés están respaldados",
           durSheetB: "{n} cafés están en tu Hoja de Google. Borrar este navegador no los pierde.",
           durIOSTabT: "iOS va a borrar tus cafés",
@@ -4778,6 +4880,12 @@
         } catch (e) {}
         try {
           renderBuild();
+        } catch (e) {}
+        try {
+          renderRateChips();
+        } catch (e) {}
+        try {
+          renderLogEntry();
         } catch (e) {}
         try {
           renderInstallCard();
@@ -6285,6 +6393,7 @@
         "paper",
         "taste_tag",
         "bloom_s",
+        "region",
       ];
       function colsToParams(cols) {
         var out = [];
@@ -8071,7 +8180,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-16-1634-acd886";
+      var BUILD = "2026-07-16-1648-386c26";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -8267,6 +8376,149 @@
             return x.bag.coffee;
           }),
         };
+      }
+
+      /* ============================================================
+   PLAN vs LOG
+
+   Oscar's point, from trying to log his first soup: the app never asked whether
+   the brew has happened yet. It matters. Before, you want a grind starting
+   point and no rating box. After, you want to record what happened and rate it.
+   The same form was doing both badly.
+
+   startBrew/finishBrew already existed; nothing ever surfaced the choice.
+   ============================================================ */
+      var LOGMODE = "after"; /* 'before' = about to brew, 'after' = already brewed */
+      function setLogMode(m) {
+        LOGMODE = m === "before" ? "before" : "after";
+        try {
+          localStorage.setItem("logmode", LOGMODE);
+        } catch (e) {}
+        renderLogMode();
+      }
+      function renderLogMode() {
+        var wrap = document.getElementById("logModeRow");
+        if (!wrap) return;
+        Array.prototype.forEach.call(wrap.querySelectorAll("button"), function (b) {
+          var on = b.getAttribute("data-mode") === LOGMODE;
+          b.className = on ? "on" : "off";
+        });
+        /* rating is meaningless for a brew that has not happened */
+        /* The chips and their label ARE the rate block; there is no wrapper element.
+     Restore the ancestor row too: the rating shares a row with the outcome
+     fields below, so hiding that row hid the chips, and showing the chips alone
+     could not undo it. */
+        ["rateChips", "rateWord"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.style.display = LOGMODE === "before" ? "none" : "";
+          if (LOGMODE !== "before") {
+            var row = el.closest(".frow");
+            if (row) row.style.display = "";
+          }
+        });
+        /* and the outcome fields are guesses until it has */
+        /* hide the individual outcome inputs, not their row: the row is shared with
+     the rating, and hiding it took the chips with it */
+        ["fyield", "fdur"].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (!el) return;
+          el.style.display = LOGMODE === "before" ? "none" : "";
+          var lab = el.previousElementSibling;
+          if (lab && lab.tagName === "LABEL")
+            lab.style.display = LOGMODE === "before" ? "none" : "";
+        });
+        var plan = document.getElementById("planBox");
+        if (plan) plan.style.display = LOGMODE === "before" ? "" : "none";
+        /* the save button has no id, so find it by what it does */
+        var btn = document.querySelector("#tab-log button.grn");
+        if (btn) btn.textContent = t(LOGMODE === "before" ? "logStartBtn" : "logSaveBtn2");
+        try {
+          renderLogPlan();
+        } catch (e) {}
+      }
+
+      /* ============================================================
+   RATING CHIPS
+   It was <input type="number" min=1 max=10>. On a phone that is a keyboard, a
+   guess about what the numbers mean, and no sense of where 7 sits. Chips are
+   one tap and show the whole scale at once.
+   ============================================================ */
+      function renderRateChips() {
+        var host = document.getElementById("rateChips");
+        if (!host) return;
+        if (host.childNodes.length) return; /* build once */
+        var input = document.getElementById("frating");
+        for (var i = 1; i <= 10; i++) {
+          (function (n) {
+            var b = document.createElement("button");
+            b.type = "button";
+            b.className = "off ratechip";
+            b.textContent = String(n);
+            b.setAttribute("data-rate", String(n));
+            b.onclick = function () {
+              if (input) input.value = String(n);
+              try {
+                localStorage.setItem("lastRate", String(n));
+              } catch (e) {}
+              syncRateChips();
+            };
+            host.appendChild(b);
+          })(i);
+        }
+        syncRateChips();
+      }
+      function syncRateChips() {
+        var input = document.getElementById("frating");
+        var v = input ? parseInt(input.value || "0", 10) : 0;
+        Array.prototype.forEach.call(document.querySelectorAll(".ratechip"), function (b) {
+          var n = parseInt(b.getAttribute("data-rate"), 10);
+          b.className = v && n <= v ? "on ratechip" : "off ratechip";
+        });
+        var lab = document.getElementById("rateWord");
+        if (lab) lab.textContent = v ? t("rate" + v) || "" : t("rateNone");
+      }
+
+      /* ============================================================
+   THE LOG TAB MUST KNOW WHAT YOU BREW
+
+   Oscar picked soup, opened Log, and the only way to record anything was a
+   collapsed link reading "+ Log a filter / non-Gaggia brew". Soup IS a Gaggia
+   method. So the one form that could take his shot was hidden behind a label
+   saying it was for something else, and he used it anyway because there was
+   nothing else there.
+
+   There is exactly one form. So stop hiding it, and stop calling it the filter
+   form when the user does espresso or soup.
+   ============================================================ */
+      function methodWord() {
+        /* method-aware vocabulary: a shot if any machine method is on, else a brew */
+        var machine = false;
+        try {
+          machine = !!(M_ESP || M_SOUP);
+        } catch (e) {}
+        return machine ? t("wShot") : t("wBrew");
+      }
+      function renderLogEntry() {
+        var lab = document.getElementById("filterAddLabel");
+        var form = document.getElementById("filterForm");
+        if (!lab || !form) return;
+        var esp = false,
+          soup = false,
+          fil = false;
+        try {
+          esp = !!M_ESP;
+          soup = !!M_SOUP;
+          fil = !!M_FIL;
+        } catch (e) {}
+        /* It is the only form there is. If the user does anything at all, open it:
+     making the primary action a collapsed link is what caused the confusion. */
+        if (esp || soup || fil) {
+          if (form.style.display === "none") form.style.display = "";
+        }
+        lab.textContent = t("logEntry").replace("{w}", methodWord());
+        var head = lab.parentElement;
+        if (head) head.style.display = form.style.display === "none" ? "" : "none";
       }
       var _rh2 = renderHero;
       renderHero = function () {
