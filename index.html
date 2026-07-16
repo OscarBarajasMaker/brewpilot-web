@@ -7412,9 +7412,12 @@
       }
       /* The honest answer to "is my data safe", per platform. */
       function storageVerdict() {
+        /* Was WEBHOOK() only. A Google connected user was told their brews were
+     at risk while they were sitting in their own Drive. dataMode() covers
+     all three backends. */
         var connected = false;
         try {
-          connected = !!(WEBHOOK && WEBHOOK());
+          connected = dataMode() !== "local";
         } catch (e) {}
         if (connected) return { level: "safe", key: "durSheet" };
         if (isIOS() && !isStandalone()) return { level: "risk", key: "durIOSTab" }; /* 7 day wipe */
@@ -7427,20 +7430,34 @@
    in a Safari tab that is not even the most urgent fix, because iOS wipes the
    storage after 7 days regardless of anything we do in JS. Installing to the
    home screen is what actually stops that. Say the true thing per platform. */
+      /* This looked up #duraTitleEl and #duraBodyEl, which DO NOT EXIST. It returned
+   on line 3 every single time, so the whole per-platform durability message was
+   dead code that never reached a screen. The real elements are the [data-i18n=duraT]
+   heading and the .durab body.
+
+   We also strip their data-i18n attributes on takeover, otherwise the translator
+   walks the DOM on every language switch and overwrites our per-platform text
+   with the generic dictionary string. */
       function renderDurability() {
         var el = document.getElementById("duraBanner");
         if (!el) return;
-        var v = storageVerdict();
-        var t1 = document.getElementById("duraTitleEl"),
-          t2 = document.getElementById("duraBodyEl");
+        var t1 = el.querySelector('[data-i18n="duraT"], .durahd b');
+        var t2 = el.querySelector('[data-i18n="duraB"], .durab');
         if (!t1 || !t2) return;
+        var v = storageVerdict();
         var rows = 0;
         try {
           rows = localRows().length;
         } catch (e) {}
-        t1.textContent = t(v.key + "T");
-        t2.textContent = t(v.key + "B").replace("{n}", rows);
+        t1.removeAttribute("data-i18n");
+        t2.removeAttribute("data-i18n");
+        var title = t(v.key + "T"),
+          body = t(v.key + "B").replace("{n}", rows);
+        if (t1.textContent !== title) t1.textContent = title;
+        if (t2.textContent !== body) t2.textContent = body;
         el.setAttribute("data-level", v.level);
+        var bolt = el.querySelector(".durabolt");
+        if (bolt) bolt.textContent = v.level === "safe" || v.level === "ok" ? "✓" : "!";
       }
 
       /* =====================================================================
@@ -7769,13 +7786,37 @@
           if (foot && /explore|explorar/i.test(foot.textContent || ""))
             foot.textContent = t("welFootG");
         }
-        var dg = document.getElementById("duraGoBtn");
-        if (dg) dg.textContent = t("gConnect");
+        /* The banner button is .durabtn with data-i18n='duraGo'. There is no
+     #duraGoBtn: an earlier version of this looked one up, got null, and did
+     nothing at all. It also opens the wizard, which IS the old fourteen step
+     path, so its handler has to be replaced, not just its label. */
+        document.querySelectorAll(".durabtn").forEach(function (btn) {
+          if (!/duraGo/.test(btn.getAttribute("data-i18n") || "")) return;
+          if (gConnected()) {
+            btn.style.display = "none";
+            return;
+          }
+          btn.style.display = "";
+          btn.textContent = t("gConnect");
+          btn.onclick = function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            goConnectSheet();
+          };
+          btn.setAttribute("onclick", "");
+        });
         /* the lock card on Insights */
         var lock = document.getElementById("insLock");
         if (lock) {
           var lb = lock.querySelector("button");
-          if (lb) lb.textContent = t("gConnect");
+          if (lb) {
+            lb.textContent = t("gConnect");
+            lb.onclick = function (ev) {
+              ev.preventDefault();
+              goConnectSheet();
+            };
+            lb.setAttribute("onclick", "");
+          }
         }
         /* the template copy link belongs to the old world entirely */
         document.querySelectorAll("a").forEach(function (a) {
