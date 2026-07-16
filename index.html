@@ -4715,6 +4715,9 @@
           renderGoogleCard();
         } catch (e) {}
         try {
+          renderBuild();
+        } catch (e) {}
+        try {
           requestPersistence();
         } catch (e) {}
         try {
@@ -7968,6 +7971,25 @@
             return by[k];
           }),
         };
+      }
+
+      /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
+   actually live" without guessing. Generated at build time, printed by
+   update.ps1 before publishing, and shown at the bottom of Settings. */
+      var BUILD = "2026-07-16-1606-1db3b5";
+      function renderBuild() {
+        var host = document.getElementById("setPanel");
+        if (!host) return;
+        var old = document.getElementById("buildStamp");
+        if (old) old.remove();
+        var d = document.createElement("div");
+        d.id = "buildStamp";
+        d.style.cssText =
+          "margin-top:14px;text-align:center;font:11px ui-monospace,monospace;" +
+          "color:var(--dim);opacity:.75;user-select:all";
+        d.textContent = "build " + BUILD;
+        d.title = "Compare this with what update.ps1 printed when you published.";
+        host.appendChild(d);
       }
       var _rh2 = renderHero;
       renderHero = function () {
