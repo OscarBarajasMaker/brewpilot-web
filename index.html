@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="BrewPilot" />
@@ -2253,20 +2254,37 @@
         ];
         let csv = "CSV," + cols.map(csvSafe).join(",");
         let _body = colsToParams(cols);
-        let url = WEBHOOK();
-        if (!url) {
-          alert("Connect your Google Sheet in Settings first.");
-          return;
-        }
         try {
-          await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: _body,
-          });
-        } catch (e) {
-          alert("save failed");
-          return;
+          localPush(cols);
+        } catch (e) {}
+        let _mode = dataMode();
+        if (_mode === "google") {
+          try {
+            await gAppend(SHOT_TAB, cols);
+          } catch (e) {
+            if (String(e.message).indexOf("needs-gesture") >= 0) {
+              var _ok = await gAuth(true);
+              if (_ok) {
+                try {
+                  await gAppend(SHOT_TAB, cols);
+                } catch (e2) {
+                  alert(t("gSaveFailed"));
+                }
+              } else alert(t("gSaveFailed"));
+            } else alert(t("gSaveFailed"));
+          }
+        } else if (_mode === "exec") {
+          let url = WEBHOOK();
+          try {
+            await fetch(url, {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: _body,
+            });
+          } catch (e) {
+            alert("save failed");
+            return;
+          }
         }
         pushRotation(
           {
@@ -2875,6 +2893,29 @@
         ];
         let csv = "CSV," + cols.map(csvSafe).join(",");
         let _body = colsToParams(cols);
+        try {
+          iLocalInvPush({
+            coffee: coffee,
+            roaster: roaster,
+            roast: invroast,
+            process: invproc,
+            portion_g: INVSIZE,
+            qty: qty,
+            location: "Freezer",
+            status: "Sealed",
+            freeze_date: (document.getElementById("invfreeze_date") || {}).value || "",
+            roast_date: rdate,
+            bean_id: String(coffee).toLowerCase().replace(/ /g, "-"),
+            bag_g: INVBAG,
+            price: (document.getElementById("invprice") || {}).value || "",
+            currency: INVCCY,
+            price_per_g: (function () {
+              var p = parseFloat((document.getElementById("invprice") || {}).value),
+                b = parseFloat(INVBAG);
+              return p && b ? Math.round((p / b) * 10000) / 10000 : "";
+            })(),
+          });
+        } catch (e) {}
         let url = WEBHOOK();
         if (!url) {
           alert("no webhook configured");
@@ -3703,6 +3744,29 @@
         var invfd = (document.getElementById("invfreeze_date") || {}).value || "";
         let rdate = document.getElementById("invrdate").value;
         let qty = document.getElementById("invqty").value || 1;
+        try {
+          iLocalInvPush({
+            coffee: coffee,
+            roaster: roaster,
+            roast: invroast,
+            process: invproc,
+            portion_g: INVSIZE,
+            qty: qty,
+            location: "Freezer",
+            status: "Sealed",
+            freeze_date: (document.getElementById("invfreeze_date") || {}).value || "",
+            roast_date: rdate,
+            bean_id: String(coffee).toLowerCase().replace(/ /g, "-"),
+            bag_g: INVBAG,
+            price: (document.getElementById("invprice") || {}).value || "",
+            currency: INVCCY,
+            price_per_g: (function () {
+              var p = parseFloat((document.getElementById("invprice") || {}).value),
+                b = parseFloat(INVBAG);
+              return p && b ? Math.round((p / b) * 10000) / 10000 : "";
+            })(),
+          });
+        } catch (e) {}
         let url = WEBHOOK();
         if (!url) {
           alert("Connect a Google Sheet first (Settings) to save inventory.");
@@ -4083,6 +4147,33 @@
 
       var I18N = {
         en: {
+          gSaveFailed:
+            "Could not save to Drive. Your brew is still on this device and will sync next time.",
+          gNotSetUp: "Google sign-in is not configured in this build yet.",
+          gAuthFailed: "Google sign-in did not complete. Nothing was saved to Drive.",
+          gConnect: "Save my brews to Google Drive",
+          gConnectSub:
+            "One tap. BrewPilot creates a sheet in your Drive and writes to it. No copying, no scripts, no pasting URLs.",
+          gConnected: "Saving to your Google Drive",
+          gConnectedSub:
+            "Your brews go to BrewPilot Log in your Drive. Open it any time, it is a normal spreadsheet that belongs to you.",
+          gOpenSheet: "Open my sheet",
+          gDisconnect: "Disconnect",
+          durSheetT: "Your brews are backed up",
+          durSheetB:
+            "{n} brews are in your Google Sheet. Clearing this browser will not lose them.",
+          durIOSTabT: "iOS will delete your brews",
+          durIOSTabB:
+            "Safari wipes a site’s data after 7 days of not opening it. That is iOS policy and no setting in this app can stop it. Add BrewPilot to your home screen, or connect a sheet. {n} brews at stake.",
+          durInstalledT: "Installed, so your brews stay",
+          durInstalledB:
+            "Home screen apps are exempt from the 7 day wipe. {n} brews stored on this device. A sheet still protects you if the phone is lost.",
+          durGrantedT: "This browser agreed to keep your brews",
+          durGrantedB:
+            "Storage is marked persistent, so it will not be cleared to free space. {n} brews on this device. Clearing browsing data by hand still erases them.",
+          durBestEffortT: "Your brews are on this device only",
+          durBestEffortB:
+            "The browser may clear them when space runs low, and clearing browsing data erases them. {n} brews at stake. Install to the home screen, or connect a sheet.",
           insNeedMore: "Only {n} brews logged. Insights need about 6 to say anything honest.",
           insNothingYet: "Nothing stands out in your data yet. That is a real answer, not a bug.",
           insSpend: "You spent {v} on coffee in {m}",
@@ -4587,6 +4678,18 @@
           sheetCtas();
         } catch (e) {}
         try {
+          gInit();
+        } catch (e) {}
+        try {
+          renderGoogleCard();
+        } catch (e) {}
+        try {
+          requestPersistence();
+        } catch (e) {}
+        try {
+          renderDurability();
+        } catch (e) {}
+        try {
           renderClientInsights();
         } catch (e) {}
         if (UI_OBS)
@@ -4604,7 +4707,14 @@
         UI_OBS = new MutationObserver(function (muts) {
           for (var i = 0; i < muts.length; i++) {
             var t = muts[i].target;
-            if (t && t.id && (t.id === "heroSpark" || t.id === "duraCount" || t.id === "rotLegend"))
+            if (
+              t &&
+              t.id &&
+              (t.id === "heroSpark" ||
+                t.id === "duraCount" ||
+                t.id === "rotLegend" ||
+                t.id === "insText")
+            )
               continue;
             return uiSchedule();
           }
@@ -5384,7 +5494,7 @@
         try {
           var a = localRows();
           a.push({ t: Date.now(), row: row });
-          if (a.length > 400) a = a.slice(-400);
+          if (a.length > 4000) a = a.slice(-4000);
           localStorage.setItem("localRows", JSON.stringify(a));
         } catch (e) {}
       }
@@ -5458,10 +5568,17 @@
       /* ---- insights are a sheet feature: honest lock, not a tease ---- */
       function insGate() {
         var p = document.getElementById("insPanel");
-        if (!p) return;
+        if (!p) return; /* Insights are computed in the browser from localRows now, so a sheet is no
+   longer required to have something to say. Any logged brew unlocks them.
+   The sheet upsell moves to durability and sync: an honest pitch instead of
+   a tollgate standing in front of the value. */
+
         var connected = false;
         try {
           connected = !!(WEBHOOK && WEBHOOK());
+        } catch (e) {}
+        try {
+          if (!connected && localRows().length > 0) connected = true;
         } catch (e) {}
         var old = document.getElementById("insNeedSheet");
         if (old) old.remove();
@@ -7087,17 +7204,20 @@
       /* Render client-computed insights into the panel. Falls back to whatever the
    Apps Script cached, so a user on an older LogSink still sees something. */
       async function renderClientInsights() {
-        var box = document.getElementById("insBody");
+        var box = document.getElementById("insText");
         if (!box) return;
-        if (!WEBHOOK()) return;
-        var got = await iFetch();
-        if (!got) return;
+        var src = await iLoad();
         var list = computeInsights();
         if (!list.length) {
           var n = (IROWS || []).length;
           box.textContent = n < 6 ? t("insNeedMore").replace("{n}", n) : t("insNothingYet");
           return;
         }
+        /* idempotent: an async writer inside a MutationObserver render loop must not
+     mutate unless something actually changed, or it re-triggers itself */
+        var sig = list.join("|");
+        if (box.getAttribute("data-sig") === sig) return;
+        box.setAttribute("data-sig", sig);
         box.innerHTML = "";
         list.forEach(function (x) {
           var d = document.createElement("div");
@@ -7113,6 +7233,497 @@
           d.appendChild(tx);
           box.appendChild(d);
         });
+      }
+
+      /* =====================================================================
+   LOCAL FIRST.
+
+   Every brew was already being stored in localStorage by localPush, full row,
+   up to 400 of them, with no sheet involved. Insights were locked behind
+   WEBHOOK() anyway. That gate was a product decision, not a technical limit,
+   and it meant a new user had to do a ten step Google Sheets setup BEFORE the
+   app did anything interesting. That setup is what people are bouncing off.
+
+   Now: log a brew, get insights. No Google, no Apps Script, no /exec URL.
+   The sheet becomes an upgrade for durability and cross device sync, which is
+   an honest pitch, instead of a tollgate in front of the value.
+   ===================================================================== */
+      function iLocalInv() {
+        try {
+          var v = JSON.parse(localStorage.getItem("localInv") || "[]");
+          return Array.isArray(v) ? v : [];
+        } catch (e) {
+          return [];
+        }
+      }
+      function iLocalInvPush(o) {
+        try {
+          var a = iLocalInv();
+          a.push(o);
+          if (a.length > 200) a = a.slice(-200);
+          localStorage.setItem("localInv", JSON.stringify(a));
+        } catch (e) {}
+      }
+      var INV_COLNAMES = [
+        "coffee",
+        "roaster",
+        "roast",
+        "process",
+        "portion_g",
+        "qty",
+        "location",
+        "status",
+        "freeze_date",
+        "roast_date",
+        "bean_id",
+        "bag_g",
+        "price",
+        "currency",
+        "price_per_g",
+      ];
+
+      /* Build the same shape iBuild wants, straight from localStorage. */
+      function iFromLocal() {
+        var rows = [];
+        try {
+          rows = localRows();
+        } catch (e) {}
+        return {
+          cols: COLNAMES,
+          shots: rows.map(function (x) {
+            return x.row;
+          }),
+          invCols: INV_COLNAMES,
+          inv: iLocalInv().map(function (o) {
+            return INV_COLNAMES.map(function (c) {
+              return o[c] !== undefined ? o[c] : "";
+            });
+          }),
+        };
+      }
+      /* Sheet if connected, local otherwise. The sheet is the better source once it
+   exists: it survives a cleared browser and spans devices. */
+      async function iLoad() {
+        /* google first: it is the new default and the only one with no setup cost */
+        if (gConnected()) {
+          try {
+            var shots = await gRead(SHOT_TAB),
+              inv = await gRead(INV_TAB);
+            if (shots.length) {
+              iBuild({
+                cols: shots[0],
+                shots: shots.slice(1),
+                invCols: inv.length ? inv[0] : INV_COLNAMES,
+                inv: inv.slice(1),
+              });
+              return "google";
+            }
+          } catch (e) {
+            /* fall through to local rather than showing nothing */
+          }
+        }
+        if (WEBHOOK()) {
+          var ok = await iFetch();
+          if (ok && IROWS && IROWS.length) return "sheet";
+        }
+        iBuild(iFromLocal());
+        return "local";
+      }
+
+      /* =====================================================================
+   PERSISTENCE.
+
+   The app never called navigator.storage.persist(), which means it never once
+   asked the browser to keep the data. Browsers evict best-effort storage under
+   pressure, and iOS Safari wipes script-writable storage after 7 days of not
+   visiting a site AT ALL. That was survivable while a sheet was mandatory.
+   Now that the app is useful with zero setup, most users' entire history will
+   live in exactly that fragile place, so it has to be asked for and reported
+   honestly.
+
+   Key platform fact: on iOS the 7 day eviction does NOT apply to a PWA added to
+   the home screen. Installing is not a nice-to-have there, it is the fix. No
+   amount of persist() helps in a Safari tab; Safari does not grant it.
+   ===================================================================== */
+      var PERSIST_STATE = { asked: false, granted: null, quota: null, usage: null };
+
+      async function requestPersistence() {
+        if (!navigator.storage) return null;
+        try {
+          if (navigator.storage.persisted) {
+            PERSIST_STATE.granted = await navigator.storage.persisted();
+          }
+          /* only ask once we actually have something worth keeping: browsers weigh
+       engagement, and asking on a blank first load tends to get a no */
+          if (!PERSIST_STATE.granted && navigator.storage.persist) {
+            var rows = 0;
+            try {
+              rows = localRows().length;
+            } catch (e) {}
+            if (rows > 0) {
+              PERSIST_STATE.asked = true;
+              PERSIST_STATE.granted = await navigator.storage.persist();
+            }
+          }
+          if (navigator.storage.estimate) {
+            var e = await navigator.storage.estimate();
+            PERSIST_STATE.quota = e.quota;
+            PERSIST_STATE.usage = e.usage;
+          }
+        } catch (e) {}
+        return PERSIST_STATE.granted;
+      }
+      function isIOS() {
+        return (
+          /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+          (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+        );
+      }
+      function isStandalone() {
+        return (
+          window.navigator.standalone === true ||
+          (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches)
+        );
+      }
+      /* The honest answer to "is my data safe", per platform. */
+      function storageVerdict() {
+        var connected = false;
+        try {
+          connected = !!(WEBHOOK && WEBHOOK());
+        } catch (e) {}
+        if (connected) return { level: "safe", key: "durSheet" };
+        if (isIOS() && !isStandalone()) return { level: "risk", key: "durIOSTab" }; /* 7 day wipe */
+        if (isStandalone()) return { level: "ok", key: "durInstalled" };
+        if (PERSIST_STATE.granted === true) return { level: "ok", key: "durGranted" };
+        return { level: "risk", key: "durBestEffort" };
+      }
+
+      /* The banner used to say one thing to everyone: connect a sheet. On an iPhone
+   in a Safari tab that is not even the most urgent fix, because iOS wipes the
+   storage after 7 days regardless of anything we do in JS. Installing to the
+   home screen is what actually stops that. Say the true thing per platform. */
+      function renderDurability() {
+        var el = document.getElementById("duraBanner");
+        if (!el) return;
+        var v = storageVerdict();
+        var t1 = document.getElementById("duraTitleEl"),
+          t2 = document.getElementById("duraBodyEl");
+        if (!t1 || !t2) return;
+        var rows = 0;
+        try {
+          rows = localRows().length;
+        } catch (e) {}
+        t1.textContent = t(v.key + "T");
+        t2.textContent = t(v.key + "B").replace("{n}", rows);
+        el.setAttribute("data-level", v.level);
+      }
+
+      /* =====================================================================
+   GOOGLE DATA LAYER  (drive.file)
+
+   Validated: drive.file is a NON-SENSITIVE scope. No verification review, no
+   unverified-app wall. The Sheets API accepts it for files this app created.
+   So we create the user's sheet for them: three taps instead of fourteen steps,
+   and no Apps Script anywhere in the path.
+
+   What that deletes: LogSink.gs, CHECK_SETUP.gs, the template sheet, the /exec
+   paste, the two-sheet identity problem, and the "users must re-paste the .gs"
+   problem, which stops existing because there is no .gs.
+
+   Known limitation, measured not assumed: a browser gets a ~3600s access token
+   and NO refresh token. Renewal needs a user gesture. Every write here happens
+   inside a click, so that is where we renew.
+   ===================================================================== */
+      /* Set by set-client-id.ps1 after creating the OAuth client for
+   https://oscarbarajasmaker.github.io  (see GOOGLE_SETUP.md).
+   Public by design: a client ID is not a secret, it is an identifier. The
+   origin allowlist is what actually protects it. While empty, the Google
+   option stays hidden and nothing changes for anyone. */
+      var GOOGLE_CLIENT_ID = "";
+      var GSCOPE = "https://www.googleapis.com/auth/drive.file";
+      var GTOKEN = null,
+        GTOKEN_EXP = 0,
+        GSHEET = null,
+        GCLIENT = null,
+        GNAME = "";
+      var SHOT_TAB = "Shot Log",
+        INV_TAB = "Inventory";
+
+      function gConfigured() {
+        return !!(typeof GOOGLE_CLIENT_ID !== "undefined" && GOOGLE_CLIENT_ID);
+      }
+      function gTokenOk() {
+        return !!(GTOKEN && Date.now() < GTOKEN_EXP - 60000);
+      }
+      function gConnected() {
+        return !!(GSHEET && gConfigured());
+      }
+
+      function gInit() {
+        try {
+          GSHEET = localStorage.getItem("gsheet") || null;
+        } catch (e) {}
+        try {
+          GNAME = localStorage.getItem("gsheetname") || "";
+        } catch (e) {}
+      }
+      function gForget() {
+        try {
+          localStorage.removeItem("gsheet");
+          localStorage.removeItem("gsheetname");
+        } catch (e) {}
+        GSHEET = null;
+        GTOKEN = null;
+        GNAME = "";
+      }
+
+      /* interactive=true shows the account chooser. Otherwise we try silently, which
+   works when consent already exists and the Google session is alive. */
+      /* GRESOLVE is deliberate. The token client is created ONCE, so its callback
+   closes over whichever resolve existed at creation time. Reusing the client on
+   a later call would fire that stale resolve and leave the new promise pending
+   forever: the first token renewal would hang, silently, an hour into a session.
+   Keep the live resolver in a variable the callback reads at call time instead. */
+      var GRESOLVE = null;
+      function gAuth(interactive) {
+        return new Promise(function (resolve) {
+          if (!gConfigured()) return resolve(false);
+          if (gTokenOk()) return resolve(true);
+          if (!(window.google && google.accounts && google.accounts.oauth2)) return resolve(false);
+          var done = false;
+          GRESOLVE = function (v) {
+            if (done) return;
+            done = true;
+            resolve(v);
+          };
+          /* never leave a caller awaiting forever if Google never calls back */
+          setTimeout(function () {
+            if (GRESOLVE) GRESOLVE(false);
+          }, 60000);
+          try {
+            if (!GCLIENT) {
+              GCLIENT = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: GSCOPE,
+                callback: function (r) {
+                  if (r && r.access_token) {
+                    GTOKEN = r.access_token;
+                    GTOKEN_EXP = Date.now() + (r.expires_in || 3600) * 1000;
+                    if (GRESOLVE) GRESOLVE(true);
+                  } else if (GRESOLVE) GRESOLVE(false);
+                  GRESOLVE = null;
+                },
+                error_callback: function () {
+                  if (GRESOLVE) GRESOLVE(false);
+                  GRESOLVE = null;
+                },
+              });
+            }
+            /* prompt:'' means "show UI only if you actually need to". Google then
+         shows the account chooser and consent screen to a first time user, and
+         NOTHING to a returning one whose consent already exists.
+
+         prompt:'consent' forces the screen every time. Measured on a real
+         account: it produced a pointless "BrewPilot already has some access ->
+         Continue" tap on every token renewal, once an hour, forever. The only
+         reason to force consent is to obtain a refresh token, and the browser
+         token flow does not issue one, so there is no reason at all. */
+            GCLIENT.requestAccessToken({ prompt: "" });
+          } catch (e) {
+            if (GRESOLVE) GRESOLVE(false);
+            GRESOLVE = null;
+          }
+        });
+      }
+
+      async function gApi(url, opts) {
+        opts = opts || {};
+        if (!gTokenOk()) {
+          var ok = await gAuth(false);
+          if (!ok) throw new Error("needs-gesture");
+        }
+        opts.headers = Object.assign(
+          { Authorization: "Bearer " + GTOKEN, "Content-Type": "application/json" },
+          opts.headers || {},
+        );
+        var r = await fetch(url, opts);
+        if (r.status === 401) {
+          GTOKEN = null;
+          throw new Error("needs-gesture");
+        }
+        var txt = await r.text();
+        var j = null;
+        try {
+          j = JSON.parse(txt);
+        } catch (e) {}
+        if (!r.ok) throw new Error((j && j.error && j.error.message) || "HTTP " + r.status);
+        return j;
+      }
+
+      /* Born with both schemas, so there is no ensureHeader_ dance and no migration
+   later. The client owns the schema now: it is in this file, which updates on
+   publish, instead of in code the user pasted months ago. */
+      async function gCreateSheet() {
+        var ss = await gApi("https://sheets.googleapis.com/v4/spreadsheets", {
+          method: "POST",
+          body: JSON.stringify({
+            properties: { title: "BrewPilot Log" },
+            sheets: [{ properties: { title: SHOT_TAB } }, { properties: { title: INV_TAB } }],
+          }),
+        });
+        GSHEET = ss.spreadsheetId;
+        GNAME = ss.properties ? ss.properties.title : "BrewPilot Log";
+        try {
+          localStorage.setItem("gsheet", GSHEET);
+          localStorage.setItem("gsheetname", GNAME);
+        } catch (e) {}
+        await gApi(
+          "https://sheets.googleapis.com/v4/spreadsheets/" +
+            GSHEET +
+            "/values/" +
+            encodeURIComponent(SHOT_TAB + "!A1") +
+            ":append?valueInputOption=RAW",
+          { method: "POST", body: JSON.stringify({ values: [COLNAMES] }) },
+        );
+        await gApi(
+          "https://sheets.googleapis.com/v4/spreadsheets/" +
+            GSHEET +
+            "/values/" +
+            encodeURIComponent(INV_TAB + "!A1") +
+            ":append?valueInputOption=RAW",
+          { method: "POST", body: JSON.stringify({ values: [INV_COLNAMES] }) },
+        );
+        return GSHEET;
+      }
+
+      async function gAppend(tab, values) {
+        return gApi(
+          "https://sheets.googleapis.com/v4/spreadsheets/" +
+            GSHEET +
+            "/values/" +
+            encodeURIComponent(tab + "!A1") +
+            ":append?valueInputOption=USER_ENTERED",
+          { method: "POST", body: JSON.stringify({ values: [values] }) },
+        );
+      }
+      async function gRead(tab) {
+        var d = await gApi(
+          "https://sheets.googleapis.com/v4/spreadsheets/" +
+            GSHEET +
+            "/values/" +
+            encodeURIComponent(tab + "!A1:Z5000"),
+        );
+        return d && d.values ? d.values : [];
+      }
+
+      /* The whole connect flow: one tap. Must run from a click, because that is what
+   Google requires for the token. */
+      async function gConnect() {
+        if (!gConfigured()) {
+          alert(t("gNotSetUp"));
+          return false;
+        }
+        var ok = await gAuth(true);
+        if (!ok) {
+          alert(t("gAuthFailed"));
+          return false;
+        }
+        try {
+          if (!GSHEET) await gCreateSheet();
+          /* prove it still exists: a user can delete the sheet from Drive */
+          await gRead(SHOT_TAB);
+        } catch (e) {
+          if (String(e.message).indexOf("needs-gesture") < 0) {
+            gForget();
+            await gCreateSheet();
+          }
+        }
+        try {
+          uiRender();
+        } catch (e) {}
+        try {
+          renderClientInsights();
+        } catch (e) {}
+        return true;
+      }
+
+      function gSheetUrl() {
+        return GSHEET ? "https://docs.google.com/spreadsheets/d/" + GSHEET + "/edit" : "";
+      }
+
+      /* ---- one data layer over three backends -------------------------------- */
+      function dataMode() {
+        if (gConnected()) return "google";
+        try {
+          if (WEBHOOK && WEBHOOK()) return "exec";
+        } catch (e) {}
+        return "local";
+      }
+
+      /* The connect card. Replaces fourteen steps and a red warning screen with one
+   tap. Only rendered once a client ID is baked in, so a build without one is
+   simply the old app. */
+      function renderGoogleCard() {
+        var host = document.getElementById("setPanel");
+        if (!host) return;
+        var old = document.getElementById("gCard");
+        if (old) old.remove();
+        if (!gConfigured()) return;
+        var box = document.createElement("div");
+        box.id = "gCard";
+        box.style.cssText =
+          "border:1px solid var(--line);border-radius:10px;padding:12px;margin:10px 0";
+        var connected = gConnected();
+        var h = document.createElement("div");
+        h.style.cssText =
+          "font-weight:600;margin-bottom:4px;color:" + (connected ? "var(--ready)" : "var(--text)");
+        h.textContent = t(connected ? "gConnected" : "gConnect");
+        var p = document.createElement("div");
+        p.style.cssText = "font-size:12.5px;color:var(--dim);line-height:1.5;margin-bottom:9px";
+        p.textContent = t(connected ? "gConnectedSub" : "gConnectSub");
+        box.appendChild(h);
+        box.appendChild(p);
+        if (connected) {
+          var a = document.createElement("a");
+          a.href = gSheetUrl();
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.style.cssText =
+            "display:inline-block;color:var(--flow);font-size:13px;margin-right:12px";
+          a.textContent = t("gOpenSheet");
+          var d = document.createElement("button");
+          d.style.cssText =
+            "background:transparent;border:1px solid var(--line);color:var(--dim);" +
+            "border-radius:8px;padding:7px 11px;font-size:12.5px;cursor:pointer";
+          d.textContent = t("gDisconnect");
+          d.onclick = function () {
+            gForget();
+            renderGoogleCard();
+            try {
+              uiRender();
+            } catch (e) {}
+          };
+          box.appendChild(a);
+          box.appendChild(d);
+        } else {
+          var b = document.createElement("button");
+          b.className = "grn";
+          b.style.cssText = "width:100%";
+          b.textContent = t("gConnect");
+          /* must be a real click: Google will not issue a token without a gesture */
+          b.onclick = async function () {
+            b.disabled = true;
+            b.textContent = "...";
+            try {
+              await gConnect();
+            } finally {
+              b.disabled = false;
+              renderGoogleCard();
+            }
+          };
+          box.appendChild(b);
+        }
+        host.insertBefore(box, host.firstChild);
       }
       var _rh2 = renderHero;
       renderHero = function () {
