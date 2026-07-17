@@ -1868,13 +1868,7 @@
             "
           ></div>
           <div class="fl">Freeze coffee</div>
-          <input
-            id="invcoffee"
-            placeholder="coffee name"
-            class="fin"
-            style="width: 100%"
-            list="invCoffeeList"
-          /><datalist id="invCoffeeList"></datalist>
+          <input id="invcoffee" placeholder="coffee name" class="fin" style="width: 100%" />
           <div class="frow">
             <div class="fcell">
               <div class="fl">Roaster</div>
@@ -2081,7 +2075,8 @@
           <div id="sheetStatus" style="font-size: 12px; margin-bottom: 6px"></div>
           <input
             id="setWebhook"
-            placeholder="paste your /exec URL"
+            type="hidden"
+            placeholder="gone"
             style="
               width: 100%;
               padding: 11px;
@@ -2225,8 +2220,6 @@
     </div>
     <script>
       async function refresh() {
-        var wh = localStorage.getItem("webhook");
-        if (wh) WEBHOOK_URL = wh;
         if (!M_INIT) {
           loadSetup();
           M_INIT = true;
@@ -2334,18 +2327,6 @@
                 }
               } else alert(t("gSaveFailed"));
             } else alert(t("gSaveFailed"));
-          }
-        } else if (_mode === "exec") {
-          let url = WEBHOOK();
-          try {
-            await fetch(url, {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: _body,
-            });
-          } catch (e) {
-            alert("save failed");
-            return;
           }
         }
         pushRotation(
@@ -2623,21 +2604,10 @@
         renderChips();
         document.getElementById("dialin").style.display = "none";
         fb.style.display = "none";
-        let url = WEBHOOK();
-        if (url) {
-          try {
-            await fetch(url, {
-              method: "POST",
-              headers: { "Content-Type": "application/x-www-form-urlencoded" },
-              body: "action=finished&coffee=" + encodeURIComponent(name),
-            });
-          } catch (e) {}
-        }
-        alert("Marked finished. Check Telegram for what to thaw next.");
-      }
-      let WEBHOOK_URL = "";
-      function WEBHOOK() {
-        return WEBHOOK_URL;
+        try {
+          if (dataMode() === "google") await gInvAction("finished", name, "");
+        } catch (e) {}
+        alert("Marked finished.");
       }
       let BOIL_C = 94;
       let M_ESP = true,
@@ -2956,39 +2926,31 @@
         let csv = "CSV," + cols.map(csvSafe).join(",");
         let _body = colsToParams(cols);
         try {
-          iLocalInvPush({
-            coffee: coffee,
-            roaster: roaster,
-            roast: invroast,
-            process: invproc,
-            portion_g: INVSIZE,
-            qty: qty,
-            location: "Freezer",
-            status: "Sealed",
-            freeze_date: (document.getElementById("invfreeze_date") || {}).value || "",
-            roast_date: rdate,
-            bean_id: String(coffee).toLowerCase().replace(/ /g, "-"),
-            bag_g: INVBAG,
-            price: (document.getElementById("invprice") || {}).value || "",
-            currency: INVCCY,
-            price_per_g: (function () {
-              var p = parseFloat((document.getElementById("invprice") || {}).value),
-                b = parseFloat(INVBAG);
-              return p && b ? Math.round((p / b) * 10000) / 10000 : "";
-            })(),
-          });
+          localPush(cols);
         } catch (e) {}
-        let url = WEBHOOK();
-        if (!url) {
-          alert("no webhook configured");
-          return;
+        let _mode = dataMode();
+        if (_mode === "google") {
+          var _fok = false;
+          try {
+            await gAppend(SHOT_TAB, cols);
+            _fok = true;
+          } catch (e) {
+            if (String(e.message).indexOf("needs-gesture") >= 0) {
+              var _fa = await gAuth(true);
+              if (_fa) {
+                try {
+                  await gAppend(SHOT_TAB, cols);
+                  _fok = true;
+                } catch (e2) {}
+              }
+            }
+          }
+          if (!_fok) {
+            alert(t("gSaveFailed"));
+            return;
+          }
         }
         try {
-          await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: _body,
-          });
           pushRotation(
             {
               coffee: coffee,
@@ -3012,15 +2974,13 @@
             },
             rating,
           );
-          ["fcoffee", "fdose", "fwater", "ftime", "fbloom", "fgrind", "frating"].forEach(
-            (i) => (document.getElementById(i).value = ""),
-          );
-          FTASTE = "";
-          if (getPlan() && getPlan().kind == "filter") clearPlan();
-          alert("Filter brew logged");
-        } catch (e) {
-          alert("save failed");
-        }
+        } catch (e) {}
+        ["fcoffee", "fdose", "fwater", "ftime", "fbloom", "fgrind", "frating"].forEach(
+          (i) => (document.getElementById(i).value = ""),
+        );
+        FTASTE = "";
+        if (getPlan() && getPlan().kind == "filter") clearPlan();
+        alert("Filter brew logged");
       }
       function fmtRecipe(r) {
         let p = [];
@@ -3513,68 +3473,17 @@
           c.onclick = function () {
             INSFREQ = m[0];
             renderFreqChips();
-            setFreq(m[0]);
           };
           box.appendChild(c);
         });
       }
-      async function setFreq(f) {
-        var url = WEBHOOK();
-        if (!url) return;
-        try {
-          await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: "action=setInsightsFreq&freq=" + f,
-          });
-        } catch (e) {}
-      }
       async function loadInsights() {
-        var t = document.getElementById("insText"),
-          a = document.getElementById("insAt");
-        var url = WEBHOOK();
-        if (!url) {
-          t.innerHTML = noSheetMsg();
-          a.textContent = "";
-          return;
-        }
-        try {
-          var r = await fetch(url + "?action=getInsights");
-          var d = await r.json();
-          if (d.freq) {
-            INSFREQ = d.freq;
-            renderFreqChips();
-          }
-          if (d.text) {
-            t.textContent = d.text;
-            a.textContent = d.at ? "updated " + new Date(d.at).toLocaleString() : "";
-          } else {
-            t.textContent = "No insights yet. Log a few brews and rate them, then Refresh now.";
-            a.textContent = "";
-          }
-        } catch (e) {
-          t.textContent = "Could not load insights.";
-          a.textContent = "";
-        }
+        var a = document.getElementById("insAt");
+        if (a) a.textContent = "";
+        return renderClientInsights();
       }
       async function runInsights() {
-        var t = document.getElementById("insText");
-        var url = WEBHOOK();
-        if (!url) {
-          alert(t("gSaveFirst"));
-          return;
-        }
-        t.textContent = "Crunching your brews...";
-        try {
-          await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: "action=runInsights",
-          });
-          setTimeout(loadInsights, 1500);
-        } catch (e) {
-          t.textContent = "Could not refresh.";
-        }
+        return loadInsights();
       }
       function toggleInv() {
         let p = document.getElementById("invPanel");
@@ -3722,28 +3631,15 @@
       function renderSheetStatus() {
         let el = document.getElementById("sheetStatus");
         if (!el) return;
-        if (WEBHOOK()) {
+        if (dataMode() === "google") {
           el.innerHTML =
             "<span style='color:var(--hi-text)'>Connected - inventory and history are saving</span>";
-          document.getElementById("setWebhook").value = WEBHOOK();
         } else {
           el.innerHTML =
             "<span style='color:var(--warn)'>Not connected - live advice works, but nothing is saved</span>";
         }
       }
-      async function saveWebhook() {
-        let v = document.getElementById("setWebhook").value.trim();
-        if (!v) {
-          alert("Paste your Google Sheet /exec URL");
-          return;
-        }
-        localStorage.setItem("webhook", v);
-        WEBHOOK_URL = v;
-        renderSheetStatus();
-        alert("Sheet connected");
-        loadInventory();
-      }
-      function renderRotModes() {
+      async function renderRotModes() {
         let box = document.getElementById("rotmodechips");
         if (!box) return;
         box.innerHTML = "";
@@ -3761,21 +3657,9 @@
             ROTMODE = m[0];
             localStorage.setItem("rotMode", m[0]);
             renderRotModes();
-            setRotMode(m[0]);
           };
           box.appendChild(c);
         });
-      }
-      async function setRotMode(mode) {
-        let url = WEBHOOK();
-        if (!url) return;
-        try {
-          await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: "action=setRotationMode&mode=" + mode,
-          });
-        } catch (e) {}
       }
       function renderInvSizes() {
         let box = document.getElementById("invsizechips");
@@ -3854,30 +3738,32 @@
           } catch (e) {}
           return;
         }
-        let url = WEBHOOK();
-        let body =
-          "action=freeze&coffee=" +
-          encodeURIComponent(coffee) +
-          "&roaster=" +
-          encodeURIComponent(roaster) +
-          "&portion=" +
-          encodeURIComponent(INVSIZE) +
-          "&qty=" +
-          encodeURIComponent(qty) +
-          "&roast_date=" +
-          encodeURIComponent(rdate) +
-          "&roast=" +
-          encodeURIComponent(invroast) +
-          "&process=" +
-          encodeURIComponent(invproc) +
-          "&freeze_date=" +
-          encodeURIComponent((document.getElementById("invfreeze_date") || {}).value || "") +
-          "&bag_g=" +
-          encodeURIComponent(INVBAG || "") +
-          "&price=" +
-          encodeURIComponent((document.getElementById("invprice") || {}).value || "") +
-          "&currency=" +
-          encodeURIComponent(INVCCY || "USD");
+        alert(t("gSaveFirst"));
+        return;
+        /*DEADFREEZE*/ let url = "",
+          body =
+            "x" +
+            encodeURIComponent(coffee) +
+            "&roaster=" +
+            encodeURIComponent(roaster) +
+            "&portion=" +
+            encodeURIComponent(INVSIZE) +
+            "&qty=" +
+            encodeURIComponent(qty) +
+            "&roast_date=" +
+            encodeURIComponent(rdate) +
+            "&roast=" +
+            encodeURIComponent(invroast) +
+            "&process=" +
+            encodeURIComponent(invproc) +
+            "&freeze_date=" +
+            encodeURIComponent((document.getElementById("invfreeze_date") || {}).value || "") +
+            "&bag_g=" +
+            encodeURIComponent(INVBAG || "") +
+            "&price=" +
+            encodeURIComponent((document.getElementById("invprice") || {}).value || "") +
+            "&currency=" +
+            encodeURIComponent(INVCCY || "USD");
         try {
           await fetch(url, {
             method: "POST",
@@ -3902,19 +3788,12 @@
       }
       async function loadInventory() {
         let box = document.getElementById("invList");
-        let url = WEBHOOK();
-        if (!url) {
+        if (dataMode() !== "google") {
           box.innerHTML = noSheetMsg();
           return;
         }
         try {
-          let d;
-          if (dataMode() === "google") {
-            d = await gInvList();
-          } else {
-            let r = await fetch(url + "?action=inventory");
-            d = await r.json();
-          }
+          let d = await gInvList();
           if (!d || !d.beans || !d.beans.length) {
             box.innerHTML =
               '<div class="mut" style="text-align:left">no bags yet - freeze one above</div>';
@@ -3964,22 +3843,28 @@
         }
       }
       async function invAction(action, coffee, portion) {
-        let url = WEBHOOK();
-        if (!url) return;
+        if (dataMode() !== "google") {
+          alert(t("gSaveFirst"));
+          return;
+        }
+        var ok = false;
         try {
-          await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body:
-              "action=" +
-              action +
-              "&coffee=" +
-              encodeURIComponent(coffee) +
-              "&portion=" +
-              encodeURIComponent(portion),
-          });
-          loadInventory();
-        } catch (e) {}
+          ok = await gInvAction(action, coffee, portion);
+        } catch (e) {
+          if (String(e.message).indexOf("needs-gesture") >= 0) {
+            var _a = await gAuth(true);
+            if (_a) {
+              try {
+                ok = await gInvAction(action, coffee, portion);
+              } catch (e2) {}
+            }
+          }
+        }
+        if (!ok) {
+          alert(t("gSaveFailed"));
+          return;
+        }
+        loadInventory();
       }
       function renderMyGrinders() {
         let box = document.getElementById("mygrinderchips");
@@ -4136,8 +4021,6 @@
           box.appendChild(chip);
         });
       }
-      var _wh = localStorage.getItem("webhook");
-      if (_wh) WEBHOOK_URL = _wh;
       loadRot();
       loadSens();
       (function () {
@@ -4766,15 +4649,7 @@
           ")";
       }
       function wizVerify() {
-        var url = (document.getElementById("wizUrl").value || "").trim(),
-          msg = document.getElementById("wizMsg");
-        if (url.indexOf("/exec") < 0) {
-          msg.className = "wizerr";
-          msg.textContent = t("verifyFail");
-          return;
-        }
-        localStorage.setItem("webhook", url);
-        WEBHOOK_URL = url;
+        var msg = document.getElementById("wizMsg");
         try {
           renderSheetStatus();
         } catch (e) {}
@@ -4953,11 +4828,6 @@
       /* cold start depends on roast / grinder / brewer: listen instead of poll */
       document.addEventListener("change", function (e) {
         if (!e.target || !e.target.id) return;
-        if (e.target.id === "invcoffee") {
-          try {
-            invPrefill();
-          } catch (x) {}
-        }
         if (["froast", "roast", "grinder", "convFrom", "convTo"].indexOf(e.target.id) >= 0)
           uiSchedule();
       });
@@ -5348,30 +5218,16 @@
 
       applyLang();
 
-      /* EDIT THIS: paste your published template's "Make a copy" link (ends with /copy) */
-      var SHEET_TEMPLATE_URL =
-        "https://docs.google.com/spreadsheets/d/16npxL524Iy1F4Wj5TnTpKtgOt1iONztv7WCH4WAoqK8/copy";
-      function wizTemplateLink() {
-        var a = document.getElementById("wizTemplate");
-        if (!a) return;
-        if (SHEET_TEMPLATE_URL) {
-          a.href = SHEET_TEMPLATE_URL;
-          a.removeAttribute("data-off");
-          a.style.opacity = "1";
-        } else {
-          a.href = "#";
-          a.setAttribute("data-off", "1");
-          a.style.opacity = ".5";
-          a.onclick = function (e) {
-            e.preventDefault();
-            alert(
-              LANG === "es"
-                ? "Falta el enlace de la plantilla. Oscar: pon SHEET_TEMPLATE_URL en index.html."
-                : "Template link not set. Oscar: set SHEET_TEMPLATE_URL in index.html.",
-            );
-          };
-        }
-      }
+      /* SHEET_TEMPLATE_URL REMOVED with /exec. The copy-a-template step belonged to the
+   legacy flow; the app creates its own sheet through drive.file now. Leaving the
+   link would invite people onto a path that no longer has a backend.
+   NOTE: update.ps1 hard-required this string and would STOP the publish without
+   it. That check is removed in the same pass. */
+      /* wizTemplateLink REMOVED with /exec. It read SHEET_TEMPLATE_URL, which is gone,
+   and it runs at bootstrap - an undeclared identifier there is a ReferenceError
+   that kills every line after it. node --check and audit.py BOTH passed that:
+   the syntax is valid and audit only checks DOM ids, not JS identifiers. */
+      function wizTemplateLink() {}
 
       /* Optional: put these images next to index.html and they appear in the wizard.
    setup1-copy.png setup2-appsscript.png setup3-deploy.png setup4-warning.png setup5-url.png */
@@ -5653,15 +5509,14 @@
         if (!phase) return;
         var noun = LNOUN();
         if (ROLE === "logmgr") {
-          var n = 0;
-          try {
-            n = typeof INV !== "undefined" && INV && INV.length ? INV.length : 0;
-          } catch (e) {
-            n = 0;
-          }
+          /* INV never existed: declared 0 times, assigned 0 times, read behind
+      typeof guards that were therefore always false. n was always 0, so this
+      always took the empty path. Simplified to what it actually did.
+      NOTE: this means the inventory-only role has never shown a bag count.
+      Wiring it to gInvList/iLocalInv would be a new feature, not a fix. */
           phase.textContent = t("homeInv");
-          sub.textContent = n ? n + " " + (LANG === "es" ? "cafés" : "coffees") : t("noSheetYet");
-          num.textContent = n ? String(n) : "--";
+          sub.textContent = t("noSheetYet");
+          num.textContent = "--";
           return;
         }
         var ratings = [];
@@ -5735,17 +5590,19 @@
       }
 
       /* mirror logshot/logFilter into the buffer without touching their sheet path */
-      ["logshot", "logFilter"].forEach(function (fn) {
-        if (typeof window[fn] !== "function") return;
-        var orig = window[fn];
-        window[fn] = function () {
-          try {
-            var c = document.getElementById("coffee") || document.getElementById("fcoffee");
-            localPush({ coffee: c ? c.value : "", when: new Date().toISOString() });
-          } catch (e) {}
-          return orig.apply(this, arguments);
-        };
-      });
+      /* REMOVED 2026-07-16 with the logFilter port.
+   This wrapper predates both write-path ports. It mirrored a brew into localRows
+   as {coffee, when} - an OBJECT, where iFromLocal's rows.map(x=>x.row) hands the
+   value straight to iBuild, which does ICOLS.forEach((c,i)=>o[c]=r[i]) and gets
+   undefined for all 23 columns off an object. It also read #coffee first, which is
+   the ESPRESSO field, so a filter brew mirrored an empty name.
+   Once logshot got localPush(cols) last session, every espresso brew wrote TWO
+   rows: one real array[23] and one junk object. localRows().length feeds the
+   durability banner's brew count, so that count has been reading 2x the truth.
+   Measured: logshot -> localRows +2, both shapes present.
+   Nothing reads .row.coffee or .when - grepped, zero hits - so the object rows
+   have no consumer and this is a clean delete. logshot and logFilter both call
+   localPush(cols) themselves now, which is the correct shape and exactly once. */
 
       /* the banner: honest either way, and it does not hide */
       function duraRender() {
@@ -6202,49 +6059,14 @@
         cloneOpts("roaster", "invroaster");
         cloneOpts("roast", "invroast");
         cloneOpts("process", "invprocess");
-        /* coffee names you already own, so a second portion of the same bag is one tap */
-        var dl = document.getElementById("invCoffeeList");
-        if (dl && typeof INV !== "undefined" && INV && INV.length) {
-          var seen = {},
-            n = 0;
-          INV.forEach(function (e) {
-            var c = e.coffee || e.name;
-            if (c && !seen[c]) {
-              seen[c] = 1;
-              n++;
-            }
-          });
-          if (dl.children.length !== n) {
-            dl.innerHTML = "";
-            Object.keys(seen).forEach(function (c) {
-              var o = document.createElement("option");
-              o.value = c;
-              dl.appendChild(o);
-            });
-          }
-        }
+        /* The coffee-name datalist used to be filled from INV here. INV never existed,
+     so the list was never populated and the autocomplete never appeared. Removed
+     rather than left as a promise. */
       }
       /* prefill the rest of the bag's details when the coffee name matches one you own */
-      function invPrefill() {
-        var c = document.getElementById("invcoffee");
-        if (!c || typeof INV === "undefined" || !INV) return;
-        var hit = null,
-          v = (c.value || "").trim().toLowerCase();
-        if (!v) return;
-        INV.forEach(function (e) {
-          var n = (e.coffee || e.name || "").toLowerCase();
-          if (n === v && !hit) hit = e;
-        });
-        if (!hit) return;
-        var set = function (id, val) {
-          var el = document.getElementById(id);
-          if (el && val && !el.value) el.value = val;
-        };
-        set("invroaster", hit.roaster);
-        set("invroast", hit.roast);
-        set("invprocess", hit.process);
-        set("invrdate", (hit.roast_date || "").slice(0, 10));
-      }
+      /* invPrefill REMOVED. It read INV, which never existed, so it hit `return` on its
+   second line every single time it was called. The freeze-form autofill it was
+   supposed to provide has never worked for anyone. */
 
       /* =====================================================================
    Espresso extras. GBASKET/GPREP/GPAPER mirror the filter form's
@@ -7168,19 +6990,8 @@
           return o;
         });
       }
-      async function iFetch() {
-        var url = WEBHOOK();
-        if (!url) return false;
-        try {
-          var res = await fetch(url + (url.indexOf("?") < 0 ? "?" : "&") + "action=rows&limit=500");
-          var d = await res.json();
-          if (!d || !d.ok) return false;
-          iBuild(d);
-          return true;
-        } catch (e) {
-          return false;
-        }
-      }
+      /* iFetch REMOVED with /exec: it was the action=rows reader. iLoad's google
+   branch reads the same rows through gRead, and iFromLocal covers everyone else. */
 
       /* ---------------------------------------------------------------- COST */
       /* Joins Shot Log to Inventory on coffee name. price_per_g comes from the sheet,
@@ -7560,10 +7371,6 @@
             /* fall through to local rather than showing nothing */
           }
         }
-        if (WEBHOOK()) {
-          var ok = await iFetch();
-          if (ok && IROWS && IROWS.length) return "sheet";
-        }
         iBuild(iFromLocal());
         return "local";
       }
@@ -7694,7 +7501,7 @@
    Public by design: a client ID is not a secret, it is an identifier. The
    origin allowlist is what actually protects it. While empty, the Google
    option stays hidden and nothing changes for anyone. */
-      var GOOGLE_CLIENT_ID = "";
+      var GOOGLE_CLIENT_ID = "380224424258-stc6p0eapng5bqcb8o04dh47446o9ln3.apps.googleusercontent.com";
       var GSCOPE = "https://www.googleapis.com/auth/drive.file";
       var GTOKEN = null,
         GTOKEN_EXP = 0,
@@ -7939,10 +7746,10 @@
 
       /* ---- one data layer over three backends -------------------------------- */
       function dataMode() {
+        /* /exec amputated 2026-07-17. Two modes now: the sheet the app made, or local.
+     The exec branch is not deprecated, it is gone: LogSink.gs and friends are
+     deleted. Anyone who had a webhook reconnects through the Google card. */
         if (gConnected()) return "google";
-        try {
-          if (WEBHOOK && WEBHOOK()) return "exec";
-        } catch (e) {}
         return "local";
       }
 
@@ -8175,18 +7982,101 @@
           });
           by[key].total += q;
         }
-        return {
-          ok: true,
-          beans: Object.keys(by).map(function (k) {
-            return by[k];
-          }),
-        };
+        /* Decorate to the shape loadInventory ACTUALLY renders. It reads b.summary,
+     b.total_g, b.age and b.frozen_portion, and gates the whole Thaw button on
+     b.frozen_portion being truthy. gInvList returned none of them, so a Drive
+     user's inventory card showed a name, a roaster, and a dead Finished button.
+     The exec JSON had these fields; the google port never did. Measured, not
+     assumed: the Thaw button was never rendered for a google user at all. */
+        var beans = Object.keys(by).map(function (k) {
+          return by[k];
+        });
+        beans.forEach(function (b) {
+          b.total_g = b.portions.reduce(function (a, p) {
+            return a + gPortionG(p.portion_g) * p.qty;
+          }, 0);
+          if (b.total_g) b.total_g = Math.round(b.total_g);
+          b.summary = b.portions
+            .map(function (p) {
+              return p.qty + " x " + p.portion_g;
+            })
+            .join(", ");
+          b.frozen_portion = b.portions.length ? b.portions[0].portion_g : "";
+          b.age = (function () {
+            var best = null;
+            b.portions.forEach(function (p) {
+              var d = Date.parse(String(p.roast_date || "").replace(" ", "T"));
+              if (isFinite(d) && (best === null || d > best)) best = d;
+            });
+            if (best === null) return "";
+            var days = Math.floor((Date.now() - best) / 86400000);
+            return days >= 0 && days < 3650 ? days + "d" : "";
+          })();
+        });
+        return { ok: true, beans: beans };
+      }
+
+      /* Update an EXISTING row. The Drive layer was append-and-read only: gAppend
+   appends, gRead reads, and nothing could modify a row. That is why invAction
+   (Thaw / Finished) was never ported and silently did nothing for every Drive
+   user. drive.file permits values.update on a sheet this app created. */
+      async function gUpdate(tab, row1, values) {
+        return gApi(
+          "https://sheets.googleapis.com/v4/spreadsheets/" +
+            GSHEET +
+            "/values/" +
+            encodeURIComponent(tab + "!A" + row1) +
+            "?valueInputOption=USER_ENTERED",
+          { method: "PUT", body: JSON.stringify({ values: [values] }) },
+        );
+      }
+
+      /* Thaw / Finished against Drive.
+   Semantics are defined HERE now, on purpose. LogSink.gs owned them before and
+   is being deleted, so the sheet is the app's own format and the only contract
+   that matters is that the writer agrees with the readers. It does:
+     thaw     -> qty minus one on the matching portion row. Both gInvList and
+                 rotSuggest skip qty<=0, so a drained row disappears by itself.
+                 location stays Freezer, because the REMAINING portions are.
+     finished -> status Finished on every row for that coffee. Both readers
+                 skip Finished.
+   Returns true only if a row actually changed, so the caller can tell the user
+   the truth instead of assuming. */
+      async function gInvAction(action, coffee, portion) {
+        var rows = await gRead(INV_TAB);
+        if (rows.length < 2) return false;
+        var head = rows[0],
+          idx = {};
+        head.forEach(function (h, i) {
+          idx[String(h)] = i;
+        });
+        var hit = false;
+        for (var r = 1; r < rows.length; r++) {
+          var row = rows[r];
+          if (String(row[idx["coffee"]] || "").toLowerCase() !== String(coffee || "").toLowerCase())
+            continue;
+          if (String(row[idx["status"]] || "") === "Finished") continue;
+          if (action === "finished") {
+            row[idx["status"]] = "Finished";
+            await gUpdate(INV_TAB, r + 1, row);
+            hit = true;
+          } else if (action === "thaw") {
+            if (String(row[idx["portion_g"]] || "") !== String(portion || "")) continue;
+            var q = parseInt(row[idx["qty"]] || "0", 10) || 0;
+            if (q <= 0) continue;
+            row[idx["qty"]] = q - 1;
+            await gUpdate(INV_TAB, r + 1, row);
+            hit = true;
+            break;
+          }
+        }
+        return hit;
       }
 
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-16-1656-f987ff";
+      var BUILD = "2026-07-17-0241-75e284";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
