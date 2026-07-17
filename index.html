@@ -2139,74 +2139,27 @@
             <div class="cswarn" id="wizEspNote" style="display: none"></div>
           </div>
         </div>
-        <div class="wiztitle" data-i18n="setupSheet">Set up your Google Sheet</div>
+        <div class="wiztitle" data-i18n="setupSheet">Save my brews to Google Drive</div>
         <div class="mut" style="text-align: left" data-i18n="wizIntro">
-          Your data lives in your own Google Sheet. Three steps, about two minutes.
+          Everything already works. Do this when you want your history kept and synced across
+          devices.
         </div>
-        <div class="wizstep">
-          <span class="wizn">2</span><b data-i18n="s2t">Copy the template</b>
-          <div class="wsub" data-i18n="s2a">
-            The template already has the code inside. A blank sheet will not work.
+        <div class="wizstep" id="wizDriveStep">
+          <span class="wizn">2</span><b data-i18n="wizDriveT">One tap, and the sheet is yours</b>
+          <div class="wsub" data-i18n="wizDriveB">
+            BrewPilot creates a spreadsheet in your own Drive and writes your brews to it. Nothing
+            to copy, no scripts to deploy, no URL to paste. You can open it any time; it is a normal
+            sheet that belongs to you.
           </div>
-          <a id="wizTemplate" class="wizbtn" href="#" target="_blank" data-i18n="s2b"
-            >Open the template</a
-          >
-          <div class="wsub" data-i18n="s2c">
-            In the menu: File > Make a copy. The copy is yours, in your Drive.
-          </div>
-          <img class="wshot" id="shot1" alt="" style="display: none" />
-        </div>
-        <div class="wizstep">
-          <span class="wizn">3</span><b data-i18n="s3t">Open the code editor</b>
-          <div class="wsub">
-            <span class="kbd" data-i18n="s3a">Extensions</span> &rsaquo;
-            <span class="kbd" data-i18n="s3b">Apps Script</span>
-          </div>
-          <div class="wsub" data-i18n="s3c">
-            A new tab opens. This is the code that will save your brews.
-          </div>
-          <img class="wshot" id="shot2" alt="" style="display: none" />
-        </div>
-        <div class="wizstep">
-          <span class="wizn">4</span><b data-i18n="s4t">Publish it as a web app</b>
-          <div class="wsub">
-            1. <span class="kbd" data-i18n="s4a">Deploy</span> &rsaquo;
-            <span class="kbd" data-i18n="s4b">New deployment</span>
-          </div>
-          <div class="wsub" data-i18n="s4c">2. Click the gear icon, choose Web app.</div>
-          <div class="wsub" data-i18n="s4d">3. Execute as: Me</div>
-          <div class="wsub" data-i18n="s4e">4. Who has access: Anyone <-- this one matters</div>
-          <div class="wsub" data-i18n="s4f">5. Press Deploy.</div>
-          <img class="wshot" id="shot3" alt="" style="display: none" />
-        </div>
-        <div class="wizstep wizwarn">
-          <span class="wizn wizn2">!</span
-          ><b data-i18n="s5t">Google will warn you. This is normal.</b>
-          <div class="wsub" data-i18n="s5a">
-            It says Google hasn't verified this app. That is because the app is yours, written by
-            you, not published to the store.
-          </div>
-          <div class="wsub" data-i18n="s5b">Press Advanced, then Go to (unsafe), then Allow.</div>
-          <img class="wshot" id="shot4" alt="" style="display: none" />
-        </div>
-        <div class="wizstep">
-          <span class="wizn">5</span><b data-i18n="s6t">Copy the link and paste it here</b>
-          <div class="wsub" data-i18n="s6a">Copy the Web app URL. It ends in /exec.</div>
-          <input
-            id="wizUrl"
-            placeholder="https://script.google.com/.../exec"
-            class="fin"
-            style="margin-top: 8px"
-          /><button
+          <button
             class="grn"
-            style="width: 100%; margin-top: 8px"
-            onclick="wizVerify()"
-            data-i18n="wizVerify"
+            style="width: 100%; margin-top: 10px"
+            onclick="goConnectSheet()"
+            data-i18n="wizDriveGo"
           >
-            Verify and connect
+            Save my brews to Google Drive
           </button>
           <div id="wizMsg" style="font-size: 12px; margin-top: 8px"></div>
-          <img class="wshot" id="shot5" alt="" style="display: none" />
         </div>
         <button
           class="off"
@@ -4118,6 +4071,10 @@
 
       var I18N = {
         en: {
+          wizDriveT: "One tap, and the sheet is yours",
+          wizDriveB:
+            "BrewPilot creates a spreadsheet in your own Drive and writes your brews to it. Nothing to copy, no scripts to deploy, no URL to paste. You can open it any time; it is a normal sheet that belongs to you.",
+          wizDriveGo: "Save my brews to Google Drive",
           csConical: "Click counts are approximate: makers quote burr travel, not grind size.",
           wShot: "shot",
           wBrew: "brew",
@@ -4242,26 +4199,6 @@
           duraSafeB: "Every brew goes to your Google Sheet. Insights read your full history.",
           insNeedSheet:
             "Insights get much better with a sheet. Locally I can only look at your recent brews; the sheet gives the full history, water and timing correlations.",
-          s2t: "Copy the template",
-          s2a: "The template already has the code inside. A blank sheet will not work.",
-          s2b: "Open the template",
-          s2c: "In the menu: File > Make a copy. The copy is yours, in your Drive.",
-          s3t: "Open the code editor",
-          s3a: "Extensions",
-          s3b: "Apps Script",
-          s3c: "A new tab opens. This is the code that will save your brews.",
-          s4t: "Publish it as a web app",
-          s4a: "Deploy",
-          s4b: "New deployment",
-          s4c: "2. Click the gear icon, choose Web app.",
-          s4d: "3. Execute as: Me",
-          s4e: "4. Who has access: Anyone  <-- this one matters",
-          s4f: "5. Press Deploy.",
-          s5t: "Google will warn you. This is normal.",
-          s5a: "It says Google hasn't verified this app. That is because the app is yours, written by you, not published to the store.",
-          s5b: "Press Advanced, then Go to (unsafe), then Allow.",
-          s6t: "Copy the link and paste it here",
-          s6a: "Copy the Web app URL. It ends in /exec.",
           wizSetupTitle: "Set up BrewPilot",
           wizSetupIntro:
             "Pick what you do. Everything works straight away with nothing connected. When you want your history kept safe and synced across devices, save it to your own Google Drive in one tap.",
@@ -4305,17 +4242,13 @@
           setupSheet: "Set up your Google Sheet",
           wizIntro:
             "Required for durable data. Without it your brews live only in this browser and can be erased. Do this once; it takes about five minutes.",
-          wiz1: "Open the template and choose File, Make a copy.",
-          wizOpenTemplate: "Open the template",
-          wiz2: "In your copy: Extensions, Apps Script, Deploy, New deployment, Web app. Access: Anyone. Deploy and authorize.",
-          wiz3: "Copy the /exec URL and paste it here:",
-          wizVerify: "Verify and connect",
           close: "Close",
-          verifying: "Checking...",
-          verified: "Connected. Your sheet is saving.",
-          verifyFail: "Could not reach that URL. Check the deployment access is set to Anyone.",
         },
         es: {
+          wizDriveT: "Un toque, y la hoja es tuya",
+          wizDriveB:
+            "BrewPilot crea una hoja de cálculo en tu propio Drive y escribe ahí tus cafés. Nada que copiar, ningún script que implementar, ninguna URL que pegar. Ábrela cuando quieras; es una hoja normal que te pertenece.",
+          wizDriveGo: "Guardar mis cafés en Google Drive",
           csConical:
             "Los clics son aproximados: los fabricantes indican recorrido de la fresa, no tamaño de molienda.",
           wShot: "shot",
@@ -4443,26 +4376,6 @@
           duraSafeB: "Cada café va a tu Hoja de Google. El análisis lee todo tu historial.",
           insNeedSheet:
             "El análisis mejora mucho con una hoja. Aqui solo veo tus cafés recientes; la hoja da el historial completo y las correlaciones de agua y tiempo.",
-          s2t: "Copia la plantilla",
-          s2a: "La plantilla ya trae el código dentro. Una hoja en blanco no funciona.",
-          s2b: "Abrir la plantilla",
-          s2c: "En el menu: Archivo > Hacer una copia. La copia es tuya, en tu Drive.",
-          s3t: "Abre el editor de código",
-          s3a: "Extensiones",
-          s3b: "Apps Script",
-          s3c: "Se abre una pestana nueva. Ese es el código que guardará tus cafés.",
-          s4t: "Publicalo como app web",
-          s4a: "Implementar",
-          s4b: "Nueva implementacion",
-          s4c: "2. Toca el icono de engrane y elige Aplicación web.",
-          s4d: "3. Ejecutar como: Yo",
-          s4e: "4. Quien tiene acceso: Cualquier usuario  <-- este importa",
-          s4f: "5. Pulsa Implementar.",
-          s5t: "Google te va a advertir. Es normal.",
-          s5a: "Dice que Google no ha verificado la aplicación. Es porque la app es tuya, escrita por ti, no esta publicada en la tienda.",
-          s5b: "Pulsa Configuración avanzada, luego Ir a (no seguro), luego Permitir.",
-          s6t: "Copia el enlace y pégalo aquí",
-          s6a: "Copia la URL de la aplicación web. Termina en /exec.",
           wizSetupTitle: "Configura BrewPilot",
           wizSetupIntro:
             "Elige qué haces. Todo funciona de inmediato sin conectar nada. Cuando quieras conservar tu historial y sincronizarlo entre dispositivos, guárdalo en tu propio Google Drive con un toque.",
@@ -4506,15 +4419,7 @@
           setupSheet: "Configura tu Hoja de Google",
           wizIntro:
             "Necesario para no perder tus datos. Sin esto, tus cafés solo viven en este navegador y se pueden borrar. Hazlo una vez; toma unos cinco minutos.",
-          wiz1: "Abre la plantilla y elige Archivo, Hacer una copia.",
-          wizOpenTemplate: "Abrir la plantilla",
-          wiz2: "En tu copia: Extensiones, Apps Script, Implementar, Nueva implementacion, App web. Acceso: Cualquiera. Implementa y autoriza.",
-          wiz3: "Copia la URL /exec y pegala aquí:",
-          wizVerify: "Verificar y conectar",
           close: "Cerrar",
-          verifying: "Comprobando...",
-          verified: "Conectado. Tu hoja ya guarda.",
-          verifyFail: "No se pudo acceder a esa URL. Revisa que el acceso sea Cualquiera.",
         },
       };
       var LANG = "es";
@@ -4648,20 +4553,8 @@
           tg.n +
           ")";
       }
-      function wizVerify() {
-        var msg = document.getElementById("wizMsg");
-        try {
-          renderSheetStatus();
-        } catch (e) {}
-        try {
-          loadInventory();
-        } catch (e) {}
-        msg.className = "wizok";
-        msg.textContent = t("verified");
-        setTimeout(function () {
-          document.getElementById("wizMask").classList.remove("on");
-        }, 1000);
-      }
+      /* wizVerify REMOVED: its only caller was the Verify-and-connect button on the
+   /exec paste step. goConnectSheet() is the whole flow now. */
       applyRole();
       renderRoleChips();
       convInit();
@@ -4850,8 +4743,7 @@
         "setLang",
         "setRole",
         "setTheme",
-        "wizVerify",
-        "saveWebhook",
+        "goConnectSheet",
         "logshot",
         "logFilter",
         "freezeCoffee",
@@ -5223,34 +5115,14 @@
    link would invite people onto a path that no longer has a backend.
    NOTE: update.ps1 hard-required this string and would STOP the publish without
    it. That check is removed in the same pass. */
-      /* wizTemplateLink REMOVED with /exec. It read SHEET_TEMPLATE_URL, which is gone,
-   and it runs at bootstrap - an undeclared identifier there is a ReferenceError
-   that kills every line after it. node --check and audit.py BOTH passed that:
-   the syntax is valid and audit only checks DOM ids, not JS identifiers. */
-      function wizTemplateLink() {}
+      /* wizTemplateLink deleted outright with the wizard rewrite. It was already an
+   empty stub after the /exec cut; now even its caller is gone. */
 
-      /* Optional: put these images next to index.html and they appear in the wizard.
-   setup1-copy.png setup2-appsscript.png setup3-deploy.png setup4-warning.png setup5-url.png */
-      var WIZ_SHOTS = {
-        shot1: "setup1-copy.png",
-        shot2: "setup2-appsscript.png",
-        shot3: "setup3-deploy.png",
-        shot4: "setup4-warning.png",
-        shot5: "setup5-url.png",
-      };
-      function wizShots() {
-        Object.keys(WIZ_SHOTS).forEach(function (id) {
-          var el = document.getElementById(id);
-          if (!el || el.dataset.tried) return;
-          el.dataset.tried = "1";
-          var im = new Image();
-          im.onload = function () {
-            el.src = WIZ_SHOTS[id];
-            el.style.display = "block";
-          };
-          im.src = WIZ_SHOTS[id];
-        });
-      }
+      /* WIZ_SHOTS / wizShots REMOVED with the wizard rewrite. They lazy-loaded
+   setup1-copy.png ... setup5-url.png, screenshots of copying a template and
+   deploying an Apps Script web app. Those steps are gone, so shot1..shot5 no
+   longer exist and getElementById('shot1') would have been a dead lookup -
+   audit.py check 1 would have failed the build. */
 
       /* wizard step 1: role + methods + hardware + grinders, reusing the real app state */
       function wizRender() {
@@ -5994,8 +5866,17 @@
         btn.classList.add("on");
       }
       function addHelp(el, key) {
-        if (!el || el.dataset.help) return;
-        el.dataset.help = "1";
+        /* The guard was el.dataset.help - an ATTRIBUTE. applyLang() does
+       el.textContent = t(el.getAttribute('data-i18n'))
+     for every [data-i18n] element, which wipes that element's CHILDREN, including
+     the '?' span this function appends. The attribute survives, so addHelp then
+     early-returned forever and the bubble never came back until a reload.
+     Measured: 12 bubbles on load, 5 after one setLang(), and wireHelp() could not
+     restore them. Spanish is the default and the toggle is in the header, so this
+     was the normal path, not an edge case.
+     Guard on the span itself, which is the thing we actually care about. */
+        if (!el) return;
+        if (el.querySelector && el.querySelector(":scope > .helpq")) return;
         var b = document.createElement("span");
         b.className = "helpq";
         b.textContent = "?";
@@ -6031,9 +5912,11 @@
         var froast = document.getElementById("froast");
         if (froast && froast.previousElementSibling)
           addHelp(froast.previousElementSibling, "roast");
-        var wt = document.getElementById("wizTemplate");
-        if (wt && wt.parentNode) {
-          var hd = wt.parentNode.querySelector("b");
+        /* the 'sheet' help used to hang off the template link's step. That step is gone;
+     the Drive step replaced it, so the help follows rather than dying with it. */
+        var wt = document.getElementById("wizDriveStep");
+        if (wt) {
+          var hd = wt.querySelector("b");
           if (hd) addHelp(hd, "sheet");
         }
       }
@@ -8076,7 +7959,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-17-0241-75e284";
+      var BUILD = "2026-07-17-1828-73c48f";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -8477,8 +8360,9 @@
       };
 
       /* bootstrap last: every definition exists by now */
-      wizTemplateLink();
-      wizShots();
+      /* wizTemplateLink() and wizShots() removed with the Apps Script wizard: one was an
+   empty stub left over from the /exec cut, the other lazy-loaded screenshots of a
+   flow that no longer exists. Bootstrap is the worst place to leave a dead call. */
       uiStart();
     </script>
   </body>
