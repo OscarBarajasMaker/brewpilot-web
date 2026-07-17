@@ -2945,40 +2945,57 @@
         return p.join(", ");
       }
       let GRINDERS = {
-        K7: { n: "K7", um: 15 },
-        A2: { n: "A2", um: 18 },
-        QAir: { n: "Q-Air", um: 25 },
-        ZP6: { n: "ZP6", um: 22 },
-        KUltra: { n: "K-Ultra", um: 20 },
-        JUltra: { n: "J-Ultra", um: 8 },
-        JMax: { n: "J-Max", um: 8.8 },
-        JXPro: { n: "JX-Pro", um: 12.5 },
-        K6: { n: "K6", um: 16 },
-        Comandante: { n: "Comandante", um: 30 },
-        Ode2: { n: "Ode 2", um: 13 },
-        Encore: { n: "Encore", um: 38 },
-        Sculptor078S: { n: "Sculptor 078S", um: 25, off: 235, min: 235, max: 1235 },
+        K7: { n: "K7", um: 15, burr: "conical", k: 0.65 },
+        A2: { n: "A2", um: 18, burr: "conical" },
+        QAir: { n: "Q-Air", um: 25, burr: "conical", k: 0.45, measured: true },
+        ZP6: { n: "ZP6", um: 22, burr: "conical", k: 0.53, measured: true },
+        KUltra: { n: "K-Ultra", um: 20, burr: "conical", k: 0.38, measured: true },
+        JUltra: { n: "J-Ultra", um: 8, burr: "conical", k: 0.31, measured: true },
+        JMax: { n: "J-Max", um: 8.8, burr: "conical", k: 0.3, measured: true },
+        JXPro: { n: "JX-Pro", um: 12.5, burr: "conical", k: 0.37, measured: true },
+        K6: { n: "K6", um: 16, burr: "conical", k: 0.53, measured: true },
+        Comandante: { n: "Comandante", um: 30, burr: "conical" },
+        Ode2: { n: "Ode 2", um: 13, burr: "flat" },
+        Encore: { n: "Encore", um: 38, burr: "conical" },
+        Sculptor078S: { n: "Sculptor 078S", um: 25, burr: "flat", off: 235, min: 235, max: 1235 },
         Sculptor078: {
           n: "Sculptor 078 (filter)",
           um: 25,
+          burr: "flat",
           off: 370,
           min: 370,
           max: 1270,
           esp: false,
         },
-        TimemoreS3: { n: "Timemore S3", um: 15, off: 0, min: 15, max: 1200 },
-        FemobookA4Z: { n: "Femobook A4Z", um: 8 },
-        ZernoZ1: { n: "Zerno Z1", um: 22 },
-        ZernoZ2: { n: "Zerno Z2", um: 22 },
-        LagomP80: { n: "Lagom P80", um: 10 },
-        MignonSpecialita: { n: "Mignon Specialita", um: 24 },
-        MignonSilenzio: { n: "Mignon Silenzio", um: 24 },
-        MignonZero: { n: "Mignon Zero", um: 24 },
-        MignonClassico: { n: "Mignon Classico", um: 24 },
-        MignonOro: { n: "Mignon Oro", um: 24 },
-        MignonXL: { n: "Mignon XL", um: 24 },
-        Motto80: { n: "Motto80", um: 0 },
+        TimemoreS3: {
+          n: "Timemore S3",
+          um: 15,
+          burr: "conical",
+          k: 0.57,
+          measured: true,
+          off: 0,
+          min: 15,
+          max: 1200,
+        },
+        FemobookA4Z: { n: "Femobook A4Z", um: 8, burr: "conical", k: 0.53, measured: true },
+        ZernoZ1: { n: "Zerno Z1", um: 22, burr: "flat" },
+        ZernoZ2: { n: "Zerno Z2", um: 22, burr: "flat" },
+        LagomP80: { n: "Lagom P80", um: 10, burr: "flat" },
+        MignonSpecialita: { n: "Mignon Specialita", um: 24, burr: "flat" },
+        MignonSilenzio: { n: "Mignon Silenzio", um: 24, burr: "flat" },
+        MignonZero: { n: "Mignon Zero", um: 24, burr: "flat" },
+        MignonClassico: { n: "Mignon Classico", um: 24, burr: "flat" },
+        MignonOro: { n: "Mignon Oro", um: 24, burr: "flat" },
+        MignonXL: { n: "Mignon XL", um: 24, burr: "flat" },
+        Motto80: { n: "Motto80", um: 0, burr: "flat" },
       };
+      var INVN = null;
+      var K_CONICAL_DEFAULT = 0.5;
+      function effUm(g) {
+        if (!g || g.um === 0) return 0;
+        if (g.burr !== "conical") return g.um;
+        return g.um * (typeof g.k === "number" ? g.k : K_CONICAL_DEFAULT);
+      }
       let PRIOR_UMBAR = { espresso: 22, soup: 45, filter: 110 };
       let SENS = {};
       function loadSens() {
@@ -3747,6 +3764,10 @@
         }
         try {
           let d = await gInvList();
+          INVN = d && d.beans ? d.beans.length : 0;
+          try {
+            homeRender();
+          } catch (e) {}
           if (!d || !d.beans || !d.beans.length) {
             box.innerHTML =
               '<div class="mut" style="text-align:left">no bags yet - freeze one above</div>';
@@ -4217,6 +4238,7 @@
           mFil: "Filter",
           noSheetYet: "No sheet connected. Advice still works; nothing is saved.",
           homeInv: "Your inventory",
+          homeLoading: "Loading your bags...",
           homeLogged: "logged",
           homeNone: "Nothing logged yet",
           homeStart: "Set up to begin",
@@ -4394,6 +4416,7 @@
           mFil: "Filtrado",
           noSheetYet: "Sin hoja conectada. Los consejos funcionan; no se guarda nada.",
           homeInv: "Tu inventario",
+          homeLoading: "Cargando tus bolsas...",
           homeLogged: "registrados",
           homeNone: "Aun no hay registros",
           homeStart: "Configura para empezar",
@@ -5381,14 +5404,19 @@
         if (!phase) return;
         var noun = LNOUN();
         if (ROLE === "logmgr") {
-          /* INV never existed: declared 0 times, assigned 0 times, read behind
-      typeof guards that were therefore always false. n was always 0, so this
-      always took the empty path. Simplified to what it actually did.
-      NOTE: this means the inventory-only role has never shown a bag count.
-      Wiring it to gInvList/iLocalInv would be a new feature, not a fix. */
+          /* The bag count, finally. INV never existed, so this always showed '--' and
+      "no sheet connected" even on Drive. loadInventory() already had the real
+      list and threw the count away; it now caches it in INVN.
+      '--' means UNKNOWN and 0 means EMPTY. Those are different, so an unloaded
+      inventory does not claim zero. */
           phase.textContent = t("homeInv");
-          sub.textContent = t("noSheetYet");
-          num.textContent = "--";
+          if (typeof INVN === "number") {
+            num.textContent = String(INVN);
+            sub.textContent = INVN + " " + (LANG === "es" ? "cafés" : "coffees");
+          } else {
+            num.textContent = "--";
+            sub.textContent = dataMode() === "google" ? t("homeLoading") : t("noSheetYet");
+          }
           return;
         }
         var ratings = [];
@@ -5784,13 +5812,16 @@
         var g = GRINDERS[gid];
         if (!g) return null;
         if (g.um === 0) return clicks;
-        return gOff(g) + clicks * g.um;
+        return gOff(g) + clicks * effUm(g);
       }
+      /* Both directions use the EFFECTIVE gap, not the published travel. The converter
+   had the same bug as the advisor: it round-trips through um, so every
+   conical->flat conversion was out by the same ~3.3x. */
       function umToClicks(um, gid) {
         var g = GRINDERS[gid];
         if (!g) return null;
         if (g.um === 0) return Math.round(um);
-        return (um - gOff(g)) / g.um;
+        return (um - gOff(g)) / effUm(g);
       }
       /* out of range? returns null when we have no measured range for that grinder */
       function gRange(um, gid) {
@@ -7959,7 +7990,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-17-1828-73c48f";
+      var BUILD = "2026-07-17-2135-296db4";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -8343,10 +8374,13 @@
           "<div class='csV'>" +
           c.txt +
           "</div>" +
+          /* The hedge is only true of CONICAL grinders. On a flat burr the published
+       microns-per-click IS the gap, so telling a Lagom P80 or Mignon owner their
+       click count is approximate is itself inaccurate - and it teaches people to
+       ignore the warning where it matters. Show it where it is true. */
           "<div class='csS'>" +
           t("csHint") +
-          " " +
-          t("csConical") +
+          (g && g.burr === "conical" ? " " + t("csConical") : "") +
           "</div></div>";
       }
       var _rh2 = renderHero;
