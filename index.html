@@ -1,7 +1,13 @@
 <!doctype html>
-<html lang="es" data-theme="graphite">
+<html lang="es" data-theme="ristretto">
   <head>
     <meta charset="utf-8" />
+    <script>
+      try {
+        var _t = localStorage.getItem("theme");
+        if (_t) document.documentElement.setAttribute("data-theme", _t);
+      } catch (e) {}
+    </script>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -14,13 +20,13 @@
     <title>BrewPilot</title>
     <style>
       :root {
-        --bg: #0e1116;
-        --panel: #161b22;
-        --panel2: #1c232d;
-        --line: #263041;
-        --line2: #3a4050;
-        --text: #e6edf3;
-        --dim: #8b949e;
+        --bg: #13161a;
+        --panel: #1b1f24;
+        --panel2: #242a31;
+        --line: #2f3742;
+        --line2: #3e4753;
+        --text: #e8ecf1;
+        --dim: #98a2ad;
         --pressure: #e8833a;
         --flow: #4ca5e8;
         --temp: #e5484d;
@@ -29,67 +35,67 @@
         --sel-bg: #16233a;
         --sel-line: #4a7fb5;
         --sel-text: #8fc4ff;
-        --hi-bg: #16241c;
+        --hi-bg: #14241c;
         --hi-line: #2f6f4f;
         --hi-text: #8fdcb0;
-        --danger-bg: #2a1616;
-        --danger-line: #6f3a3a;
+        --danger-bg: #241618;
+        --danger-line: #6f3a3e;
         --danger-text: #ff9a9a;
         --rec-bg: #1a1522;
         --rec-line: #3a2f4a;
         --rec-text: #c8a2ff;
       }
-      [data-theme="carbon"] {
-        --bg: #000000;
-        --panel: #0b0d10;
-        --panel2: #14171c;
-        --line: #242a31;
-        --line2: #2e353d;
-        --text: #f2f5f8;
-        --dim: #9aa3ad;
-        --pressure: #f5924a;
-        --flow: #5cb3f2;
-        --temp: #f0575c;
-        --weight: #4cc85f;
-        --warn: #ebb84a;
-        --sel-bg: #0e1d2b;
-        --sel-line: #4a85c0;
-        --sel-text: #8fc4ff;
-        --hi-bg: #0e1e15;
-        --hi-line: #34794f;
-        --hi-text: #8fdcb0;
-        --danger-bg: #1e1010;
-        --danger-line: #7a4040;
-        --danger-text: #ff9a9a;
-        --rec-bg: #141020;
-        --rec-line: #40354f;
-        --rec-text: #c8a2ff;
-      }
-      [data-theme="daylight"] {
-        --bg: #f6f8fa;
+      [data-theme="cortado"] {
+        --bg: #f3ede3;
         --panel: #ffffff;
-        --panel2: #eef1f4;
-        --line: #d0d7de;
-        --line2: #c2cad2;
-        --text: #1f2328;
-        --dim: #656d76;
+        --panel2: #ede6da;
+        --line: #dad0c2;
+        --line2: #c8bcaa;
+        --text: #2a2019;
+        --dim: #6e6355;
         --pressure: #c2601f;
         --flow: #1668c4;
         --temp: #c93c41;
         --weight: #2a9d45;
         --warn: #b8860b;
-        --sel-bg: #dcebfb;
-        --sel-line: #1668c4;
-        --sel-text: #0f5bb5;
+        --sel-bg: #f3e6d5;
+        --sel-line: #c2601f;
+        --sel-text: #9a4a16;
         --hi-bg: #e7f6ec;
         --hi-line: #2a9d45;
         --hi-text: #1e7a34;
         --danger-bg: #fbe7e7;
         --danger-line: #c93c41;
         --danger-text: #b23138;
-        --rec-bg: #f0eafb;
+        --rec-bg: #f1eaf6;
         --rec-line: #8a6dbf;
         --rec-text: #6b44b0;
+      }
+      [data-theme="coldbrew"] {
+        --bg: #0c0f12;
+        --panel: #131820;
+        --panel2: #1b222c;
+        --line: #29323f;
+        --line2: #3a4553;
+        --text: #e8eef4;
+        --dim: #8f9aa8;
+        --pressure: #e8873a;
+        --flow: #4ca5e8;
+        --temp: #e5484d;
+        --weight: #3fb950;
+        --warn: #e3b341;
+        --sel-bg: #0e2233;
+        --sel-line: #2e6c9e;
+        --sel-text: #7fc4f5;
+        --hi-bg: #0e2418;
+        --hi-line: #2f7a4f;
+        --hi-text: #7fdca8;
+        --danger-bg: #241214;
+        --danger-line: #6f3438;
+        --danger-text: #ff9a9a;
+        --rec-bg: #141024;
+        --rec-line: #3a2f5a;
+        --rec-text: #b9a2f5;
       }
       * {
         box-sizing: border-box;
@@ -793,10 +799,10 @@
         color: var(--sel-text);
         font-weight: 700;
       }
-      [data-theme="daylight"] button {
+      [data-theme="cortado"] button {
         color: #ffffff;
       }
-      [data-theme="daylight"] .off {
+      [data-theme="cortado"] .off {
         color: var(--text);
       }
       .off {
@@ -974,21 +980,21 @@
         <div class="themebtns">
           <div
             class="tdot on"
-            data-t="graphite"
-            style="background: #0e1116"
-            onclick="setTheme('graphite')"
+            data-t="ristretto"
+            style="background: #13161a"
+            onclick="setTheme('ristretto')"
           ></div>
           <div
             class="tdot"
-            data-t="carbon"
-            style="background: #000"
-            onclick="setTheme('carbon')"
+            data-t="coldbrew"
+            style="background: #0c0f12"
+            onclick="setTheme('coldbrew')"
           ></div>
           <div
             class="tdot"
-            data-t="daylight"
-            style="background: #f6f8fa"
-            onclick="setTheme('daylight')"
+            data-t="cortado"
+            style="background: #f3ede3"
+            onclick="setTheme('cortado')"
           ></div>
         </div>
       </div>
@@ -2609,15 +2615,15 @@
         return p.join(", ");
       }
       let GRINDERS = {
-        K7: { n: "K7", um: 15, burr: "conical", k: 0.65 },
+        K7: { n: "K7", um: 15, burr: "conical", k: 0.65, dialPer: 10 },
         A2: { n: "A2", um: 18, burr: "conical" },
         QAir: { n: "Q-Air", um: 25, burr: "conical", k: 0.45, measured: true },
-        ZP6: { n: "ZP6", um: 22, burr: "conical", k: 0.53, measured: true },
-        KUltra: { n: "K-Ultra", um: 20, burr: "conical", k: 0.38, measured: true },
-        JUltra: { n: "J-Ultra", um: 8, burr: "conical", k: 0.31, measured: true },
-        JMax: { n: "J-Max", um: 8.8, burr: "conical", k: 0.3, measured: true },
-        JXPro: { n: "JX-Pro", um: 12.5, burr: "conical", k: 0.37, measured: true },
-        K6: { n: "K6", um: 16, burr: "conical", k: 0.53, measured: true },
+        ZP6: { n: "ZP6", um: 22, burr: "conical", k: 0.53, measured: true, dialPer: 10, min: 240 },
+        KUltra: { n: "K-Ultra", um: 20, burr: "conical", k: 0.38, measured: true, dialPer: 10 },
+        JUltra: { n: "J-Ultra", um: 8, burr: "conical", k: 0.31, measured: true, dialPer: 3 },
+        JMax: { n: "J-Max", um: 8.8, burr: "conical", k: 0.3, measured: true, dialPer: 3 },
+        JXPro: { n: "JX-Pro", um: 12.5, burr: "conical", k: 0.37, measured: true, dialPer: 4 },
+        K6: { n: "K6", um: 16, burr: "conical", k: 0.53, measured: true, dialPer: 10 },
         Comandante: { n: "Comandante", um: 30, burr: "conical" },
         Ode2: { n: "Ode 2", um: 13, burr: "flat" },
         Encore: { n: "Encore", um: 38, burr: "conical" },
@@ -3743,9 +3749,9 @@
       }
 
       (function () {
-        var t = "graphite";
+        var t = "ristretto";
         try {
-          t = localStorage.getItem("theme") || "graphite";
+          t = localStorage.getItem("theme") || "ristretto";
         } catch (e) {}
         setTheme(t);
       })();
@@ -4217,12 +4223,35 @@
         tt.value = cur[1] || keys[1];
         convCompute();
       }
+      function convParse(raw, gid) {
+        var g = GRINDERS[gid];
+        var t = ("" + raw).trim();
+        if (!t) return NaN;
+        if (g && g.dialPer && t.indexOf(".") >= 0) {
+          var p = t.split(".");
+          var n = parseInt(p[0], 10),
+            c = parseInt(p[1], 10);
+          if (isNaN(n) || isNaN(c)) return NaN;
+          return n * g.dialPer + c;
+        }
+        return parseFloat(t);
+      }
+      function convFmt(val, gid) {
+        var g = GRINDERS[gid];
+        if (!g) return String(val);
+        if (g.um === 0) return Math.round(val) + " um";
+        if (g.dialPer) {
+          var d = dialTxt(gid, val);
+          return d + " (" + Math.round(val) + " clk)";
+        }
+        return Math.round(val * 10) / 10 + " clk";
+      }
       function convCompute() {
         var f = document.getElementById("convFrom"),
           tt = document.getElementById("convTo"),
           out = document.getElementById("convOut");
         if (!out) return;
-        var v = parseFloat(document.getElementById("convVal").value);
+        var v = convParse(document.getElementById("convVal").value, f.value);
         if (isNaN(v)) {
           out.textContent = "";
           return;
@@ -4233,13 +4262,23 @@
           out.textContent = "-";
           return;
         }
+        var toUm = tg && tg.um === 0 ? r : clicksToUm(r, tt.value);
+        if (r < 0 || (tg && tg.min && toUm < tg.min)) {
+          out.textContent =
+            convFmt(v, f.value) +
+            " (" +
+            GRINDERS[f.value].n +
+            ") is finer than the " +
+            tg.n +
+            " can grind";
+          return;
+        }
         out.textContent =
-          v +
+          convFmt(v, f.value) +
           " (" +
           GRINDERS[f.value].n +
-          ")  ->  " +
-          r +
-          (tg && tg.um === 0 ? "um" : "") +
+          ")  →  " +
+          convFmt(r, tt.value) +
           "  (" +
           tg.n +
           ")";
@@ -8029,7 +8068,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-18-2037-ac9657";
+      var BUILD = "2026-07-18-2106-8c89c9";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
