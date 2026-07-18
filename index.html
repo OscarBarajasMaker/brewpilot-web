@@ -901,21 +901,59 @@
         font-weight: 600;
         cursor: pointer;
       }
-      .ratechips {
+      .csfacs {
+        margin-top: 6px;
         display: flex;
+        flex-wrap: wrap;
         gap: 5px;
-        flex-wrap: nowrap;
-        margin: 2px 0 4px;
+      }
+      .csfac {
+        font-size: 11px;
+        padding: 3px 8px;
+        border-radius: 7px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        color: var(--dim);
+      }
+      .csfacbig {
+        color: var(--sel-text);
+        border-color: var(--sel-line);
+        font-weight: 600;
+      }
+      .sheetlink {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        width: 100%;
+        padding: 11px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: var(--panel);
+        color: var(--dim);
+        font-size: 13px;
+        font-weight: 500;
+        text-decoration: none;
+        box-sizing: border-box;
+        cursor: pointer;
+      }
+      .ratechips {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 6px;
+        margin: 2px 0 6px;
       }
       .ratechip {
-        flex: 1;
         min-width: 0;
-        padding: 10px 0;
-        border-radius: 8px;
+        min-height: 46px;
+        padding: 0;
+        border-radius: 9px;
         font:
-          600 13px/1 ui-monospace,
+          600 16px/1 ui-monospace,
           monospace;
         cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
       }
       .ratewordlbl {
         font-size: 12px;
@@ -932,7 +970,7 @@
     <div class="appbar">
       <div class="brand notranslate" translate="no">Brew<span>Pilot</span></div>
       <div class="rightbar">
-        <div class="langtoggle" id="langBtn" onclick="setLang(LANG==='es'?'en':'es')">ES</div>
+        <div class="langtoggle" id="langBtn" onclick="setLang(LANG === 'es' ? 'en' : 'es')">ES</div>
         <div class="themebtns">
           <div
             class="tdot on"
@@ -1061,8 +1099,8 @@
         <div id="machineOnly">
           <div id="state">loading...</div>
           <div class="row">
-            <button class="warm" onclick='cmd("warm")'>Warm up</button
-            ><button class="off" onclick='cmd("off")'>Off</button>
+            <button class="warm" onclick="cmd('warm')">Warm up</button
+            ><button class="off" onclick="cmd('off')">Off</button>
           </div>
         </div>
       </div>
@@ -1084,426 +1122,75 @@
             Already brewed
           </button>
         </div>
-        <div id="planBox" class="planbox" style="display: none"></div>
-        <label id="logLabel">Log the last shot</label>
-        <div id="rotwrap" style="margin-bottom: 10px">
-          <button
-            id="samelast"
-            onclick="fillSame()"
-            style="
-              width: 100%;
-              padding: 12px;
-              font-size: 15px;
-              margin-bottom: 8px;
-              border-radius: 12px;
-              border: 1px solid var(--hi-line);
-              background: var(--hi-bg);
-              color: var(--hi-text);
-              font-weight: 600;
-            "
-          >
-            Same coffee as last shot
-          </button>
-          <div style="color: var(--dim); font-size: 12px; margin: 4px 2px">
-            Current rotation (tap to fill):
+        <div id="logMethodRow" class="logmoderow"></div>
+        <div id="gagForm">
+          <label id="logLabel">Log the last shot</label>
+          <div id="rotwrap" style="margin-bottom: 10px">
+            <button
+              id="samelast"
+              onclick="fillSame()"
+              style="
+                width: 100%;
+                padding: 12px;
+                font-size: 15px;
+                margin-bottom: 8px;
+                border-radius: 12px;
+                border: 1px solid var(--hi-line);
+                background: var(--hi-bg);
+                color: var(--hi-text);
+                font-weight: 600;
+              "
+            >
+              Same coffee as last shot
+            </button>
+            <div style="color: var(--dim); font-size: 12px; margin: 4px 2px">
+              Current rotation (tap to fill):
+            </div>
+            <div id="chips" style="display: flex; flex-wrap: wrap; gap: 6px"></div>
+            <div
+              id="dialin"
+              style="
+                display: none;
+                margin-top: 10px;
+                padding: 12px;
+                border-radius: 12px;
+                border: 1px solid var(--rec-line);
+                background: var(--rec-bg);
+                font-size: 14px;
+                line-height: 1.5;
+              "
+            ></div>
+            <button
+              id="finbtn"
+              onclick="finishBag()"
+              style="
+                display: none;
+                width: 100%;
+                margin-top: 8px;
+                padding: 11px;
+                font-size: 14px;
+                border-radius: 12px;
+                border: 1px solid var(--danger-line);
+                background: var(--danger-bg);
+                color: var(--danger-text);
+              "
+            >
+              Finished this bag - suggest next
+            </button>
           </div>
-          <div id="chips" style="display: flex; flex-wrap: wrap; gap: 6px"></div>
+          <div class="fl mmethod" data-mfilter="1">Brewer</div>
           <div
-            id="dialin"
-            style="
-              display: none;
-              margin-top: 10px;
-              padding: 12px;
-              border-radius: 12px;
-              border: 1px solid var(--rec-line);
-              background: var(--rec-bg);
-              font-size: 14px;
-              line-height: 1.5;
-            "
+            id="brewerchips"
+            class="mmethod"
+            data-mfilter="1"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
           ></div>
-          <button
-            id="finbtn"
-            onclick="finishBag()"
-            style="
-              display: none;
-              width: 100%;
-              margin-top: 8px;
-              padding: 11px;
-              font-size: 14px;
-              border-radius: 12px;
-              border: 1px solid var(--danger-line);
-              background: var(--danger-bg);
-              color: var(--danger-text);
-            "
-          >
-            Finished this bag - suggest next
-          </button>
-        </div>
-        <input
-          id="coffee"
-          placeholder="coffee name"
-          style="
-            width: 100%;
-            padding: 13px;
-            font-size: 16px;
-            margin-bottom: 8px;
-            border-radius: 12px;
-            border: 1px solid var(--line);
-            background: var(--panel);
-            color: var(--text);
-          "
-        /><select
-          id="roaster"
-          style="
-            width: 100%;
-            padding: 13px;
-            font-size: 16px;
-            margin-bottom: 8px;
-            border-radius: 12px;
-            border: 1px solid var(--line);
-            background: var(--panel);
-            color: var(--text);
-          "
-        >
-          <option value="">roaster...</option>
-          <optgroup label="Specialty">
-            <option>September</option>
-            <option>Sey</option>
-            <option>Luna</option>
-            <option>Hydrangea</option>
-            <option>Coffee with Dongze</option>
-            <option>DAK</option>
-            <option>XLIII</option>
-            <option>Big Sur</option>
-            <option>Native</option>
-            <option>The Picky Chemist</option>
-            <option>Special Guests</option>
-            <option>Ilse</option>
-            <option>Habito</option>
-            <option>La Cabra</option>
-          </optgroup>
-          <optgroup label="Europe">
-            <option>Tim Wendelboe</option>
-            <option>Coffee Collective</option>
-            <option>April</option>
-            <option>Manhattan</option>
-            <option>Friedhats</option>
-            <option>Nomad</option>
-            <option>Gardelli</option>
-            <option>The Barn</option>
-            <option>Five Elephant</option>
-            <option>Round Hill</option>
-            <option>Square Mile</option>
-            <option>Assembly</option>
-            <option>Cartwheel</option>
-          </optgroup>
-          <optgroup label="North America">
-            <option>Onyx</option>
-            <option>Prodigal</option>
-            <option>Black & White</option>
-            <option>Passenger</option>
-            <option>Hatch</option>
-            <option>George Howell</option>
-            <option>Intelligentsia</option>
-            <option>Datura</option>
-            <option>Apollon's Gold</option>
-            <option>Moonwake</option>
-            <option>Aviary</option>
-            <option>Shoebox</option>
-            <option>Glitch</option>
-            <option>Substance</option>
-          </optgroup>
-          <optgroup label="Asia / Pacific">
-            <option>ONA</option>
-            <option>Standout</option>
-            <option>Fortitude</option>
-          </optgroup>
-          <optgroup label="Other"><option value="Other">Other</option></optgroup></select
-        ><input
-          id="roaster_other"
-          placeholder="type roaster name"
-          style="
-            display: none;
-            width: 100%;
-            padding: 13px;
-            font-size: 16px;
-            margin-bottom: 8px;
-            border-radius: 12px;
-            border: 1px solid var(--line);
-            background: var(--panel);
-            color: var(--text);
-          "
-        /><select
-          id="varietal"
-          style="
-            width: 100%;
-            padding: 13px;
-            font-size: 16px;
-            margin-bottom: 8px;
-            border-radius: 12px;
-            border: 1px solid var(--line);
-            background: var(--panel);
-            color: var(--text);
-          "
-        >
-          <option value="">varietal...</option>
-          <optgroup label="Ethiopian / Landrace">
-            <option>Heirloom</option>
-            <option>Kurume</option>
-            <option>Welicho</option>
-            <option>Wolisho</option>
-            <option>Gesha</option>
-            <option>Wush Wush</option>
-            <option>74110</option>
-            <option>74158</option>
-          </optgroup>
-          <optgroup label="Rare / Exotic">
-            <option>Eugenioides</option>
-            <option>Sudan Rume</option>
-            <option>Chiroso</option>
-            <option>Ombligon</option>
-            <option>Mokka</option>
-            <option>Pacamara</option>
-            <option>Maracaturra</option>
-          </optgroup>
-          <optgroup label="Bourbon family">
-            <option>Bourbon</option>
-            <option>Red Bourbon</option>
-            <option>Yellow Bourbon</option>
-            <option>Pink Bourbon</option>
-            <option>Caturra</option>
-            <option>Catuai</option>
-            <option>Pacas</option>
-            <option>Villa Sarchi</option>
-            <option>Laurina</option>
-          </optgroup>
-          <optgroup label="Typica family">
-            <option>Typica</option>
-            <option>Mundo Novo</option>
-            <option>Maragogipe</option>
-            <option>Kona</option>
-            <option>Blue Mountain</option>
-            <option>Java</option>
-            <option>Sidra</option>
-          </optgroup>
-          <optgroup label="Kenyan / SL">
-            <option>SL28</option>
-            <option>SL34</option>
-            <option>SL14</option>
-            <option>Ruiru 11</option>
-            <option>Batian</option>
-            <option>K7</option>
-          </optgroup>
-          <optgroup label="Hybrids / Large-bean">
-            <option>Castillo</option>
-            <option>Colombia</option>
-            <option>Catimor</option>
-            <option>Sarchimor</option>
-            <option>Marsellesa</option>
-            <option>Centroamericano</option>
-          </optgroup>
-          <optgroup label="Other">
-            <option>Blend</option>
-            <option value="Other">Other</option>
-            <option>Unknown</option>
-          </optgroup></select
-        ><select
-          id="roast"
-          style="
-            width: 100%;
-            padding: 13px;
-            font-size: 16px;
-            margin-bottom: 8px;
-            border-radius: 12px;
-            border: 1px solid var(--line);
-            background: var(--panel);
-            color: var(--text);
-          "
-        >
-          <option value="">roast level...</option>
-          <option>Ultra Light</option>
-          <option>Extra Light</option>
-          <option>Light</option>
-          <option>Light Medium</option>
-          <option>Medium</option>
-          <option>Medium Dark</option>
-          <option>Dark</option></select
-        ><select
-          id="process"
-          style="
-            width: 100%;
-            padding: 13px;
-            font-size: 16px;
-            margin-bottom: 8px;
-            border-radius: 12px;
-            border: 1px solid var(--line);
-            background: var(--panel);
-            color: var(--text);
-          "
-        >
-          <option value="">process...</option>
-          <optgroup label="Classic">
-            <option>Washed</option>
-            <option>Natural</option>
-            <option>Honey</option>
-            <option>White Honey</option>
-            <option>Yellow Honey</option>
-            <option>Red Honey</option>
-            <option>Black Honey</option>
-            <option>Pulped Natural</option>
-          </optgroup>
-          <optgroup label="Fermentation">
-            <option>Anaerobic</option>
-            <option>Anaerobic Natural</option>
-            <option>Anaerobic Washed</option>
-            <option>Anoxic</option>
-            <option>Lactic</option>
-            <option>Yeast Inoculated</option>
-            <option>Extended Fermentation</option>
-            <option>Co-Fermented</option>
-          </optgroup>
-          <optgroup label="Experimental">
-            <option>Carbonic Maceration</option>
-            <option>Thermal Shock</option>
-            <option>Frozen / Cryo</option>
-            <option>Double Anaerobic</option>
-            <option>Washed Anaerobic</option>
-          </optgroup>
-          <optgroup label="Co-Ferment (fruit)">
-            <option>Co-Ferment (generic)</option>
-            <option>Lychee Co-Ferment</option>
-            <option>Strawberry Co-Ferment</option>
-            <option>Blueberry Co-Ferment</option>
-            <option>Raspberry Co-Ferment</option>
-            <option>Passionfruit Co-Ferment</option>
-            <option>Grape Co-Ferment</option>
-            <option>Peach Co-Ferment</option>
-            <option>Mango Co-Ferment</option>
-            <option>Pineapple Co-Ferment</option>
-            <option>Banana Co-Ferment</option>
-            <option>Melon Co-Ferment</option>
-            <option>Cherry Co-Ferment</option>
-            <option>Citrus Co-Ferment</option>
-            <option>Apple Co-Ferment</option>
-          </optgroup>
-          <optgroup label="Co-Ferment (other)">
-            <option>Hops Co-Ferment</option>
-            <option>Cinnamon Co-Ferment</option>
-            <option>Vanilla Co-Ferment</option>
-            <option>Ginger Co-Ferment</option>
-            <option>Mint Co-Ferment</option>
-            <option>Chili Co-Ferment</option>
-            <option>Rose / Floral Co-Ferment</option>
-            <option>Wine Yeast Co-Ferment</option>
-            <option>Champagne Yeast Co-Ferment</option>
-          </optgroup>
-          <optgroup label="Infused">
-            <option>Infused (post-process)</option>
-            <option>Bourbon Barrel Aged</option>
-            <option>Whiskey Barrel Aged</option>
-            <option>Rum Barrel Aged</option>
-          </optgroup>
-          <optgroup label="Other"><option value="Other">Other</option></optgroup></select
-        ><input
-          id="process_other"
-          placeholder="type process"
-          style="
-            display: none;
-            width: 100%;
-            padding: 13px;
-            font-size: 16px;
-            margin-bottom: 8px;
-            border-radius: 12px;
-            border: 1px solid var(--line);
-            background: var(--panel);
-            color: var(--text);
-          "
-        />
-        <div class="row">
-          <select
-            id="type"
-            style="
-              flex: 1;
-              padding: 13px;
-              font-size: 16px;
-              border-radius: 12px;
-              border: 1px solid var(--line);
-              background: var(--panel);
-              color: var(--text);
-            "
-          >
-            <option value="">type (auto)</option>
-            <option value="soup">soup</option>
-            <option value="espresso">espresso</option>
-            <option value="filter">filter</option></select
-          ><input
-            id="dose"
-            type="number"
-            step="0.1"
-            inputmode="decimal"
-            placeholder="dose g"
-            style="
-              flex: 1;
-              padding: 13px;
-              font-size: 16px;
-              border-radius: 12px;
-              border: 1px solid var(--line);
-              background: var(--panel);
-              color: var(--text);
-            "
-          /><select
-            id="grinder"
-            onchange="localStorage.setItem('grinder',this.value);let _e=ROT.find(x=>x.coffee==document.getElementById('coffee').value);renderGsetChips(_e);renderGrinderChips(_e)"
-            style="
-              flex: 1;
-              padding: 13px;
-              font-size: 16px;
-              border-radius: 12px;
-              border: 1px solid var(--line);
-              background: var(--panel);
-              color: var(--text);
-            "
-          >
-            <option value="">grinder</option>
-            <option value="K7">Kingrinder K7</option>
-            <option value="A2">Femobook A2</option>
-            <option value="QAir">1Zpresso Q-Air</option>
-            <option value="ZP6">1Zpresso ZP6</option>
-            <option value="Motto80">Bookoo Motto80</option></select
-          ><input
-            id="r"
-            type="number"
-            min="1"
-            max="10"
-            step="1"
-            inputmode="numeric"
-            placeholder="1-10"
-            style="
-              flex: 1;
-              padding: 13px;
-              font-size: 16px;
-              border-radius: 12px;
-              border: 1px solid var(--line);
-              background: var(--panel);
-              color: var(--text);
-            "
-          />
-        </div>
-        <div style="margin-top: 10px">
-          <div style="color: var(--dim); font-size: 12px; margin-bottom: 5px">
-            Grinder (tap to switch, converts setting):
-          </div>
-          <div class="frow">
-            <label data-i18n="fRegion">Region</label
-            ><input id="fregion" class="fin" data-i18n-ph="fRegionPh" placeholder="Rwanda, Huye" />
-          </div>
+          <div id="grLabel" class="fl">Grinder (tap to switch, converts setting)</div>
           <div
             id="grchips"
             style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
           ></div>
-          <div style="color: var(--dim); font-size: 12px; margin-bottom: 5px">
-            Grind setting used:
-          </div>
+          <div class="fl">Grind setting used</div>
           <div
             id="gchips"
             style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"
@@ -1514,162 +1201,82 @@
             step="0.1"
             inputmode="decimal"
             placeholder="grind # / um"
-            style="
-              width: 100%;
-              padding: 13px;
-              font-size: 16px;
-              border-radius: 12px;
-              border: 1px solid var(--line);
-              background: var(--panel);
-              color: var(--text);
-            "
+            class="fin"
+            style="width: 100%"
           />
-        </div>
-        <div class="frow" style="margin-top: 8px">
-          <div class="fcell">
-            <div class="fl">Yield (g)</div>
-            <input
-              id="gyield"
-              type="number"
-              step="0.1"
-              inputmode="decimal"
-              class="fin"
-              oninput="gRatioLive()"
-            />
-          </div>
-          <div class="fcell">
-            <div class="fl">Time (m:ss or s)</div>
-            <input id="gtime" inputmode="numeric" placeholder="0:28" class="fin" />
-          </div>
-        </div>
-        <div class="frow">
-          <div class="fcell">
-            <div class="fl">Preinfusion (s)</div>
-            <input id="gbloom" type="number" inputmode="numeric" class="fin" />
-          </div>
-          <div class="fcell">
-            <div class="fl">Temp (C)</div>
-            <input id="gtemp" type="number" step="0.5" inputmode="decimal" class="fin" />
-          </div>
-        </div>
-        <div id="gratioLive" class="csS" style="margin: -2px 0 8px 2px"></div>
-        <div
-          onclick="var x=document.getElementById('gadv');x.style.display=x.style.display=='none'?'block':'none'"
-          style="color: var(--dim); font-size: 12px; cursor: pointer; margin-bottom: 6px"
-        >
-          + basket / prep / paper (optional)
-        </div>
-        <div id="gadv" style="display: none">
-          <div class="fl">Basket</div>
-          <div
-            id="gbasketchips"
-            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
-          ></div>
-          <div class="fl">Prep</div>
-          <div
-            id="gprepchips"
-            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
-          ></div>
-          <div class="fl">Paper in basket</div>
-          <div
-            id="gpaperchips"
-            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
-          ></div>
-        </div>
-        <div style="margin-top: 8px">
-          <div style="color: var(--dim); font-size: 12px; margin-bottom: 5px">Water</div>
-          <div
-            id="gwaterchips"
-            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"
-          ></div>
-          <div style="color: var(--dim); font-size: 12px; margin-bottom: 5px">
-            How did it taste?
-          </div>
-          <div id="gtastechips" style="display: flex; flex-wrap: wrap; gap: 6px"></div>
-        </div>
-        <div style="display: flex; gap: 8px; margin-top: 8px">
-          <button
-            class="off"
-            style="flex: 1; color: var(--sel-text); border: 1px solid var(--sel-line)"
-            onclick='startBrew("gaggia")'
-          >
-            Start (plan now)</button
-          ><button id="saveBtn" class="grn" style="flex: 1" onclick="logshot()">Save to log</button>
-        </div>
-        <div
-          onclick="toggleFilter()"
-          style="
-            margin-top: 14px;
-            padding: 12px;
-            text-align: center;
-            border: 1px dashed var(--line2);
-            border-radius: 12px;
-            color: var(--sel-text);
-            font-size: 14px;
-            cursor: pointer;
-          "
-        >
-          <span id="filterAddLabel">+ Log a filter / non-Gaggia brew</span>
-        </div>
-        <div
-          id="filterForm"
-          style="
-            display: none;
-            margin-top: 10px;
-            padding: 14px;
-            border-radius: 12px;
-            border: 1px solid var(--line);
-            background: var(--panel2);
-          "
-        >
-          <div style="color: var(--dim); font-size: 12px; margin-bottom: 5px">Brewer</div>
-          <div
-            id="brewerchips"
-            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
-          ></div>
-          <div class="fl">Recipe (tap to prefill)</div>
-          <div
-            id="frechips"
-            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
-          ></div>
-          <div class="fl">Same coffee / from rotation</div>
-          <div
-            id="frotchips"
-            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
-          ></div>
-          <div class="fl">Coffee</div>
-          <input id="fcoffee" placeholder="e.g. Panama Gesha" class="fin" style="width: 100%" />
+          <div id="planBox" class="planbox" style="display: none"></div>
+          <div class="fl" style="margin-top: 8px">Coffee</div>
+          <input id="coffee" placeholder="e.g. Panama Gesha" class="fin" style="width: 100%" />
           <div class="frow">
             <div class="fcell">
-              <div class="fl">Varietal</div>
-              <select id="fvarietal" class="fin"></select>
-            </div>
-            <div class="fcell">
-              <div class="fl">Process</div>
-              <select
-                id="fprocess"
-                class="fin"
-                onchange="otherToggle('fprocess','fprocess_other')"
-              ></select
+              <div class="fl">Roaster</div>
+              <select id="roaster" class="fin" onchange="otherToggle('roaster', 'roaster_other')">
+                <option value="">roaster...</option>
+                <optgroup label="Specialty">
+                  <option>September</option>
+                  <option>Sey</option>
+                  <option>Luna</option>
+                  <option>Hydrangea</option>
+                  <option>Coffee with Dongze</option>
+                  <option>DAK</option>
+                  <option>XLIII</option>
+                  <option>Big Sur</option>
+                  <option>Native</option>
+                  <option>The Picky Chemist</option>
+                  <option>Special Guests</option>
+                  <option>Ilse</option>
+                  <option>Habito</option>
+                  <option>La Cabra</option>
+                </optgroup>
+                <optgroup label="Europe">
+                  <option>Tim Wendelboe</option>
+                  <option>Coffee Collective</option>
+                  <option>April</option>
+                  <option>Manhattan</option>
+                  <option>Friedhats</option>
+                  <option>Nomad</option>
+                  <option>Gardelli</option>
+                  <option>The Barn</option>
+                  <option>Five Elephant</option>
+                  <option>Round Hill</option>
+                  <option>Square Mile</option>
+                  <option>Assembly</option>
+                  <option>Cartwheel</option>
+                </optgroup>
+                <optgroup label="North America">
+                  <option>Onyx</option>
+                  <option>Prodigal</option>
+                  <option>Black & White</option>
+                  <option>Passenger</option>
+                  <option>Hatch</option>
+                  <option>George Howell</option>
+                  <option>Intelligentsia</option>
+                  <option>Datura</option>
+                  <option>Apollon's Gold</option>
+                  <option>Moonwake</option>
+                  <option>Aviary</option>
+                  <option>Shoebox</option>
+                  <option>Glitch</option>
+                  <option>Substance</option>
+                </optgroup>
+                <optgroup label="Asia / Pacific">
+                  <option>ONA</option>
+                  <option>Standout</option>
+                  <option>Fortitude</option>
+                </optgroup>
+                <optgroup label="Other"><option value="Other">Other</option></optgroup></select
               ><input
-                id="fprocess_other"
-                placeholder="type process"
+                id="roaster_other"
+                placeholder="type roaster name"
                 class="fin"
                 style="display: none"
               />
             </div>
-          </div>
-          <div class="frow">
-            <div class="fcell">
-              <div class="fl">Roaster</div>
-              <select id="froaster" class="fin">
-                <option value="">-</option>
-              </select>
-            </div>
             <div class="fcell">
               <div class="fl">Roast</div>
-              <select id="froast" class="fin">
-                <option value="">-</option>
+              <select id="roast" class="fin">
+                <option value="">roast level...</option>
+                <option>Ultra Light</option>
                 <option>Extra Light</option>
                 <option>Light</option>
                 <option>Light Medium</option>
@@ -1681,97 +1288,253 @@
           </div>
           <div class="frow">
             <div class="fcell">
-              <div class="fl">Dose (g)</div>
-              <input
-                id="fdose"
-                type="number"
-                step="0.1"
-                inputmode="decimal"
-                placeholder="15"
-                class="fin"
-              />
+              <div class="fl">Varietal</div>
+              <select id="varietal" class="fin">
+                <option value="">varietal...</option>
+                <optgroup label="Ethiopian / Landrace">
+                  <option>Heirloom</option>
+                  <option>Kurume</option>
+                  <option>Welicho</option>
+                  <option>Wolisho</option>
+                  <option>Gesha</option>
+                  <option>Wush Wush</option>
+                  <option>74110</option>
+                  <option>74158</option>
+                </optgroup>
+                <optgroup label="Rare / Exotic">
+                  <option>Eugenioides</option>
+                  <option>Sudan Rume</option>
+                  <option>Chiroso</option>
+                  <option>Ombligon</option>
+                  <option>Mokka</option>
+                  <option>Pacamara</option>
+                  <option>Maracaturra</option>
+                </optgroup>
+                <optgroup label="Bourbon family">
+                  <option>Bourbon</option>
+                  <option>Red Bourbon</option>
+                  <option>Yellow Bourbon</option>
+                  <option>Pink Bourbon</option>
+                  <option>Caturra</option>
+                  <option>Catuai</option>
+                  <option>Pacas</option>
+                  <option>Villa Sarchi</option>
+                  <option>Laurina</option>
+                </optgroup>
+                <optgroup label="Typica family">
+                  <option>Typica</option>
+                  <option>Mundo Novo</option>
+                  <option>Maragogipe</option>
+                  <option>Kona</option>
+                  <option>Blue Mountain</option>
+                  <option>Java</option>
+                  <option>Sidra</option>
+                </optgroup>
+                <optgroup label="Kenyan / SL">
+                  <option>SL28</option>
+                  <option>SL34</option>
+                  <option>SL14</option>
+                  <option>Ruiru 11</option>
+                  <option>Batian</option>
+                  <option>K7</option>
+                </optgroup>
+                <optgroup label="Hybrids / Large-bean">
+                  <option>Castillo</option>
+                  <option>Colombia</option>
+                  <option>Catimor</option>
+                  <option>Sarchimor</option>
+                  <option>Marsellesa</option>
+                  <option>Centroamericano</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option>Blend</option>
+                  <option value="Other">Other</option>
+                  <option>Unknown</option>
+                </optgroup>
+              </select>
             </div>
             <div class="fcell">
-              <div class="fl">Water (g)</div>
-              <input
-                id="fwater"
-                type="number"
-                step="1"
-                inputmode="decimal"
-                placeholder="250"
-                class="fin"
-              />
-            </div>
-            <div class="fcell">
-              <div class="fl">Total time (m:ss)</div>
-              <input id="ftime" placeholder="2:45" class="fin" />
-            </div>
-          </div>
-          <div class="frow">
-            <div class="fcell">
-              <div class="fl">Bloom time (s, optional)</div>
-              <input id="fbloom" type="number" inputmode="numeric" placeholder="40" class="fin" />
-            </div>
-            <div class="fcell"></div>
-          </div>
-          <div class="fl" style="margin-top: 4px">Kettle temp (C)</div>
-          <div
-            id="ftempchips"
-            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"
-          ></div>
-          <input
-            id="ftemp"
-            type="number"
-            step="0.5"
-            inputmode="decimal"
-            placeholder="92"
-            class="fin"
-            style="width: 100%"
-          />
-          <div class="frow">
-            <div class="fcell">
-              <div class="fl">Grind # (ZP6)</div>
-              <input
-                id="fgrind"
-                type="number"
-                step="0.1"
-                inputmode="decimal"
-                placeholder="5.2"
-                class="fin"
-              />
-            </div>
-            <div class="fcell">
-              <div class="fl">Rating (1-10)</div>
-              <input
-                id="frating"
-                type="number"
-                min="1"
-                max="10"
-                inputmode="numeric"
+              <div class="fl">Process</div>
+              <select id="process" class="fin" onchange="otherToggle('process', 'process_other')">
+                <option value="">process...</option>
+                <optgroup label="Classic">
+                  <option>Washed</option>
+                  <option>Natural</option>
+                  <option>Honey</option>
+                  <option>White Honey</option>
+                  <option>Yellow Honey</option>
+                  <option>Red Honey</option>
+                  <option>Black Honey</option>
+                  <option>Pulped Natural</option>
+                </optgroup>
+                <optgroup label="Fermentation">
+                  <option>Anaerobic</option>
+                  <option>Anaerobic Natural</option>
+                  <option>Anaerobic Washed</option>
+                  <option>Anoxic</option>
+                  <option>Lactic</option>
+                  <option>Yeast Inoculated</option>
+                  <option>Extended Fermentation</option>
+                  <option>Co-Fermented</option>
+                </optgroup>
+                <optgroup label="Experimental">
+                  <option>Carbonic Maceration</option>
+                  <option>Thermal Shock</option>
+                  <option>Frozen / Cryo</option>
+                  <option>Double Anaerobic</option>
+                  <option>Washed Anaerobic</option>
+                </optgroup>
+                <optgroup label="Co-Ferment (fruit)">
+                  <option>Co-Ferment (generic)</option>
+                  <option>Lychee Co-Ferment</option>
+                  <option>Strawberry Co-Ferment</option>
+                  <option>Blueberry Co-Ferment</option>
+                  <option>Raspberry Co-Ferment</option>
+                  <option>Passionfruit Co-Ferment</option>
+                  <option>Grape Co-Ferment</option>
+                  <option>Peach Co-Ferment</option>
+                  <option>Mango Co-Ferment</option>
+                  <option>Pineapple Co-Ferment</option>
+                  <option>Banana Co-Ferment</option>
+                  <option>Melon Co-Ferment</option>
+                  <option>Cherry Co-Ferment</option>
+                  <option>Citrus Co-Ferment</option>
+                  <option>Apple Co-Ferment</option>
+                </optgroup>
+                <optgroup label="Co-Ferment (other)">
+                  <option>Hops Co-Ferment</option>
+                  <option>Cinnamon Co-Ferment</option>
+                  <option>Vanilla Co-Ferment</option>
+                  <option>Ginger Co-Ferment</option>
+                  <option>Mint Co-Ferment</option>
+                  <option>Chili Co-Ferment</option>
+                  <option>Rose / Floral Co-Ferment</option>
+                  <option>Wine Yeast Co-Ferment</option>
+                  <option>Champagne Yeast Co-Ferment</option>
+                </optgroup>
+                <optgroup label="Infused">
+                  <option>Infused (post-process)</option>
+                  <option>Bourbon Barrel Aged</option>
+                  <option>Whiskey Barrel Aged</option>
+                  <option>Rum Barrel Aged</option>
+                </optgroup>
+                <optgroup label="Other"><option value="Other">Other</option></optgroup></select
+              ><input
+                id="process_other"
+                placeholder="type process"
                 class="fin"
                 style="display: none"
               />
-              <div id="rateChips" class="ratechips"></div>
-              <div id="rateWord" class="ratewordlbl">Tap to rate</div>
             </div>
           </div>
+          <div class="frow">
+            <label class="fl" data-i18n="fRegion">Region</label
+            ><input id="fregion" class="fin" data-i18n-ph="fRegionPh" placeholder="Rwanda, Huye" />
+          </div>
+          <input id="type" type="hidden" value="" />
+          <div class="fl" style="margin-top: 8px">Dose (g)</div>
+          <input
+            id="dose"
+            type="number"
+            step="0.1"
+            inputmode="decimal"
+            placeholder="dose g"
+            class="fin"
+            style="width: 100%"
+          />
+          <div class="frow" style="margin-top: 8px">
+            <div class="fcell">
+              <div class="fl">
+                <span class="mmethod" data-mgag="1">Yield (g)</span
+                ><span class="mmethod" data-mfilter="1">Water (g)</span>
+              </div>
+              <input
+                id="gyield"
+                type="number"
+                step="0.1"
+                inputmode="decimal"
+                class="fin"
+                oninput="gRatioLive()"
+              />
+            </div>
+            <div class="fcell">
+              <div class="fl">Time (m:ss or s)</div>
+              <input id="gtime" inputmode="numeric" placeholder="0:28" class="fin" />
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Preinfusion / bloom (s)</div>
+              <input id="gbloom" type="number" inputmode="numeric" class="fin" />
+            </div>
+            <div class="fcell">
+              <div class="fl">Temp (C)</div>
+              <input id="gtemp" type="number" step="0.5" inputmode="decimal" class="fin" />
+            </div>
+          </div>
+          <div
+            id="ftempchips"
+            class="mmethod"
+            data-mfilter="1"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"
+          ></div>
+          <div id="gratioLive" class="csS" style="margin: -2px 0 8px 2px"></div>
           <div class="fl">Water</div>
           <div
-            id="fwaterchips"
-            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+            id="gwaterchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"
           ></div>
           <div class="fl">How did it taste?</div>
           <div
-            id="ftastechips"
+            id="gtastechips"
             style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
           ></div>
           <div
-            onclick="var x=document.getElementById('fadv');x.style.display=x.style.display=='none'?'block':'none'"
+            id="frechips"
+            class="mmethod"
+            data-mfilter="1"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+          ></div>
+          <div
+            class="mmethod"
+            data-mgag="1"
+            onclick="
+              var x = document.getElementById('gadv');
+              x.style.display = x.style.display == 'none' ? 'block' : 'none';
+            "
+            style="color: var(--dim); font-size: 12px; cursor: pointer; margin-bottom: 6px"
+          >
+            + basket / prep / paper (optional)
+          </div>
+          <div id="gadv" class="mmethod" data-mgag="1" style="display: none">
+            <div class="fl">Basket</div>
+            <div
+              id="gbasketchips"
+              style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+            ></div>
+            <div class="fl">Prep</div>
+            <div
+              id="gprepchips"
+              style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+            ></div>
+            <div class="fl">Paper in basket</div>
+            <div
+              id="gpaperchips"
+              style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+            ></div>
+          </div>
+          <div
+            class="mmethod"
+            data-mfilter="1"
+            onclick="
+              var x = document.getElementById('fadv');
+              x.style.display = x.style.display == 'none' ? 'block' : 'none';
+            "
             style="color: var(--dim); font-size: 12px; cursor: pointer; margin-bottom: 6px"
           >
             + paper / agitation (optional)
           </div>
-          <div id="fadv" style="display: none">
+          <div id="fadv" class="mmethod" data-mfilter="1" style="display: none">
             <div class="fl">Filter paper</div>
             <div
               id="fpaperchips"
@@ -1783,14 +1546,22 @@
               style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
             ></div>
           </div>
+          <div class="fl" style="margin-top: 2px">Rating (1-10)</div>
+          <input
+            id="r"
+            type="number"
+            min="1"
+            max="10"
+            inputmode="numeric"
+            class="fin"
+            style="display: none"
+          />
+          <div id="rateChips" class="ratechips"></div>
+          <div id="rateWord" class="ratewordlbl">Tap to rate</div>
           <div style="display: flex; gap: 8px; margin-top: 8px">
-            <button
-              class="off"
-              style="flex: 1; color: var(--sel-text); border: 1px solid var(--sel-line)"
-              onclick='startBrew("filter")'
-            >
-              Start brew (plan now)</button
-            ><button class="grn" style="flex: 1" onclick="logFilter()">Save filter brew</button>
+            <button id="saveBtn" class="grn" style="flex: 1" onclick="logAction()">
+              Save to log
+            </button>
           </div>
         </div>
       </div>
@@ -1875,7 +1646,7 @@
               <select
                 id="invroaster"
                 class="fin"
-                onchange="otherToggle('invroaster','invroaster_other')"
+                onchange="otherToggle('invroaster', 'invroaster_other')"
               ></select
               ><input
                 id="invroaster_other"
@@ -1899,7 +1670,7 @@
               <select
                 id="invprocess"
                 class="fin"
-                onchange="otherToggle('invprocess','invprocess_other')"
+                onchange="otherToggle('invprocess', 'invprocess_other')"
               ></select
               ><input
                 id="invprocess_other"
@@ -2203,39 +1974,49 @@
         return v;
       }
       async function logshot() {
-        let g = (id) => document.getElementById(id).value.trim();
-        let c = g("coffee"),
+        var g = function (id) {
+          var e = document.getElementById(id);
+          return e ? e.value.trim() : "";
+        };
+        var c = g("coffee"),
           rst = rememberOther("roaster", "roaster_other", "roaster"),
           v = g("varietal"),
           pr = rememberOther("process", "process_other", "process"),
-          ro = document.getElementById("roast").value,
-          t = document.getElementById("type").value,
-          d = g("dose"),
+          ro = g("roast");
+        var typ = (document.getElementById("type") || {}).value || "";
+        var d = g("dose"),
           r = g("r");
         if (!c) {
           alert("Coffee name?");
           return;
         }
         if (r) {
-          let n = parseInt(r);
-          if (n < 1 || n > 10) {
+          var rn = parseInt(r);
+          if (rn < 1 || rn > 10) {
             alert("Rating 1-10");
             return;
           }
         }
-        let gs = document.getElementById("gset").value;
-        let grn = document.getElementById("grinder").value;
-        if (grn) localStorage.setItem("grinder", grn);
-        let gsetN = parseFloat(gs);
+        var gs = g("gset");
+        var grn = lastGrinder();
+        var gsetN = parseFloat(gs);
         if (!isNaN(gsetN) && grn) {
           localStorage.setItem("gset_" + grn, gsetN);
         }
-        let gy = g("gyield"),
-          gt = toSecs(document.getElementById("gtime").value),
-          gtemp = g("gtemp"),
-          gbloom = g("gbloom");
-        let gratio = d && gy ? (parseFloat(gy) / parseFloat(d)).toFixed(2) : "";
-        let cols = [
+        var isFil = typ === "filter";
+        var out = g("gyield");
+        var tm = toSecs(g("gtime"));
+        var tp = g("gtemp");
+        var bl = g("gbloom");
+        var ratio = d && out ? (parseFloat(out) / parseFloat(d)).toFixed(2) : "";
+        var brewer = isFil ? FBREWER || "" : "";
+        var basket = isFil ? "" : GBASKET || "";
+        var prep = isFil ? "" : GPREP || "";
+        var agit = isFil ? FAGIT || "double bloom + WDT" : "";
+        var paper = isFil ? FPAPER || "" : GPAPER || "";
+        var yieldCol = isFil ? "" : out || "";
+        var waterCol = isFil ? out || "" : "";
+        var cols = [
           "",
           "",
           c,
@@ -2243,29 +2024,31 @@
           v,
           pr,
           ro,
-          t || "",
+          typ || "",
           d,
-          gy || "",
-          gratio,
-          gt || "",
+          yieldCol,
+          ratio,
+          tm || "",
           "",
           "",
-          gtemp || "",
+          tp || "",
           r || "",
-          GBASKET || "",
+          brewer,
           gs || "",
           GWATER || "",
-          GPREP || "",
-          GPAPER || "",
+          prep,
+          paper,
           GTASTE || "",
-          gbloom || "",
+          bl || "",
+          "",
+          basket,
+          agit,
+          waterCol,
         ];
-        let csv = "CSV," + cols.map(csvSafe).join(",");
-        let _body = colsToParams(cols);
         try {
           localPush(cols);
         } catch (e) {}
-        let _mode = dataMode();
+        var _mode = dataMode();
         if (_mode === "google") {
           try {
             await gAppend(SHOT_TAB, cols);
@@ -2282,27 +2065,30 @@
             } else alert(t("gSaveFailed"));
           }
         }
-        pushRotation(
-          {
-            coffee: c,
-            roaster: rst,
-            varietal: v,
-            process: pr,
-            roast: ro,
-            type: t,
-            dose: d,
-            grinder: grn,
-            gset: isNaN(gsetN) ? null : gsetN,
-            water: GWATER || "",
-            taste: GTASTE || "",
-          },
-          {
-            yieldG: gy ? parseFloat(gy) : undefined,
-            ratio: gratio ? parseFloat(gratio) : undefined,
-            durationS: gt ? parseFloat(gt) : undefined,
-          },
-          r,
-        );
+        try {
+          pushRotation(
+            {
+              coffee: c,
+              roaster: rst,
+              varietal: v,
+              process: pr,
+              roast: ro,
+              type: typ,
+              dose: d,
+              grinder: grn,
+              gset: isNaN(gsetN) ? null : gsetN,
+              water: GWATER || "",
+              taste: GTASTE || "",
+              brewer: brewer,
+            },
+            {
+              yieldG: out ? parseFloat(out) : undefined,
+              ratio: ratio ? parseFloat(ratio) : undefined,
+              durationS: tm ? parseFloat(tm) : undefined,
+            },
+            r,
+          );
+        } catch (e) {}
         [
           "coffee",
           "varietal",
@@ -2315,23 +2101,37 @@
           "gtime",
           "gtemp",
           "gbloom",
-        ].forEach((i) => {
+        ].forEach(function (i) {
           var _el = document.getElementById(i);
           if (_el) _el.value = "";
         });
+        GBASKET = "";
         GPREP = "";
         GPAPER = "";
+        GTASTE = "";
+        GWATER = "";
+        FBREWER = "";
+        FAGIT = "";
+        FPAPER = "";
+        FTASTE = "";
+        FWATER = "";
+        try {
+          renderGWater();
+        } catch (e) {}
+        try {
+          renderGTaste();
+        } catch (e) {}
         try {
           gRatioLive();
         } catch (e) {}
-        GTASTE = "";
-        renderGWater();
-        renderGTaste();
-        document.getElementById("type").value = "";
-        document.getElementById("roast").value = "";
-        document.getElementById("roaster").value = "";
-        document.getElementById("process").value = "";
-        if (getPlan() && getPlan().kind == "gaggia") clearPlan();
+        try {
+          renderRateChips();
+        } catch (e) {}
+        ["roast", "roaster", "process", "varietal"].forEach(function (i) {
+          var _el = document.getElementById(i);
+          if (_el) _el.value = "";
+        });
+        if (getPlan()) clearPlan();
         alert("Logged to your sheet");
       }
       let ROT = [];
@@ -2419,7 +2219,6 @@
         document.getElementById("type").value = e.type || "";
         document.getElementById("dose").value = e.dose || "";
         if (e.grinder) {
-          document.getElementById("grinder").value = e.grinder;
           localStorage.setItem("grinder", e.grinder);
         }
         showDialin(e);
@@ -2462,7 +2261,7 @@
         let box = document.getElementById("gchips");
         if (!box) return;
         box.innerHTML = "";
-        let grn = document.getElementById("grinder").value || lastGrinder();
+        let grn = lastGrinder();
         let isM = grn == "Motto80";
         let lastG = null;
         if (e) {
@@ -2520,7 +2319,7 @@
         let box = document.getElementById("grchips");
         if (!box) return;
         box.innerHTML = "";
-        let cur = document.getElementById("grinder").value || lastGrinder();
+        let cur = lastGrinder();
         ownedGrinders().forEach((id) => {
           let g = GRINDERS[id];
           if (!g) return;
@@ -2533,9 +2332,8 @@
         });
       }
       function selectGrinder(id, e) {
-        let old = document.getElementById("grinder").value || lastGrinder();
+        let old = lastGrinder();
         let cur = parseFloat(document.getElementById("gset").value);
-        document.getElementById("grinder").value = id;
         localStorage.setItem("grinder", id);
         let src = !isNaN(cur) ? cur : e && e.last && e.last.gset != null ? e.last.gset : null;
         if (src != null && old && old != id) {
@@ -2618,10 +2416,6 @@
         if (ll) ll.textContent = "Log the last " + n;
         let mo = document.getElementById("machineOnly");
         if (mo) mo.style.display = M_GAG ? "block" : "none";
-        let fh = document.getElementById("filterAddLabel");
-        if (!M_ESP && !M_SOUP) {
-          if (fh) fh.textContent = "+ Log another brewer";
-        }
         renderChips();
       }
       let FBREWER = "";
@@ -2668,18 +2462,7 @@
           b.appendChild(c);
         });
       }
-      function toggleFilter() {
-        let f = document.getElementById("filterForm");
-        let show = f.style.display == "none";
-        f.style.display = show ? "block" : "none";
-        if (show) {
-          renderBrewerChips();
-          renderTempChips();
-          renderFilterExtras();
-          renderFilterRot();
-          renderRecipeChips();
-        }
-      }
+      function toggleFilter() {}
       function chipRow(boxId, items, cur, setter, reRender) {
         let box = document.getElementById(boxId);
         if (!box) return;
@@ -2734,38 +2517,9 @@
           renderFilterExtras,
         );
       }
-      function renderFilterRot() {
-        let box = document.getElementById("frotchips");
-        if (!box) return;
-        box.innerHTML = "";
-        if (ROT.length) {
-          let s = document.createElement("div");
-          s.textContent = "same as last";
-          s.style.cssText =
-            "padding:8px 12px;border-radius:18px;font-size:13px;cursor:pointer;border:1px solid var(--hi-line);background:var(--hi-bg);color:var(--hi-text)";
-          s.onclick = () => fillFilterFrom(ROT[0]);
-          box.appendChild(s);
-        }
-        ROT.slice(0, 6).forEach((e) => {
-          if (!e.coffee) return;
-          let c = document.createElement("div");
-          c.textContent = e.coffee;
-          c.style.cssText =
-            "padding:8px 12px;border-radius:18px;font-size:13px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--text)";
-          c.onclick = () => fillFilterFrom(e);
-          box.appendChild(c);
-        });
-      }
+      function renderFilterRot() {}
       function fillFilterFrom(e) {
-        document.getElementById("fcoffee").value = e.coffee || "";
-        setSel("froaster", "", e.roaster);
-        if (e.roast) document.getElementById("froast").value = e.roast;
-        if (e.water) {
-          FWATER = e.water;
-        }
-        if (e.grinder == "ZP6" && e.gset != null) document.getElementById("fgrind").value = e.gset;
-        renderFilterExtras();
-        renderTempChips();
+        fillEntry(e);
       }
       function renderBrewerChips() {
         let box = document.getElementById("brewerchips");
@@ -2784,12 +2538,12 @@
         });
       }
       function renderTempChips() {
-        let box = document.getElementById("ftempchips");
+        var box = document.getElementById("ftempchips");
         if (!box) return;
         box.innerHTML = "";
-        let roast = document.getElementById("froast").value || "Light";
-        let b = Math.round(BOIL_C);
-        let OFF = {
+        var roast = (document.getElementById("roast") || {}).value || "Light";
+        var b = Math.round(BOIL_C);
+        var OFF = {
           "Extra Light": [1, 2, 3],
           Light: [2, 3, 4],
           "Light Medium": [3, 4, 5],
@@ -2797,28 +2551,31 @@
           "Medium Dark": [6, 8, 10],
           Dark: [8, 10, 12],
         };
-        let offs = OFF[roast] || [2, 3, 4];
-        let labels = ["hot", "mid", "cool"];
-        offs.forEach((o, i) => {
-          let t = b - o;
-          let c = document.createElement("div");
-          c.textContent = t + " (" + labels[i] + ")";
-          c.onclick = () => {
-            document.getElementById("ftemp").value = t;
+        var offs = OFF[roast] || [2, 3, 4];
+        var labels = ["hot", "mid", "cool"];
+        offs.forEach(function (o, i) {
+          var tt = b - o;
+          var c = document.createElement("div");
+          c.textContent = tt + " (" + labels[i] + ")";
+          c.onclick = function () {
+            var e = document.getElementById("gtemp");
+            if (e) e.value = tt;
           };
           c.style.cssText =
             "padding:8px 12px;border-radius:18px;font-size:13px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--text)";
           box.appendChild(c);
         });
-        let d = document.createElement("div");
+        var d = document.createElement("div");
         d.textContent = b - 2 + " (near boil)";
-        d.onclick = () => {
-          document.getElementById("ftemp").value = b - 2;
+        d.onclick = function () {
+          var e = document.getElementById("gtemp");
+          if (e) e.value = b - 2;
         };
         d.style.cssText =
           "padding:8px 12px;border-radius:18px;font-size:13px;cursor:pointer;border:1px solid var(--hi-line);background:var(--hi-bg);color:var(--hi-text)";
         box.appendChild(d);
-        if (!document.getElementById("ftemp").value) document.getElementById("ftemp").value = b - 2;
+        var gt = document.getElementById("gtemp");
+        if (gt && !gt.value) gt.value = b - 2;
       }
       document.addEventListener("change", function (e) {
         if (e.target && e.target.id == "froast") renderTempChips();
@@ -2833,107 +2590,7 @@
         return parseFloat(t) || "";
       }
       async function logFilter() {
-        let coffee = document.getElementById("fcoffee").value.trim();
-        if (!coffee) {
-          alert("coffee name?");
-          return;
-        }
-        let dose = document.getElementById("fdose").value,
-          water = document.getElementById("fwater").value;
-        let dur = toSecs(document.getElementById("ftime").value);
-        let temp = document.getElementById("ftemp").value,
-          grind = document.getElementById("fgrind").value;
-        let rating = document.getElementById("frating").value;
-        let roaster = document.getElementById("froaster").value,
-          roast = document.getElementById("froast").value;
-        let ratio = dose && water ? (water / dose).toFixed(1) : "";
-        let bloom = document.getElementById("fbloom").value || "";
-        let fvar = (document.getElementById("fvarietal") || {}).value || "";
-        let fproc = (document.getElementById("fprocess") || {}).value || "";
-        if (fproc == "Other") fproc = (document.getElementById("fprocess_other") || {}).value || "";
-        let cols = [
-          "",
-          "",
-          coffee,
-          roaster,
-          fvar,
-          fproc,
-          roast,
-          "filter",
-          dose,
-          water,
-          ratio,
-          dur,
-          "",
-          "",
-          temp,
-          rating,
-          FBREWER || "",
-          grind || "",
-          FWATER || "",
-          FAGIT || "double bloom + WDT",
-          FPAPER || "",
-          FTASTE || "",
-          bloom,
-        ];
-        let csv = "CSV," + cols.map(csvSafe).join(",");
-        let _body = colsToParams(cols);
-        try {
-          localPush(cols);
-        } catch (e) {}
-        let _mode = dataMode();
-        if (_mode === "google") {
-          var _fok = false;
-          try {
-            await gAppend(SHOT_TAB, cols);
-            _fok = true;
-          } catch (e) {
-            if (String(e.message).indexOf("needs-gesture") >= 0) {
-              var _fa = await gAuth(true);
-              if (_fa) {
-                try {
-                  await gAppend(SHOT_TAB, cols);
-                  _fok = true;
-                } catch (e2) {}
-              }
-            }
-          }
-          if (!_fok) {
-            alert(t("gSaveFailed"));
-            return;
-          }
-        }
-        try {
-          pushRotation(
-            {
-              coffee: coffee,
-              roaster: roaster,
-              varietal: fvar,
-              process: fproc,
-              roast: roast,
-              type: "filter",
-              dose: dose,
-              grinder: "ZP6",
-              gset: grind ? parseFloat(grind) : null,
-              water: FWATER || "",
-              brewer: FBREWER || "",
-              taste: FTASTE || "",
-            },
-            {
-              peakBar: undefined,
-              yieldG: water ? parseFloat(water) : undefined,
-              ratio: ratio ? parseFloat(ratio) : undefined,
-              durationS: dur ? parseFloat(dur) : undefined,
-            },
-            rating,
-          );
-        } catch (e) {}
-        ["fcoffee", "fdose", "fwater", "ftime", "fbloom", "fgrind", "frating"].forEach(
-          (i) => (document.getElementById(i).value = ""),
-        );
-        FTASTE = "";
-        if (getPlan() && getPlan().kind == "filter") clearPlan();
-        alert("Filter brew logged");
+        return logshot();
       }
       function fmtRecipe(r) {
         let p = [];
@@ -2989,6 +2646,16 @@
         MignonXL: { n: "Mignon XL", um: 24, burr: "flat" },
         Motto80: { n: "Motto80", um: 0, burr: "flat" },
       };
+      GRINDERS.ZP6.dialPer = 10;
+      GRINDERS.KUltra.dialPer = 10;
+      function dialTxt(gid, clicks) {
+        var g = GRINDERS[gid];
+        if (!g || !g.dialPer || !isFinite(clicks)) return null;
+        var c = Math.round(clicks),
+          n = Math.floor(c / g.dialPer),
+          tk = c % g.dialPer;
+        return n + "." + tk;
+      }
       var INVN = null;
       var K_CONICAL_DEFAULT = 0.5;
       function effUm(g) {
@@ -3222,29 +2889,25 @@
         return e ? e.value : "";
       }
       function startBrew(kind) {
-        var p = { kind: kind, t: Date.now() };
-        if (kind == "filter") {
-          p.coffee = gv("fcoffee");
-          p.roaster = gv("froaster");
-          p.roast = gv("froast");
-          p.dose = gv("fdose");
-          p.water = gv("fwater");
-          p.grind = gv("fgrind");
-          p.temp = gv("ftemp");
-          p.brewer = FBREWER;
-          p.wtr = FWATER;
-          p.paper = FPAPER;
-          p.agit = FAGIT;
-        } else {
-          p.coffee = gv("coffee");
-          p.roaster = gv("roaster");
-          p.roast = (document.getElementById("roast") || {}).value;
-          p.type = (document.getElementById("type") || {}).value;
-          p.dose = gv("dose");
-          p.grind = gv("gset");
-          p.grinder = (document.getElementById("grinder") || {}).value;
-          p.wtr = GWATER;
-        }
+        var typ = (document.getElementById("type") || {}).value || "";
+        var gv = function (id) {
+          var e = document.getElementById(id);
+          return e ? e.value : "";
+        };
+        var p = {
+          kind: typ === "filter" ? "filter" : "gaggia",
+          t: Date.now(),
+          coffee: gv("coffee"),
+          roaster: gv("roaster"),
+          roast: gv("roast"),
+          type: typ,
+          dose: gv("dose"),
+          grind: gv("gset"),
+          grinder: lastGrinder(),
+          water: gv("gyield"),
+          wtr: GWATER,
+          brewer: FBREWER,
+        };
         if (!p.coffee) {
           alert("Add at least the coffee name to start a brew");
           return;
@@ -3325,65 +2988,55 @@
       function finishBrew() {
         var p = getPlan();
         if (!p) return;
-        if (p.kind == "filter") {
-          var f = document.getElementById("filterForm");
-          if (f && f.style.display == "none") toggleFilter();
-          function set(id, v) {
-            var e = document.getElementById(id);
-            if (e && v) e.value = v;
-          }
-          set("fcoffee", p.coffee);
-          set("froaster", p.roaster);
-          set("froast", p.roast);
-          set("fdose", p.dose);
-          set("fwater", p.water);
-          set("fgrind", p.grind);
-          set("ftemp", p.temp);
-          FBREWER = p.brewer || "";
-          FWATER = p.wtr || "";
-          FPAPER = p.paper || "";
-          FAGIT = p.agit || "";
-          renderBrewerChips();
-          renderFilterExtras();
-          document.getElementById("filterForm").scrollIntoView({ behavior: "smooth" });
-          alert("Plan loaded. Add yield, time, taste and rating, then Save filter brew.");
-        } else {
-          function setg(id, v) {
-            var e = document.getElementById(id);
-            if (e && v) e.value = v;
-          }
-          setg("coffee", p.coffee);
-          setg("roaster", p.roaster);
-          setg("roast", p.roast);
-          setg("type", p.type);
-          setg("dose", p.dose);
-          setg("gset", p.grind);
-          setg("grinder", p.grinder);
-          GWATER = p.wtr || "";
-          renderGWater();
-          document.getElementById("logLabel").scrollIntoView({ behavior: "smooth" });
-          alert("Plan loaded. Add the outcome (rating, taste), then Save to log.");
+        var set = function (id, val) {
+          var e = document.getElementById(id);
+          if (e && val) e.value = val;
+        };
+        set("coffee", p.coffee);
+        set("roaster", p.roaster);
+        set("roast", p.roast);
+        if (p.type) {
+          var ty = document.getElementById("type");
+          if (ty) ty.value = p.type;
+          try {
+            setLogMethod(p.type);
+          } catch (e) {}
         }
+        set("dose", p.dose);
+        set("gset", p.grind);
+        set("gyield", p.water);
+        GWATER = p.wtr || "";
+        FBREWER = p.brewer || "";
+        try {
+          renderGWater();
+        } catch (e) {}
+        try {
+          renderBrewerChips();
+        } catch (e) {}
+        var ll = document.getElementById("logLabel");
+        if (ll) ll.scrollIntoView({ behavior: "smooth" });
+        alert("Plan loaded. Add the outcome, then Save to log.");
       }
       function applyRecipe(name) {
-        let r = RECIPES[name];
+        var r = RECIPES[name];
         if (!r) return;
         FBREWER = r.brewer;
         renderBrewerChips();
-        let dose = parseFloat(document.getElementById("fdose").value) || 15;
-        document.getElementById("fwater").value = Math.round(dose * r.ratio);
-        let box = document.getElementById("frechips");
-        let note = document.createElement("div");
+        var dose = parseFloat((document.getElementById("dose") || {}).value) || 15;
+        var wy = document.getElementById("gyield");
+        if (wy) wy.value = Math.round(dose * r.ratio);
+        var note = document.createElement("div");
         note.style.cssText =
           "width:100%;margin-top:6px;font-size:11px;color:var(--dim);line-height:1.5";
         note.textContent = name + ": " + r.grind + " grind, 1:" + r.ratio + ". " + r.pours;
         renderRecipeChips();
-        document.getElementById("frechips").appendChild(note);
+        var fr = document.getElementById("frechips");
+        if (fr) fr.appendChild(note);
       }
       let BREWER_UM = {
         Espresso: 340,
-        Soup: 500,
-        "Soup <2 bar": 560,
+        Soup: 620,
+        "Soup <2 bar": 700,
         V60: 700,
         "V60 Switch": 850,
         "V60 Neo": 720,
@@ -4000,8 +3653,7 @@
       (function () {
         let lg = localStorage.getItem("grinder");
         if (lg) {
-          let el = document.getElementById("grinder");
-          if (el) el.value = lg;
+          0;
         }
         renderGsetChips(null);
         renderGrinderChips(null);
@@ -4202,6 +3854,9 @@
           insLockGo: "Log a brew",
           csT: "Starting point",
           csHint: "Then dial by taste.",
+          csCoarser: "coarser",
+          csFiner: "finer",
+          csNoAdj: "no change",
           csPick: "Pick a brewer to see a starting point.",
           csOn: "on",
           csClicks: "clicks",
@@ -4239,6 +3894,7 @@
           noSheetYet: "No sheet connected. Advice still works; nothing is saved.",
           homeInv: "Your inventory",
           homeLoading: "Loading your bags...",
+          viewSheet: "View my sheet log",
           homeLogged: "logged",
           homeNone: "Nothing logged yet",
           homeStart: "Set up to begin",
@@ -4380,6 +4036,9 @@
           insLockGo: "Registrar un café",
           csT: "Punto de partida",
           csHint: "Luego ajusta por sabor.",
+          csCoarser: "más grueso",
+          csFiner: "más fino",
+          csNoAdj: "sin cambio",
           csPick: "Elige un brewer para ver un punto de partida.",
           csOn: "en",
           csClicks: "clics",
@@ -4417,6 +4076,7 @@
           noSheetYet: "Sin hoja conectada. Los consejos funcionan; no se guarda nada.",
           homeInv: "Tu inventario",
           homeLoading: "Cargando tus bolsas...",
+          viewSheet: "Ver mi registro en la hoja",
           homeLogged: "registrados",
           homeNone: "Aun no hay registros",
           homeStart: "Configura para empezar",
@@ -4684,6 +4344,21 @@
         try {
           renderLogEntry();
         } catch (e) {}
+        /* The method picker and the form switch must run at BOOT, not only when
+     something calls renderLogMode(). They were wired with an unguarded
+     s.replace() whose pattern had a space the real code did not, so the boot call
+     silently never landed: #logMethodRow rendered EMPTY until you touched it, and
+     both forms were laid out by whatever the markup happened to say.
+     Guarded now - which is the whole reason must_replace exists. */
+        try {
+          renderLogMethod();
+        } catch (e) {}
+        try {
+          renderLogForm();
+        } catch (e) {}
+        try {
+          renderLogMode();
+        } catch (e) {}
         try {
           renderInstallCard();
         } catch (e) {}
@@ -4727,6 +4402,151 @@
         uiRender();
       }
 
+      /* ---- Log tab: one method, one form, one button ----
+   Before this, the Log tab showed the gaggia form AND the filter form at the same
+   time, each complete with its own coffee/roaster/roast/dose/time fields and its
+   own pair of buttons. Two forms, three sets of buttons, one screen.
+   #type already knew which method you meant. It was just buried inside the gaggia
+   form, and a selector cannot hide its own container, so it never switched.
+   Now: chips at the top set #type, #type picks the form, and LOGMODE picks what
+   the single green button does. */
+      function logAction(kind) {
+        /* the button IS the mode. before -> plan it, after -> record it. */
+        if (LOGMODE === "before") {
+          try {
+            return startBrew(kind);
+          } catch (e) {}
+          return;
+        }
+        if (kind === "filter") {
+          try {
+            return logFilter();
+          } catch (e) {}
+          return;
+        }
+        try {
+          return logshot();
+        } catch (e) {}
+      }
+      function logMethods() {
+        /* All three, always. This used to list only the methods enabled in the wizard,
+     so Oscar - who had not ticked espresso - had no way to log one and no way to
+     get an espresso starting point: "give me a way to chose espresso somewhere as
+     well". What you usually brew is a good default; it is a bad cage. The wizard
+     flags still drive defaults elsewhere, they just no longer forbid a method. */
+        return [
+          ["espresso", "mEsp"],
+          ["soup", "mSoup"],
+          ["filter", "mFil"],
+        ];
+      }
+      function logMethod() {
+        var ms = logMethods().map(function (m) {
+          return m[0];
+        });
+        var t = document.getElementById("type");
+        var v = t ? t.value : "";
+        if (ms.indexOf(v) >= 0) return v;
+        /* Nothing valid chosen yet, so restore the last choice. setLogMethod() has
+     always WRITTEN localStorage.logMethod and nothing ever read it back, so every
+     reload silently reverted to the first enabled method - a write with no reader
+     is the same dead-feature shape as everything else in this app's history.
+     Sync #type too: it is the value store logshot() saves to the sheet, so a
+     chip that disagrees with it would log the wrong method. */
+        var saved = "";
+        try {
+          saved = localStorage.getItem("logMethod") || "";
+        } catch (e) {}
+        if (ms.indexOf(saved) >= 0) {
+          if (t && t.value !== saved) t.value = saved;
+          return saved;
+        }
+        return ms[0];
+      }
+      function setLogMethod(v) {
+        var t = document.getElementById("type");
+        if (t) {
+          t.value = v;
+          try {
+            t.dispatchEvent(new Event("change", { bubbles: true }));
+          } catch (e) {}
+        }
+        try {
+          localStorage.setItem("logMethod", v);
+        } catch (e) {}
+        renderLogMethod();
+        renderLogForm();
+        renderLogMode();
+        /* the target depends on the method, so recompute it now. Without this the banner
+     kept the PREVIOUS method's number until something else re-rendered - switch
+     espresso(Thermal)->soup and soup showed espresso's stuck value. */
+        try {
+          csInline();
+        } catch (e) {}
+        try {
+          renderColdStart();
+        } catch (e) {}
+      }
+      function renderLogMethod() {
+        var row = document.getElementById("logMethodRow");
+        if (!row) return;
+        var sel = logMethod(),
+          ms = logMethods();
+        /* one method: no picker to show, but the form switch still has to run */
+        row.style.display = ms.length < 2 ? "none" : "";
+        var want = ms
+          .map(function (m) {
+            return m[0] + ":" + t(m[1]) + ":" + (m[0] === sel ? "1" : "0");
+          })
+          .join("|");
+        if (row.getAttribute("data-built") === want) return;
+        row.setAttribute("data-built", want);
+        row.innerHTML = "";
+        ms.forEach(function (m) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.textContent = t(m[1]);
+          b.className = m[0] === sel ? "on" : "off";
+          b.setAttribute("data-method", m[0]);
+          b.onclick = function () {
+            setLogMethod(m[0]);
+          };
+          row.appendChild(b);
+        });
+        var ts = document.getElementById("type");
+        if (ts) ts.style.display = "none"; /* value store only; the chips are the interface */
+      }
+      /* The grinder chips are shared by both forms, so they cannot live inside one. */
+      function hoistGrinderChips() {}
+      /* A link to the actual sheet. Oscar: "add a button to see my google sheet log".
+   gSheetUrl() already existed; nothing on the logging screen ever offered it. */
+      function renderSheetLink() {}
+      function renderLogForm() {
+        var isFil = logMethod() === "filter";
+        document.querySelectorAll(".mmethod").forEach(function (el) {
+          var g = el.getAttribute("data-mgag") === "1",
+            f = el.getAttribute("data-mfilter") === "1";
+          el.style.display = (isFil ? f : g) || (!g && !f) ? "" : "none";
+        });
+        try {
+          renderSheetLink();
+        } catch (e) {}
+        if (isFil) {
+          try {
+            renderBrewerChips();
+          } catch (e) {}
+          try {
+            renderRecipeChips();
+          } catch (e) {}
+          try {
+            renderTempChips();
+          } catch (e) {}
+          try {
+            renderFilterExtras();
+          } catch (e) {}
+        }
+      }
+
       /* wizard: render its chips when it opens, and only then */
       (function () {
         var m = document.getElementById("wizMask");
@@ -4744,7 +4564,15 @@
       /* cold start depends on roast / grinder / brewer: listen instead of poll */
       document.addEventListener("change", function (e) {
         if (!e.target || !e.target.id) return;
-        if (["froast", "roast", "grinder", "convFrom", "convTo"].indexOf(e.target.id) >= 0)
+        /* process/fprocess were missing here, so changing the process dropdown never
+     re-rendered the advisor - "PROCESS CHANGES NOTHING". roast worked only because
+     froast/roast were listed. Also covers the filter-form twins so every field
+     that feeds csFor triggers a refresh. */
+        if (
+          ["froast", "roast", "fprocess", "process", "grinder", "convFrom", "convTo"].indexOf(
+            e.target.id,
+          ) >= 0
+        )
           uiSchedule();
       });
       document.addEventListener(
@@ -5604,20 +5432,107 @@
         if (/Medium/i.test(r)) return t("roastMed");
         return t("roastLight");
       }
+      /* Read the field of the ACTIVE form, not whichever id exists first.
+   csProcess/csRoast used `getElementById('fprocess')||getElementById('process')`.
+   #fprocess lives in the (hidden) filter form and ALWAYS exists, so it always won -
+   the advisor read the empty filter field while you were editing the gaggia one.
+   That is why process and roast moved the number on filter and nowhere else. */
+      function csField(base) {
+        var fil = false;
+        try {
+          fil = logMethod() === "filter";
+        } catch (e) {}
+        return document.getElementById((fil ? "f" : "") + base);
+      }
       function csRoast() {
-        var e = document.getElementById("froast") || document.getElementById("roast");
+        var e = csField("roast");
         var v = e ? e.value : "";
         return { v: v, f: ROAST_F[v] || 1.0 };
       }
+      /* Process nudge. Every 2025-26 source agrees natural coffees want a grind JUST
+   slightly coarser than washed - "only slightly" (Rao) - and the DF64 chart rates
+   process "low-moderate impact". Small factor, not a big one. Roast stays dominant;
+   this breaks ties. */
+      /* Process scale. Washed is the clean-celled anchor. The more fruit/sugar/
+   fermentation left on the bean, the softer and stickier it grinds, and the
+   coarser you start to avoid a choked, over-extracted puck. Oscar: "hyper
+   processed must be quite coarser". Standard sources call process "low-moderate"
+   for ordinary naturals, so those stay gentle - but modern hyper-processed lots
+   (anaerobic, carbonic, thermal-shock, extended-ferment) are a different animal
+   and get a real bump. This is a starting point; taste still rules. */
+      /* The process dropdown has ~50 entries (every co-ferment fruit, every barrel).
+   A fixed key map missed almost all of them - Carbonic, Extended Fermentation and
+   25 co-ferments fell through to 1.0, i.e. "no change" for the MOST processed
+   coffees, the opposite of the ask. Classify by tier with substring tests so
+   every option lands somewhere. Ordered most-processed first; first match wins. */
+      /* Process -> grind, classified by EXTRACTION EASE, not by "fruit residue".
+   Researched 2026-07-18, sources in GRIND_RESEARCH.md. The mechanism every 2026
+   source agrees on: fermentation degrades the bean's cell walls and makes it
+   POROUS, so more-fermented coffees surrender solubles almost instantly and
+   over-extract. The fix is a COARSER (and cooler) start to avoid dragging out
+   ferment bitterness. Oscar asked to "classify depending on the level of
+   extraction typically achieved". This is that axis: washed extracts hardest
+   (densest, cleanest cell structure), heavy ferments extract easiest.
+
+   Anchor from The Blind Coffee Roaster (Jan 2026): washed 600um -> anaerobic
+   750-800um, i.e. ~1.28x. My earlier 1.08 for anaerobic was far too weak - it is
+   set to 1.25 now, with the ceiling at 1.35 for the most degraded lots.
+   NOTE the one dissent: Nordic Brew Lab says anaerobics can take a slightly FINER
+   grind because they produce fewer fines, but still run fast. The safe starting
+   point every source shares is coarser, so that is what a STARTING point uses. */
+      function processTier(v) {
+        if (!v) return 1.0;
+        var s = v.toLowerCase();
+        // 5 - most degraded cell structure, extracts fastest: barrel-aged, infused,
+        //     thermal shock, double/extended anaerobic, spirit yeasts
+        if (
+          /barrel|infus|thermal|frozen|cryo|double anaerobic|whiskey|rum|bourbon|champagne|wine yeast/.test(
+            s,
+          )
+        )
+          return 1.35;
+        // 4 - carbonic maceration, co-ferments, extended ferment, anoxic
+        if (/carbonic|maceration|co-?ferment|extended|anoxic/.test(s)) return 1.28;
+        // 3 - anaerobic family, lactic, yeast-inoculated (the 600->775 anchor)
+        if (/anaerobic|lactic|yeast/.test(s)) return 1.25;
+        // 2 - naturals and the darker honeys: full mucilage/fruit contact, sun-fermented
+        if (/natural|black honey|red honey|pulped natural/.test(s)) return 1.08;
+        // 1 - lighter honeys: partial mucilage
+        if (/honey/.test(s)) return 1.05;
+        // 0 - washed / semi-washed: cleanest cell walls, extracts hardest = anchor
+        if (/semi-?washed|washed/.test(s)) return 1.0;
+        return 1.0; // Other / unknown: no guess, no nudge
+      }
+      function csProcess() {
+        var e = csField("process");
+        var v = e ? e.value : "";
+        return { v: v, f: processTier(v) };
+      }
+      /* how the adjustment reads to a human: coarser / finer / no change, with the %. */
+      function csAdjWord(f) {
+        if (f > 1.005) return { dir: t("csCoarser"), pct: Math.round((f - 1) * 100) };
+        if (f < 0.995) return { dir: t("csFiner"), pct: Math.round((1 - f) * 100) };
+        return null;
+      }
       function csFor(brewer, gid) {
         var um = typeof BREWER_UM === "object" && BREWER_UM[brewer] ? BREWER_UM[brewer] : 750;
-        var r = csRoast();
-        um = Math.round(um * r.f);
+        var r = csRoast(),
+          pr = csProcess();
+        um = Math.round(um * r.f * pr.f);
         var g = typeof GRINDERS === "object" ? GRINDERS[gid] : null;
         if (!g) return { txt: um + "um", um: um, warn: null };
         var range = gRange(um, gid);
         if (g.um === 0) return { txt: um + "um (" + t("csAbs") + ")", um: um, warn: range };
         var c = umToClicks(um, gid);
+        /* show the dial reading when the grinder has one, with the clicks in brackets so
+    the number is still checkable */
+        var d = dialTxt(gid, c);
+        if (d)
+          return {
+            txt: d + "  (" + Math.round(c) + " " + t("csClicks") + ")",
+            um: um,
+            warn: range,
+          };
         return { txt: "~" + Math.round(c) + " " + t("csClicks"), um: um, warn: range };
       }
       function csWarnText(w, gid) {
@@ -5640,7 +5555,7 @@
         try {
           gid = lastGrinder() || ownedGrinders()[0];
         } catch (e) {}
-        var brewer = typeof FBREWER !== "undefined" && FBREWER ? FBREWER : null;
+        var brewer = csBrewer();
         if (!gid || !brewer) {
           box.innerHTML = "<div class='csS'>" + t("csPick") + "</div>";
           return;
@@ -5674,8 +5589,37 @@
       }
 
       /* mirror it into the filter form next to the grind field, where the decision happens */
+      /* Which BREWER_UM key does the current method mean?
+   The advisor used to key ONLY off FBREWER, the filter brewer chip. On espresso or
+   soup FBREWER is '' forever, so it could never fire - and the box itself lived in
+   #setPanel on the INSIGHTS tab, collapsed, two tabs from the form. Oscar: "I also
+   could not find the grinder starting point info". It was not findable.
+   BREWER_UM already had Espresso 340 and Soup 500 from GRIND_RESEARCH.md; nothing
+   ever asked for them. */
+      function csBrewer() {
+        var m = "";
+        try {
+          m = logMethod();
+        } catch (e) {}
+        if (m === "espresso") return "Espresso";
+        if (m === "soup") {
+          /* Oscar runs sub-2-bar, coarser than published turbo, and the DB carries that
+       number separately. Prefer it when it exists. */
+          if (typeof BREWER_UM === "object" && BREWER_UM["Soup <2 bar"]) return "Soup <2 bar";
+          return "Soup";
+        }
+        return typeof FBREWER !== "undefined" && FBREWER ? FBREWER : null;
+      }
+      /* the grind field of whichever form is showing */
+      function csHost() {
+        var m = "";
+        try {
+          m = logMethod();
+        } catch (e) {}
+        return document.getElementById(m === "filter" ? "fgrind" : "gset");
+      }
       function csInline() {
-        var host = document.getElementById("fgrind");
+        var host = csHost();
         if (!host) return;
         var id = "csInline",
           el = document.getElementById(id);
@@ -5683,10 +5627,15 @@
         try {
           gid = lastGrinder() || ownedGrinders()[0];
         } catch (e) {}
-        var brewer = typeof FBREWER !== "undefined" && FBREWER ? FBREWER : null;
+        var brewer = csBrewer();
         if (!gid || !brewer || typeof BREWER_UM !== "object") {
           if (el) el.remove();
           return;
+        }
+        /* the form can switch under us, so re-home it if it is in the wrong one */
+        if (el && el.parentNode !== host.parentNode) {
+          el.remove();
+          el = null;
         }
         if (!el) {
           el = document.createElement("div");
@@ -5696,9 +5645,31 @@
         }
         var g = GRINDERS[gid],
           r = csRoast(),
+          pr = csProcess(),
           c = csFor(brewer, gid);
         var w = csWarnText(c.warn, gid);
         el.className = "cs" + (w ? " csbad" : "");
+        /* Show WHY the number is what it is: the roast and process each get a line that
+    names the direction and the size of their nudge. Oscar: "explicitly show that
+    process and roast affect the starting point". */
+        var factors = "";
+        var ra = csAdjWord(r.f),
+          pa = csAdjWord(pr.f);
+        if (r.v && ra)
+          factors +=
+            "<div class='csfac'>" + roastWord(r.v) + ": " + ra.pct + "% " + ra.dir + "</div>";
+        if (pr.v && pa)
+          factors +=
+            "<div class='csfac" +
+            (pa.pct >= 8 ? " csfacbig" : "") +
+            "'>" +
+            pr.v +
+            ": " +
+            pa.pct +
+            "% " +
+            pa.dir +
+            "</div>";
+        if (pr.v && !pa) factors += "<div class='csfac'>" + pr.v + ": " + t("csNoAdj") + "</div>";
         el.innerHTML =
           "<div class='csHd'>" +
           t("csT") +
@@ -5711,11 +5682,10 @@
           t("csOn") +
           " " +
           (g ? g.n : gid) +
-          " · " +
-          roastWord(r.v) +
           ". " +
           t("csHint") +
           "</div>" +
+          (factors ? "<div class='csfacs'>" + factors + "</div>" : "") +
           (w ? "<div class='cswarn'>" + w + "</div>" : "");
       }
 
@@ -5940,7 +5910,7 @@
             addHelp(host, m[1]);
           else addHelp(el, m[1]);
         });
-        var froast = document.getElementById("froast");
+        var froast = document.getElementById("roast");
         if (froast && froast.previousElementSibling)
           addHelp(froast.previousElementSibling, "roast");
         /* the 'sheet' help used to hang off the template link's step. That step is gone;
@@ -6064,6 +6034,11 @@
       function filterSelectsInit() {
         cloneOpts("varietal", "fvarietal");
         cloneOpts("process", "fprocess");
+        /* roaster and roast were never cloned, so the filter form's Tostador select had
+     exactly ONE option ("-") since the day it shipped, while #roaster next to it
+     had 46. An empty <select> does not throw, so nothing ever reported it. */
+        cloneOpts("roaster", "froaster");
+        cloneOpts("roast", "froast");
       }
 
       /* =====================================================================
@@ -6136,6 +6111,9 @@
         "taste_tag",
         "bloom_s",
         "region",
+        "basket",
+        "agitation",
+        "brew_water_g",
       ];
       function colsToParams(cols) {
         var out = [];
@@ -7618,7 +7596,7 @@
           "https://sheets.googleapis.com/v4/spreadsheets/" +
             GSHEET +
             "/values/" +
-            encodeURIComponent(tab + "!A1:Z5000"),
+            encodeURIComponent(tab + "!A1:AC5000"),
         );
         return d && d.values ? d.values : [];
       }
@@ -7696,7 +7674,7 @@
           a.target = "_blank";
           a.rel = "noopener";
           a.style.cssText =
-            "display:inline-block;color:var(--flow);font-size:13px;margin-right:12px";
+            "display:inline-block;color:var(--sel-text);border:1px solid var(--sel-line);background:var(--sel-bg);border-radius:8px;padding:7px 11px;font-size:12.5px;text-decoration:none;margin-right:8px";
           a.textContent = t("gOpenSheet");
           var d = document.createElement("button");
           d.style.cssText =
@@ -7990,7 +7968,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-17-2135-296db4";
+      var BUILD = "2026-07-18-1827-3d8ee2";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -8206,6 +8184,22 @@
         } catch (e) {}
         renderLogMode();
       }
+      /* hide a field and whatever labels it: its .fcell if it has one, otherwise the
+   element plus the label immediately before it */
+      function hideField(id, hide) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var cell = el.closest ? el.closest(".fcell") : null;
+        if (cell) {
+          cell.style.display = hide ? "none" : "";
+          return;
+        }
+        el.style.display = hide ? "none" : "";
+        var lab = el.previousElementSibling;
+        if (lab && (lab.tagName === "LABEL" || (lab.className || "").indexOf("fl") >= 0)) {
+          lab.style.display = hide ? "none" : "";
+        }
+      }
       function renderLogMode() {
         var wrap = document.getElementById("logModeRow");
         if (!wrap) return;
@@ -8227,22 +8221,30 @@
             if (row) row.style.display = "";
           }
         });
-        /* and the outcome fields are guesses until it has */
-        /* hide the individual outcome inputs, not their row: the row is shared with
-     the rating, and hiding it took the chips with it */
-        ["fyield", "fdur"].forEach(function (id) {
-          var el = document.getElementById(id);
-          if (!el) return;
-          el.style.display = LOGMODE === "before" ? "none" : "";
-          var lab = el.previousElementSibling;
-          if (lab && lab.tagName === "LABEL")
-            lab.style.display = LOGMODE === "before" ? "none" : "";
+        /* The outcome fields are guesses until the brew has happened.
+     This used to hide ['fyield','fdur']. NEITHER ID EXISTS - the filter form has
+     ftime/frating, the gaggia form has gyield/gtime/r. getElementById returned
+     null both times and the function returned early, so "hide the outcome fields
+     while planning" has never done anything for anyone. audit.py could not catch
+     it because the ids are in an array variable, not a literal. */
+        var planning = LOGMODE === "before";
+        ["gyield", "gtime", "r", "ftime"].forEach(function (id) {
+          hideField(id, planning);
         });
         var plan = document.getElementById("planBox");
         if (plan) plan.style.display = LOGMODE === "before" ? "" : "none";
-        /* the save button has no id, so find it by what it does */
-        var btn = document.querySelector("#tab-log button.grn");
-        if (btn) btn.textContent = t(LOGMODE === "before" ? "logStartBtn" : "logSaveBtn2");
+        /* Both forms have a green button. querySelector returned only the FIRST, so
+     the filter form's button never followed the mode toggle at all. */
+        Array.prototype.forEach.call(
+          document.querySelectorAll("#tab-log button.grn"),
+          function (btn) {
+            btn.textContent = t(LOGMODE === "before" ? "logStartBtn" : "logSaveBtn2");
+          },
+        );
+        try {
+          renderLogMethod();
+          renderLogForm();
+        } catch (e) {}
         try {
           renderLogPlan();
         } catch (e) {}
@@ -8258,7 +8260,7 @@
         var host = document.getElementById("rateChips");
         if (!host) return;
         if (host.childNodes.length) return; /* build once */
-        var input = document.getElementById("frating");
+        var input = document.getElementById("r");
         for (var i = 1; i <= 10; i++) {
           (function (n) {
             var b = document.createElement("button");
@@ -8279,7 +8281,7 @@
         syncRateChips();
       }
       function syncRateChips() {
-        var input = document.getElementById("frating");
+        var input = document.getElementById("r");
         var v = input ? parseInt(input.value || "0", 10) : 0;
         Array.prototype.forEach.call(document.querySelectorAll(".ratechip"), function (b) {
           var n = parseInt(b.getAttribute("data-rate"), 10);
@@ -8309,27 +8311,7 @@
         } catch (e) {}
         return machine ? t("wShot") : t("wBrew");
       }
-      function renderLogEntry() {
-        var lab = document.getElementById("filterAddLabel");
-        var form = document.getElementById("filterForm");
-        if (!lab || !form) return;
-        var esp = false,
-          soup = false,
-          fil = false;
-        try {
-          esp = !!M_ESP;
-          soup = !!M_SOUP;
-          fil = !!M_FIL;
-        } catch (e) {}
-        /* It is the only form there is. If the user does anything at all, open it:
-     making the primary action a collapsed link is what caused the confusion. */
-        if (esp || soup || fil) {
-          if (form.style.display === "none") form.style.display = "";
-        }
-        lab.textContent = t("logEntry").replace("{w}", methodWord());
-        var head = lab.parentElement;
-        if (head) head.style.display = form.style.display === "none" ? "" : "none";
-      }
+      function renderLogEntry() {}
 
       /* The cold start advisor only knew filter brewers, so a soup user got nothing.
    Targets and their provenance are in GRIND_RESEARCH.md. Short version:
@@ -8339,10 +8321,14 @@
    Oscar runs under 2 bar, below published turbo, so his own soup is plausibly
    coarser still. This is a starting point, not a target. */
       function logBrewerFor() {
+        /* This predates the method picker and guessed: FBREWER, else soup, else
+     espresso - ignoring the method you actually selected. With method=filter and
+     no brewer chosen it returned 'Soup', so the plan banner offered a SOUP
+     starting point on a filter brew while csInline said something else. Two
+     resolvers, one question, different answers.
+     csBrewer() is the one that reads the method. Delegate. */
         try {
-          if (typeof FBREWER !== "undefined" && FBREWER) return FBREWER;
-          if (M_SOUP) return "Soup";
-          if (M_ESP) return "Espresso";
+          return csBrewer();
         } catch (e) {}
         return null;
       }
