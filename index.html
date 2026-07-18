@@ -1185,6 +1185,13 @@
             data-mfilter="1"
             style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
           ></div>
+          <div id="soupRatioWrap" class="mmethod" data-msoup="1">
+            <div class="fl">Soup ratio (sets grind start)</div>
+            <div
+              id="soupRatioChips"
+              style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+            ></div>
+          </div>
           <div id="grLabel" class="fl">Grinder (tap to switch, converts setting)</div>
           <div
             id="grchips"
@@ -3035,8 +3042,9 @@
       }
       let BREWER_UM = {
         Espresso: 340,
-        Soup: 620,
-        "Soup <2 bar": 700,
+        "Soup 1:3-4": 600,
+        "Soup 1:5-8": 650,
+        "Soup 1:10": 700,
         V60: 700,
         "V60 Switch": 850,
         "V60 Neo": 720,
@@ -4522,16 +4530,32 @@
    gSheetUrl() already existed; nothing on the logging screen ever offered it. */
       function renderSheetLink() {}
       function renderLogForm() {
-        var isFil = logMethod() === "filter";
+        var m = logMethod();
         document.querySelectorAll(".mmethod").forEach(function (el) {
-          var g = el.getAttribute("data-mgag") === "1",
-            f = el.getAttribute("data-mfilter") === "1";
-          el.style.display = (isFil ? f : g) || (!g && !f) ? "" : "none";
+          var mg = el.getAttribute("data-mgag") === "1",
+            mf = el.getAttribute("data-mfilter") === "1",
+            ms = el.getAttribute("data-msoup") === "1";
+          var vis;
+          if (ms) {
+            vis = m === "soup";
+          } else if (mf) {
+            vis = m === "filter";
+          } else if (mg) {
+            vis = m !== "filter";
+          } else {
+            vis = true;
+          }
+          el.style.display = vis ? "" : "none";
         });
         try {
           renderSheetLink();
         } catch (e) {}
-        if (isFil) {
+        if (m === "soup") {
+          try {
+            renderSoupRatioChips();
+          } catch (e) {}
+        }
+        if (m === "filter") {
           try {
             renderBrewerChips();
           } catch (e) {}
@@ -4545,6 +4569,43 @@
             renderFilterExtras();
           } catch (e) {}
         }
+      }
+      function renderSoupRatioChips() {
+        var box = document.getElementById("soupRatioChips");
+        if (!box) return;
+        box.innerHTML = "";
+        var cur = localStorage.getItem("soupRatio") || "1:3-4";
+        [
+          ["1:3-4", "concentrated"],
+          ["1:5-8", "medium"],
+          ["1:10", "H&S long"],
+        ].forEach(function (b) {
+          var on = cur === b[0];
+          var c = document.createElement("div");
+          c.textContent = b[0];
+          c.title = b[1];
+          c.style.cssText =
+            "padding:8px 12px;border-radius:18px;font-size:13px;cursor:pointer;border:1px solid " +
+            (on ? "var(--sel-line)" : "var(--line)") +
+            ";background:" +
+            (on ? "var(--sel-bg)" : "var(--panel)") +
+            ";color:" +
+            (on ? "var(--sel-text)" : "var(--text)");
+          c.onclick = function () {
+            localStorage.setItem("soupRatio", b[0]);
+            renderSoupRatioChips();
+            try {
+              csInline();
+            } catch (e) {}
+            try {
+              renderColdStart();
+            } catch (e) {}
+            try {
+              uiSchedule();
+            } catch (e) {}
+          };
+          box.appendChild(c);
+        });
       }
 
       /* wizard: render its chips when it opens, and only then */
@@ -5603,10 +5664,10 @@
         } catch (e) {}
         if (m === "espresso") return "Espresso";
         if (m === "soup") {
-          /* Oscar runs sub-2-bar, coarser than published turbo, and the DB carries that
-       number separately. Prefer it when it exists. */
-          if (typeof BREWER_UM === "object" && BREWER_UM["Soup <2 bar"]) return "Soup <2 bar";
-          return "Soup";
+          var sr = localStorage.getItem("soupRatio") || "1:3-4";
+          var k = "Soup " + sr;
+          if (typeof BREWER_UM === "object" && BREWER_UM[k]) return k;
+          return "Soup 1:3-4";
         }
         return typeof FBREWER !== "undefined" && FBREWER ? FBREWER : null;
       }
@@ -7968,7 +8029,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-18-1827-3d8ee2";
+      var BUILD = "2026-07-18-2037-ac9657";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
