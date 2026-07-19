@@ -2557,6 +2557,12 @@
           c.onclick = () => {
             FBREWER = b;
             renderBrewerChips();
+            try {
+              csInline();
+            } catch (e) {}
+            try {
+              renderColdStart();
+            } catch (e) {}
           };
           box.appendChild(c);
         });
@@ -5726,7 +5732,7 @@
         try {
           m = logMethod();
         } catch (e) {}
-        return document.getElementById(m === "filter" ? "fgrind" : "gset");
+        return document.getElementById("gset");
       }
       function csInline() {
         var host = csHost();
@@ -8264,7 +8270,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-19-1942-0a5a59";
+      var BUILD = "2026-07-19-2005-844c2b";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
