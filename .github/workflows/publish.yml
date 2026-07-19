@@ -1,0 +1,70 @@
+name: Publish BrewPilot
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install acorn
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Encoding check
+        run: |
+          if ! grep -q $'\xe2\x97\x89' index.html; then
+            echo "::error::index.html encoding is damaged (tab icons mangled). Re-download it, do not paste."
+            exit 1
+          fi
+          echo "encoding intact"
+
+      - name: Gate - undef.js
+        run: |
+          out=$(node undef.js index.html 2>&1); echo "$out"
+          echo "$out" | grep -q "undeclared identifiers: 0" \
+            || { echo "::error::undef.js found an undeclared identifier. Publish blocked."; exit 1; }
+
+      - name: Gate - audit.py
+        run: python audit.py index.html
+
+      - name: Inject client ID and stamp cache
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+        run: python3 .github/prep.py
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          cp index.html manifest.json sw.js _site/ 2>/dev/null || true
+          cp *.png _site/ 2>/dev/null || true
+          [ -f CNAME ] && cp CNAME _site/ || true
+          ls -la _site
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
