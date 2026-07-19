@@ -2549,7 +2549,7 @@
         let box = document.getElementById("brewerchips");
         if (!box) return;
         box.innerHTML = "";
-        ["V60", "V60 Switch", "V60 Neo", "Orea", "Origami", "OXO soup", "Other"].forEach((b) => {
+        ["V60", "V60 Switch", "V60 Neo", "Orea", "Origami", "Other"].forEach((b) => {
           let c = document.createElement("div");
           c.textContent = b;
           let on = b == FBREWER;
@@ -3093,7 +3093,7 @@
         let gid = lastGrinder() || ownedGrinders()[0];
         let g = GRINDERS[gid];
         let gn = g ? g.n : gid;
-        let rows = ["V60", "Orea", "Origami", "V60 Switch", "OXO soup", "Chemex"].map(
+        let rows = ["V60", "Orea", "Origami", "V60 Switch", "Chemex"].map(
           (b) => b + ": " + coldStart(b, gid),
         );
         box.innerHTML = "on " + gn + " (light roast, dial by taste after):<br>" + rows.join("<br>");
@@ -8270,7 +8270,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-19-2005-844c2b";
+      var BUILD = "2026-07-19-2032-2ff3a8";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
