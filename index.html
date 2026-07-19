@@ -1871,7 +1871,7 @@
               color: var(--text);
               margin-bottom: 6px;
             "
-          /><button class="grn" style="width: 100%; margin-bottom: 12px" onclick="saveWebhook()">
+          /><button class="grn" style="width: 100%; margin-bottom: 12px" onclick="goConnectSheet()">
             Connect sheet
           </button>
           <div class="fl">Which grinders do you own? (shown when logging)</div>
@@ -2475,7 +2475,6 @@
           b.appendChild(c);
         });
       }
-      function toggleFilter() {}
       function chipRow(boxId, items, cur, setter, reRender) {
         let box = document.getElementById(boxId);
         if (!box) return;
@@ -2529,10 +2528,6 @@
           },
           renderFilterExtras,
         );
-      }
-      function renderFilterRot() {}
-      function fillFilterFrom(e) {
-        fillEntry(e);
       }
       function renderBrewerChips() {
         let box = document.getElementById("brewerchips");
@@ -4564,7 +4559,7 @@
         if (ts) ts.style.display = "none"; /* value store only; the chips are the interface */
       }
       /* The grinder chips are shared by both forms, so they cannot live inside one. */
-      function hoistGrinderChips() {}
+
       /* A link to the actual sheet. Oscar: "add a button to see my google sheet log".
    gSheetUrl() already existed; nothing on the logging screen ever offered it. */
       function renderSheetLink() {}
@@ -4701,7 +4696,6 @@
         "toggleInv",
         "toggleInsights",
         "toggleSettings",
-        "toggleFilter",
         "showTab",
       ].forEach(function (fn) {
         if (typeof window[fn] !== "function") return;
@@ -8120,7 +8114,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-19-0454-5b2a88";
+      var BUILD = "2026-07-19-0710-50544b";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
