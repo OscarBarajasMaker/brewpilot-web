@@ -1874,6 +1874,24 @@
           /><button class="grn" style="width: 100%; margin-bottom: 12px" onclick="goConnectSheet()">
             Connect sheet
           </button>
+          <div class="fl" style="margin-top: 2px">Already have a BrewPilot Log?</div>
+          <input
+            id="relinkSheet"
+            placeholder="paste its Google Sheets link"
+            class="fin"
+            style="width: 100%"
+          /><button
+            class="off"
+            style="
+              width: 100%;
+              margin-bottom: 12px;
+              color: var(--sel-text);
+              border: 1px solid var(--sel-line);
+            "
+            onclick="gRelinkSheet()"
+          >
+            Reconnect to existing sheet
+          </button>
           <div class="fl">Which grinders do you own? (shown when logging)</div>
           <div
             id="mygrinderchips"
@@ -7714,11 +7732,48 @@
           var d = await gApi(
             "https://www.googleapis.com/drive/v3/files?q=" +
               encodeURIComponent(q) +
-              "&orderBy=modifiedTime desc&fields=files(id,name)&pageSize=10",
+              "&orderBy=modifiedTime%20desc&fields=files(id,name)&pageSize=10",
           );
           if (d && d.files && d.files.length) return d.files[0].id;
         } catch (e) {}
         return null;
+      }
+      async function gRelinkSheet() {
+        var el = document.getElementById("relinkSheet");
+        if (!el) return;
+        var v = el.value.trim();
+        if (!v) {
+          alert("Paste your BrewPilot Log link or ID");
+          return;
+        }
+        var m = v.match(/[-\w]{25,}/);
+        var id = m ? m[0] : v;
+        var ok = await gAuth(true);
+        if (!ok) {
+          alert(t("gAuthFailed"));
+          return;
+        }
+        var prev = GSHEET;
+        GSHEET = id;
+        try {
+          await gRead(SHOT_TAB);
+          try {
+            localStorage.setItem("gsheet", id);
+          } catch (e) {}
+          el.value = "";
+          try {
+            renderSheetStatus();
+          } catch (e) {}
+          try {
+            uiRender();
+          } catch (e) {}
+          alert("Reconnected to your existing log");
+        } catch (e) {
+          GSHEET = prev;
+          alert(
+            "Could not open that sheet with this app. It must be a BrewPilot Log this app created, signed into the same Google account.",
+          );
+        }
       }
       function gIsMissing(e) {
         var m = String((e && e.message) || "");
@@ -8114,7 +8169,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-19-0710-50544b";
+      var BUILD = "2026-07-19-0718-139515";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
