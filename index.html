@@ -10,7 +10,6 @@
     </script>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
-    <script src="https://apis.google.com/js/api.js" async defer></script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="BrewPilot" />
@@ -1874,7 +1873,12 @@
             "
           />
           <div class="fl" style="margin-top: 2px">Already have a BrewPilot Log?</div>
-          <button
+          <input
+            id="relinkSheet"
+            placeholder="paste its Google Sheets link"
+            class="fin"
+            style="width: 100%"
+          /><button
             class="off"
             style="
               width: 100%;
@@ -1882,9 +1886,9 @@
               color: var(--sel-text);
               border: 1px solid var(--sel-line);
             "
-            onclick="gBrowseSheet()"
+            onclick="gRelinkSheet()"
           >
-            Browse my Drive to reconnect
+            Reconnect to existing sheet
           </button>
           <div class="fl">Which grinders do you own? (shown when logging)</div>
           <div
@@ -7500,8 +7504,7 @@
    Public by design: a client ID is not a secret, it is an identifier. The
    origin allowlist is what actually protects it. While empty, the Google
    option stays hidden and nothing changes for anyone. */
-      var GOOGLE_CLIENT_ID = "380224424258-stc6p0eapng5bqcb8o04dh47446o9ln3.apps.googleusercontent.com";
-      var GOOGLE_API_KEY = "AIzaSyDnnxo9dUw8u3D37SYcpjkvWMNmuGetzo0";
+      var GOOGLE_CLIENT_ID = "";
       var GSCOPE = "https://www.googleapis.com/auth/drive.file";
       var GTOKEN = null,
         GTOKEN_EXP = 0,
@@ -7839,41 +7842,21 @@
         ov.appendChild(card);
         document.body.appendChild(ov);
       }
-      async function gBrowseSheet() {
-        if (!gConfigured()) {
-          alert(t("gNotSetUp"));
+      async function gRelinkSheet() {
+        var el = document.getElementById("relinkSheet");
+        if (!el) return;
+        var v = el.value.trim();
+        if (!v) {
+          alert("Paste your BrewPilot Log link or ID");
           return;
         }
+        var mm = v.match(/[-\w]{25,}/);
+        var id = mm ? mm[0] : v;
         var ok = await gAuth(true);
         if (!ok) {
           alert(t("gAuthFailed"));
           return;
         }
-        if (typeof gapi === "undefined" || typeof gapi.load !== "function") {
-          alert("Drive picker is still loading, try again in a moment.");
-          return;
-        }
-        gapi.load("picker", function () {
-          try {
-            var view = new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS);
-            view.setMode(google.picker.DocsViewMode.LIST);
-            var picker = new google.picker.PickerBuilder()
-              .setOAuthToken(GTOKEN)
-              .setDeveloperKey(GOOGLE_API_KEY)
-              .addView(view)
-              .setTitle("Pick your BrewPilot Log")
-              .setCallback(gPickerCallback)
-              .build();
-            picker.setVisible(true);
-          } catch (e) {
-            alert("Could not open the Drive picker.");
-          }
-        });
-      }
-      async function gPickerCallback(data) {
-        if (!data || data.action !== google.picker.Action.PICKED) return;
-        var id = data.docs && data.docs[0] ? data.docs[0].id : null;
-        if (!id) return;
         var prev = GSHEET;
         GSHEET = id;
         try {
@@ -7881,16 +7864,19 @@
           try {
             localStorage.setItem("gsheet", id);
           } catch (e) {}
+          el.value = "";
           try {
             renderSheetStatus();
           } catch (e) {}
           try {
             uiRender();
           } catch (e) {}
-          alert("Connected to your selected log");
+          alert("Reconnected to your existing log");
         } catch (e) {
           GSHEET = prev;
-          alert("Could not open that sheet. It must be a BrewPilot Log with a Shot Log tab.");
+          alert(
+            "Could not open that sheet. It must be a BrewPilot Log this app created, signed into the same Google account.",
+          );
         }
       }
       function gIsMissing(e) {
@@ -8278,7 +8264,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-19-1845-be7294";
+      var BUILD = "2026-07-19-1942-0a5a59";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
