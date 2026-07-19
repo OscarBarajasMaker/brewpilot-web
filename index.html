@@ -10,6 +10,7 @@
     </script>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="BrewPilot" />
@@ -1871,16 +1872,9 @@
               color: var(--text);
               margin-bottom: 6px;
             "
-          /><button class="grn" style="width: 100%; margin-bottom: 12px" onclick="goConnectSheet()">
-            Connect sheet
-          </button>
+          />
           <div class="fl" style="margin-top: 2px">Already have a BrewPilot Log?</div>
-          <input
-            id="relinkSheet"
-            placeholder="paste its Google Sheets link"
-            class="fin"
-            style="width: 100%"
-          /><button
+          <button
             class="off"
             style="
               width: 100%;
@@ -1888,9 +1882,9 @@
               color: var(--sel-text);
               border: 1px solid var(--sel-line);
             "
-            onclick="gRelinkSheet()"
+            onclick="gBrowseSheet()"
           >
-            Reconnect to existing sheet
+            Browse my Drive to reconnect
           </button>
           <div class="fl">Which grinders do you own? (shown when logging)</div>
           <div
@@ -6892,11 +6886,15 @@
 
    openPanel(id, fn) already exists and ensures-open rather than toggling. Use it. */
       async function goConnectSheet() {
-        /* One tap when Google is available. The old path (switch tab, open settings,
-     paste an /exec you obtained by copying a template and deploying a script)
-     only survives for people already on it. */
+        /* One tap. Gate on a LIVE TOKEN, not just a linked sheet: gConnected() is true
+     whenever GSHEET is set, so a relinked-but-expired session must still re-auth
+     here instead of falling through to a jarring tab jump (the old /exec path). */
         try {
-          if (gConfigured() && !gConnected()) {
+          if (!gConfigured()) {
+            alert(t("gNotSetUp"));
+            return;
+          }
+          if (!gTokenOk() || !GSHEET) {
             var ok = await gConnect();
             if (ok) {
               try {
@@ -6905,29 +6903,18 @@
               try {
                 renderGoogleCard();
               } catch (e) {}
-              return;
+              try {
+                renderSheetStatus();
+              } catch (e) {}
             }
+            return;
           }
+          /* already linked with a live token: confirm, do not navigate */
+          try {
+            renderSheetStatus();
+          } catch (e) {}
+          alert("Already connected to your BrewPilot Log");
         } catch (e) {}
-        try {
-          showTab("insights");
-        } catch (e) {}
-        try {
-          openPanel("setPanel", toggleSettings);
-        } catch (e) {}
-        /* showTab does scrollTo(0,0); let that land before scrolling to the panel */
-        setTimeout(function () {
-          var p = document.getElementById("setPanel");
-          if (p)
-            try {
-              p.scrollIntoView({ behavior: "smooth", block: "start" });
-            } catch (e) {}
-          var u = document.getElementById("setWebhook");
-          if (u)
-            try {
-              u.focus({ preventScroll: true });
-            } catch (e) {}
-        }, 90);
       }
 
       /* =====================================================================
@@ -7514,6 +7501,7 @@
    origin allowlist is what actually protects it. While empty, the Google
    option stays hidden and nothing changes for anyone. */
       var GOOGLE_CLIENT_ID = "380224424258-stc6p0eapng5bqcb8o04dh47446o9ln3.apps.googleusercontent.com";
+      var GOOGLE_API_KEY = "AIzaSyDnnxo9dUw8u3D37SYcpjkvWMNmuGetzo0";
       var GSCOPE = "https://www.googleapis.com/auth/drive.file";
       var GTOKEN = null,
         GTOKEN_EXP = 0,
@@ -7723,36 +7711,169 @@
 
       /* The whole connect flow: one tap. Must run from a click, because that is what
    Google requires for the token. */
-      async function gFindSheet() {
-        /* drive.file scope lists files this app created, so a lost sheet id can be
-     recovered instead of orphaning the user's data in a duplicate. */
+      async function gRowCount(id) {
+        /* count logged shots by the coffee column (C); col A/B are blank in every row */
         try {
-          var q =
-            "name='BrewPilot Log' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false";
           var d = await gApi(
-            "https://www.googleapis.com/drive/v3/files?q=" +
-              encodeURIComponent(q) +
-              "&orderBy=modifiedTime%20desc&fields=files(id,name)&pageSize=10",
+            "https://sheets.googleapis.com/v4/spreadsheets/" +
+              id +
+              "/values/" +
+              encodeURIComponent(SHOT_TAB + "!C2:C5000"),
           );
-          if (d && d.files && d.files.length) return d.files[0].id;
-        } catch (e) {}
-        return null;
+          var v = d && d.values ? d.values : [];
+          var n = 0;
+          for (var i = 0; i < v.length; i++) {
+            if (v[i] && v[i][0] != null && String(v[i][0]).trim() !== "") n++;
+          }
+          return n;
+        } catch (e) {
+          return -1;
+        }
       }
-      async function gRelinkSheet() {
-        var el = document.getElementById("relinkSheet");
-        if (!el) return;
-        var v = el.value.trim();
-        if (!v) {
-          alert("Paste your BrewPilot Log link or ID");
+      async function gListLogs() {
+        /* Drive files.list (the DRIVE API, separate from Sheets). THROWS on failure so
+     the caller can tell "search failed" (e.g. Drive API not enabled) from "no logs",
+     and never creates a duplicate on an error. 'contains' catches renamed copies. */
+        var q =
+          "name contains 'BrewPilot' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false";
+        var d = await gApi(
+          "https://www.googleapis.com/drive/v3/files?q=" +
+            encodeURIComponent(q) +
+            "&orderBy=modifiedTime%20desc&fields=files(id,name)&pageSize=30",
+        );
+        return d && d.files ? d.files : [];
+      }
+      async function gScoreLogs(files) {
+        var withData = [];
+        for (var i = 0; i < files.length; i++) {
+          var rc = await gRowCount(files[i].id);
+          if (rc > 0) withData.push({ id: files[i].id, rows: rc });
+        }
+        withData.sort(function (a, b) {
+          return b.rows - a.rows;
+        });
+        return withData;
+      }
+      function gAdopt(id) {
+        GSHEET = id;
+        try {
+          localStorage.setItem("gsheet", id);
+        } catch (e) {}
+      }
+      async function gAutoLink() {
+        /* true = handled (adopted / asked / steered). false = truly nothing, caller creates. */
+        var files;
+        try {
+          files = await gListLogs();
+        } catch (e) {
+          alert(
+            "Could not search your Drive for an existing log. Open Settings and paste your BrewPilot Log link under Reconnect to existing sheet. If this keeps happening, enable the Google Drive API for the app.",
+          );
+          return true;
+        }
+        if (!files.length) return false;
+        var withData = await gScoreLogs(files);
+        if (withData.length === 0) {
+          gAdopt(files[0].id);
+          return true;
+        }
+        if (withData.length === 1 || withData[0].rows >= withData[1].rows * 2) {
+          gAdopt(withData[0].id);
+          return true;
+        }
+        gPickSheet(withData);
+        return true;
+      }
+      async function gTryUpgrade() {
+        /* linked sheet is empty: adopt a populated log if one exists, else stay put */
+        try {
+          var files = await gListLogs();
+          var withData = await gScoreLogs(files);
+          if (!withData.length) return;
+          if (withData.length === 1 || withData[0].rows >= withData[1].rows * 2) {
+            gAdopt(withData[0].id);
+          } else gPickSheet(withData);
+        } catch (e) {}
+      }
+      function gPickSheet(cands) {
+        var ov = document.createElement("div");
+        ov.style.cssText =
+          "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+        var card = document.createElement("div");
+        card.style.cssText =
+          "background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;max-width:400px;width:100%;color:var(--text)";
+        card.innerHTML =
+          "<div style='font-weight:600;margin-bottom:4px'>Which log is yours?</div><div style='color:var(--dim);font-size:12px;margin-bottom:12px'>Found more than one BrewPilot Log. Pick the one with your history.</div>";
+        cands.forEach(function (c) {
+          var bt = document.createElement("button");
+          bt.textContent = c.rows + " logged " + (c.rows === 1 ? "row" : "rows");
+          bt.style.cssText =
+            "width:100%;margin-bottom:8px;padding:12px;border-radius:10px;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text);font-weight:600;cursor:pointer";
+          bt.onclick = function () {
+            gAdopt(c.id);
+            if (ov.parentNode) ov.parentNode.removeChild(ov);
+            try {
+              renderSheetStatus();
+            } catch (e) {}
+            try {
+              uiRender();
+            } catch (e) {}
+          };
+          card.appendChild(bt);
+        });
+        var fresh = document.createElement("button");
+        fresh.textContent = "None of these - start a new log";
+        fresh.style.cssText =
+          "width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--dim);font-size:13px;cursor:pointer";
+        fresh.onclick = async function () {
+          if (ov.parentNode) ov.parentNode.removeChild(ov);
+          await gCreateSheet();
+          try {
+            renderSheetStatus();
+          } catch (e) {}
+          try {
+            uiRender();
+          } catch (e) {}
+        };
+        card.appendChild(fresh);
+        ov.appendChild(card);
+        document.body.appendChild(ov);
+      }
+      async function gBrowseSheet() {
+        if (!gConfigured()) {
+          alert(t("gNotSetUp"));
           return;
         }
-        var m = v.match(/[-\w]{25,}/);
-        var id = m ? m[0] : v;
         var ok = await gAuth(true);
         if (!ok) {
           alert(t("gAuthFailed"));
           return;
         }
+        if (typeof gapi === "undefined" || typeof gapi.load !== "function") {
+          alert("Drive picker is still loading, try again in a moment.");
+          return;
+        }
+        gapi.load("picker", function () {
+          try {
+            var view = new google.picker.DocsView(google.picker.ViewId.SPREADSHEETS);
+            view.setMode(google.picker.DocsViewMode.LIST);
+            var picker = new google.picker.PickerBuilder()
+              .setOAuthToken(GTOKEN)
+              .setDeveloperKey(GOOGLE_API_KEY)
+              .addView(view)
+              .setTitle("Pick your BrewPilot Log")
+              .setCallback(gPickerCallback)
+              .build();
+            picker.setVisible(true);
+          } catch (e) {
+            alert("Could not open the Drive picker.");
+          }
+        });
+      }
+      async function gPickerCallback(data) {
+        if (!data || data.action !== google.picker.Action.PICKED) return;
+        var id = data.docs && data.docs[0] ? data.docs[0].id : null;
+        if (!id) return;
         var prev = GSHEET;
         GSHEET = id;
         try {
@@ -7760,19 +7881,16 @@
           try {
             localStorage.setItem("gsheet", id);
           } catch (e) {}
-          el.value = "";
           try {
             renderSheetStatus();
           } catch (e) {}
           try {
             uiRender();
           } catch (e) {}
-          alert("Reconnected to your existing log");
+          alert("Connected to your selected log");
         } catch (e) {
           GSHEET = prev;
-          alert(
-            "Could not open that sheet with this app. It must be a BrewPilot Log this app created, signed into the same Google account.",
-          );
+          alert("Could not open that sheet. It must be a BrewPilot Log with a Shot Log tab.");
         }
       }
       function gIsMissing(e) {
@@ -7791,29 +7909,20 @@
         }
         try {
           if (!GSHEET) {
-            var found = await gFindSheet();
-            if (found) {
-              GSHEET = found;
-              try {
-                localStorage.setItem("gsheet", GSHEET);
-              } catch (e) {}
-            } else {
+            if (!(await gAutoLink())) {
               await gCreateSheet();
             }
           } else {
             try {
               await gRead(SHOT_TAB);
+              var _rc = await gRowCount(GSHEET);
+              if (_rc === 0) {
+                await gTryUpgrade();
+              }
             } catch (e) {
               if (String((e && e.message) || "").indexOf("needs-gesture") >= 0) throw e;
               if (gIsMissing(e)) {
-                /* sheet truly deleted: recover another copy before making a new one */
-                var f2 = await gFindSheet();
-                if (f2) {
-                  GSHEET = f2;
-                  try {
-                    localStorage.setItem("gsheet", GSHEET);
-                  } catch (e) {}
-                } else {
+                if (!(await gAutoLink())) {
                   gForget();
                   await gCreateSheet();
                 }
@@ -8169,7 +8278,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-19-0718-139515";
+      var BUILD = "2026-07-19-1845-be7294";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
