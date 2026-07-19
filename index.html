@@ -6115,6 +6115,14 @@
         if (!method) method = typeof M_SOUP !== "undefined" && M_SOUP ? "soup" : "espresso";
         var txt = "1:" + ratio.toFixed(2);
         var band = typeof RATIO_BAND === "object" ? RATIO_BAND[method] : null;
+        if (method === "soup") {
+          var _sr;
+          try {
+            _sr = localStorage.getItem("soupRatio");
+          } catch (e) {}
+          _sr = _sr || "1:3-4";
+          band = { "1:3-4": [2.5, 5], "1:5-8": [4.5, 9], "1:10": [8, 12] }[_sr] || [2.5, 11];
+        }
         if (band) {
           if (ratio < band[0])
             txt += "  " + t("ratioTight").replace("{a}", band[0]).replace("{b}", band[1]);
@@ -7703,6 +7711,25 @@
 
       /* The whole connect flow: one tap. Must run from a click, because that is what
    Google requires for the token. */
+      async function gFindSheet() {
+        /* drive.file scope lists files this app created, so a lost sheet id can be
+     recovered instead of orphaning the user's data in a duplicate. */
+        try {
+          var q =
+            "name='BrewPilot Log' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false";
+          var d = await gApi(
+            "https://www.googleapis.com/drive/v3/files?q=" +
+              encodeURIComponent(q) +
+              "&orderBy=modifiedTime desc&fields=files(id,name)&pageSize=10",
+          );
+          if (d && d.files && d.files.length) return d.files[0].id;
+        } catch (e) {}
+        return null;
+      }
+      function gIsMissing(e) {
+        var m = String((e && e.message) || "");
+        return m.indexOf("HTTP 404") >= 0 || /not ?found/i.test(m);
+      }
       async function gConnect() {
         if (!gConfigured()) {
           alert(t("gNotSetUp"));
@@ -7714,14 +7741,39 @@
           return false;
         }
         try {
-          if (!GSHEET) await gCreateSheet();
-          /* prove it still exists: a user can delete the sheet from Drive */
-          await gRead(SHOT_TAB);
-        } catch (e) {
-          if (String(e.message).indexOf("needs-gesture") < 0) {
-            gForget();
-            await gCreateSheet();
+          if (!GSHEET) {
+            var found = await gFindSheet();
+            if (found) {
+              GSHEET = found;
+              try {
+                localStorage.setItem("gsheet", GSHEET);
+              } catch (e) {}
+            } else {
+              await gCreateSheet();
+            }
+          } else {
+            try {
+              await gRead(SHOT_TAB);
+            } catch (e) {
+              if (String((e && e.message) || "").indexOf("needs-gesture") >= 0) throw e;
+              if (gIsMissing(e)) {
+                /* sheet truly deleted: recover another copy before making a new one */
+                var f2 = await gFindSheet();
+                if (f2) {
+                  GSHEET = f2;
+                  try {
+                    localStorage.setItem("gsheet", GSHEET);
+                  } catch (e) {}
+                } else {
+                  gForget();
+                  await gCreateSheet();
+                }
+              }
+              /* any other error (network / 401 / 403 / 429 / 5xx): keep GSHEET, never recreate */
+            }
           }
+        } catch (e) {
+          if (String((e && e.message) || "").indexOf("needs-gesture") >= 0) return false;
         }
         try {
           uiRender();
@@ -8068,7 +8120,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-18-2106-8c89c9";
+      var BUILD = "2026-07-19-0454-5b2a88";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
