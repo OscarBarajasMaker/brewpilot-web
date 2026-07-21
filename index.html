@@ -1453,7 +1453,13 @@
           </div>
           <div class="frow">
             <label class="fl" data-i18n="fRegion">Region</label
-            ><input id="fregion" class="fin" data-i18n-ph="fRegionPh" placeholder="Rwanda, Huye" />
+            ><input
+              id="fregion"
+              list="ghOriginList"
+              class="fin"
+              data-i18n-ph="fRegionPh"
+              placeholder="Rwanda, Huye"
+            />
           </div>
           <input id="type" type="hidden" value="" />
           <div class="fl" style="margin-top: 8px">Dose (g)</div>
@@ -1780,11 +1786,11 @@
           <div class="convrow">
             <div class="convcell">
               <div class="fl" data-i18n="from">From</div>
-              <select id="convFrom" class="fin"></select>
+              <select id="convFrom" class="fin" onchange="convCompute()"></select>
             </div>
             <div class="convcell">
               <div class="fl" data-i18n="to">To</div>
-              <select id="convTo" class="fin"></select>
+              <select id="convTo" class="fin" onchange="convCompute()"></select>
             </div>
             <div class="convcell">
               <div class="fl" data-i18n="setting">Setting</div>
@@ -2515,15 +2521,7 @@
           box.appendChild(hint);
         }
       }
-      function convertGrind(v, from, to) {
-        let f = GRINDERS[from],
-          t = GRINDERS[to];
-        if (!f || !t || v == null || isNaN(v)) return null;
-        let fromUm = f.um > 0 ? f.um : 1;
-        let gapUm = v * fromUm;
-        return t.um > 0 ? Math.round(gapUm / t.um) : Math.round(gapUm);
-      }
-      function ownedGrinders() {
+      /* convertGrind lives in the build layer (effUm + offset), removed the stale raw-um copy */ function ownedGrinders() {
         try {
           let s = localStorage.getItem("myGrinders");
           if (s) {
@@ -2821,7 +2819,7 @@
         return p.join(", ");
       }
       let GRINDERS = {
-        K7: { n: "K7", um: 15, burr: "conical", k: 0.4, off: 130, min: 300, max: 850, dialPer: 10 },
+        K7: { n: "K7", um: 15, burr: "conical", k: 0.48, min: 220, max: 860, dialPer: 10 },
         A2: { n: "A2", um: 18, burr: "conical" },
         QAir: { n: "Q-Air", um: 25, burr: "conical", k: 0.45, measured: true },
         ZP6: {
@@ -4680,6 +4678,16 @@
             " (" +
             GRINDERS[f.value].n +
             ") is finer than the " +
+            tg.n +
+            " can grind";
+          return;
+        }
+        if (tg && tg.max && toUm > tg.max) {
+          out.textContent =
+            convFmt(v, f.value) +
+            " (" +
+            GRINDERS[f.value].n +
+            ") is coarser than the " +
             tg.n +
             " can grind";
           return;
@@ -9150,7 +9158,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-21-1458-da0c13";
+      var BUILD = "2026-07-21-1610-b4147d";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
