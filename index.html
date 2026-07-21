@@ -1502,7 +1502,13 @@
             </div>
             <div class="fcell">
               <div class="fl">Time (m:ss or s)</div>
-              <input id="gtime" inputmode="numeric" placeholder="0:28" class="fin" />
+              <input
+                id="gtime"
+                inputmode="numeric"
+                placeholder="2:28 or 148"
+                class="fin"
+                oninput="gtimeFmt()"
+              />
             </div>
           </div>
           <div class="frow">
@@ -1842,6 +1848,7 @@
               <div class="fl" data-i18n="ghOrigin">Origin</div>
               <input
                 id="ghOrigin"
+                list="ghOriginList"
                 class="fin"
                 oninput="grindHelperRender()"
                 placeholder="Ethiopia"
@@ -1851,12 +1858,59 @@
               <div class="fl" data-i18n="ghVarietal">Varietal</div>
               <input
                 id="ghVarietal"
+                list="ghVarList"
                 class="fin"
                 oninput="grindHelperRender()"
                 placeholder="Gesha"
               />
             </div>
           </div>
+          <datalist id="ghOriginList">
+            <option>Ethiopia</option>
+            <option>Kenya</option>
+            <option>Colombia</option>
+            <option>Guatemala</option>
+            <option>Costa Rica</option>
+            <option>Panama</option>
+            <option>Honduras</option>
+            <option>El Salvador</option>
+            <option>Nicaragua</option>
+            <option>Brazil</option>
+            <option>Peru</option>
+            <option>Bolivia</option>
+            <option>Ecuador</option>
+            <option>Mexico</option>
+            <option>Rwanda</option>
+            <option>Burundi</option>
+            <option>Tanzania</option>
+            <option>DR Congo</option>
+            <option>Yemen</option>
+            <option>Indonesia</option>
+            <option>India</option></datalist
+          ><datalist id="ghVarList">
+            <option>Gesha</option>
+            <option>SL28</option>
+            <option>SL34</option>
+            <option>Bourbon</option>
+            <option>Pink Bourbon</option>
+            <option>Caturra</option>
+            <option>Catuai</option>
+            <option>Typica</option>
+            <option>Heirloom</option>
+            <option>Pacamara</option>
+            <option>Pacas</option>
+            <option>Villa Sarchi</option>
+            <option>Castillo</option>
+            <option>Colombia</option>
+            <option>Ruiru 11</option>
+            <option>Batian</option>
+            <option>Sudan Rume</option>
+            <option>Wush Wush</option>
+            <option>Chiroso</option>
+            <option>Java</option>
+            <option>Maragogipe</option>
+            <option>Mundo Novo</option>
+          </datalist>
           <div class="convout" id="ghOut"></div>
           <div class="mut" style="text-align: left" data-i18n="ghHint">
             Roast and process do the work; origin and varietal only nudge by density.
@@ -2767,10 +2821,19 @@
         return p.join(", ");
       }
       let GRINDERS = {
-        K7: { n: "K7", um: 15, burr: "conical", k: 0.53, dialPer: 10 },
+        K7: { n: "K7", um: 15, burr: "conical", k: 0.4, off: 130, min: 300, max: 850, dialPer: 10 },
         A2: { n: "A2", um: 18, burr: "conical" },
         QAir: { n: "Q-Air", um: 25, burr: "conical", k: 0.45, measured: true },
-        ZP6: { n: "ZP6", um: 22, burr: "conical", k: 0.53, measured: true, dialPer: 10, min: 240 },
+        ZP6: {
+          n: "ZP6",
+          um: 22,
+          burr: "conical",
+          k: 0.53,
+          measured: true,
+          dialPer: 10,
+          min: 240,
+          max: 1050,
+        },
         KUltra: { n: "K-Ultra", um: 20, burr: "conical", k: 0.38, measured: true, dialPer: 10 },
         JUltra: { n: "J-Ultra", um: 8, burr: "conical", k: 0.31, measured: true, dialPer: 3 },
         JMax: { n: "J-Max", um: 8.8, burr: "conical", k: 0.3, measured: true, dialPer: 3 },
@@ -3204,7 +3267,7 @@
         "Soup 1:5-8": 650,
         "Soup 1:10": 700,
         V60: 700,
-        "V60 Switch": 850,
+        "V60 Switch": 730,
         "V60 Neo": 720,
         Orea: 630,
         Origami: 750,
@@ -6784,6 +6847,15 @@
       }
       /* live ratio + the band check. RATIO_BAND and ratioInBand() existed but were
    dead code: no espresso ratio was ever produced, so nothing could call them. */
+      function gtimeFmt() {
+        /* iOS numpad has no colon, so accept digits and format M:SS. 1-2 digits stay
+     as seconds (soup); 3-4 digits become minutes:seconds. toSecs parses both. */
+        var e = document.getElementById("gtime");
+        if (!e) return;
+        var d = e.value.replace(/[^0-9]/g, "");
+        if (d.length > 4) d = d.slice(0, 4);
+        e.value = d.length > 2 ? d.slice(0, d.length - 2) + ":" + d.slice(-2) : d;
+      }
       function gRatioApply() {
         var ri = document.getElementById("gratioIn"),
           d = document.getElementById("dose"),
@@ -9078,7 +9150,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-21-0819-bcd5a0";
+      var BUILD = "2026-07-21-1458-da0c13";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
