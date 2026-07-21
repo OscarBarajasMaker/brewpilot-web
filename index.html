@@ -215,7 +215,7 @@
         max-width: 520px;
         z-index: 20;
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(5, 1fr);
         padding: 4px 0 8px;
         background: var(--bg);
         border-top: 1px solid var(--line);
@@ -1463,9 +1463,28 @@
             step="0.1"
             inputmode="decimal"
             placeholder="dose g"
+            oninput="gRatioApply()"
             class="fin"
             style="width: 100%"
           />
+          <div class="frow" style="margin-top: 8px">
+            <div class="fcell">
+              <div class="fl" data-i18n="gRatioLbl">Ratio (1: dose)</div>
+              <div style="display: flex; align-items: center; gap: 6px">
+                <span style="color: var(--dim); font-size: 17px; font-weight: 600">1:</span
+                ><input
+                  id="gratioIn"
+                  type="number"
+                  step="0.5"
+                  inputmode="decimal"
+                  placeholder="16"
+                  class="fin"
+                  oninput="gRatioApply()"
+                />
+              </div>
+            </div>
+            <div class="fcell"></div>
+          </div>
           <div class="frow" style="margin-top: 8px">
             <div class="fcell">
               <div class="fl">
@@ -1590,99 +1609,6 @@
         </div>
       </div>
       <div class="tabpanel" id="tab-beans">
-        <div class="tool" id="convTool">
-          <div class="toolhd" data-i18n="grindConverter">Grinder converter</div>
-          <div class="convrow">
-            <div class="convcell">
-              <div class="fl" data-i18n="from">From</div>
-              <select id="convFrom" class="fin"></select>
-            </div>
-            <div class="convcell">
-              <div class="fl" data-i18n="to">To</div>
-              <select id="convTo" class="fin"></select>
-            </div>
-            <div class="convcell">
-              <div class="fl" data-i18n="setting">Setting</div>
-              <input
-                id="convVal"
-                type="number"
-                step="0.1"
-                inputmode="decimal"
-                class="fin"
-                oninput="convCompute()"
-              />
-            </div>
-          </div>
-          <div class="convout" id="convOut"></div>
-          <div class="mut" style="text-align: left" data-i18n="convHint">
-            Same burr gap, on each grinder's dial.
-          </div>
-        </div>
-        <div class="tool" id="grindTool">
-          <div class="toolhd" data-i18n="grindHelper">Grind helper</div>
-          <div class="convrow">
-            <div class="convcell">
-              <div class="fl" data-i18n="ghMethod">Method</div>
-              <select id="ghMethod" class="fin" onchange="grindHelperRender()">
-                <option value="espresso">Espresso</option>
-                <option value="soup" selected>Soup</option>
-                <option value="filter">Filter</option>
-              </select>
-            </div>
-            <div class="convcell">
-              <div class="fl" data-i18n="ghGrinder">Grinder</div>
-              <select id="ghGrinder" class="fin" onchange="grindHelperRender()"></select>
-            </div>
-          </div>
-          <div class="convrow">
-            <div class="convcell" id="ghBrewerCell" style="display: none">
-              <div class="fl" data-i18n="ghBrewer">Brewer</div>
-              <select id="ghBrewer" class="fin" onchange="grindHelperRender()"></select>
-            </div>
-            <div class="convcell" id="ghRatioCell">
-              <div class="fl" data-i18n="ghRatio">Ratio</div>
-              <select id="ghRatio" class="fin" onchange="grindHelperRender()">
-                <option>1:3-4</option>
-                <option>1:5-8</option>
-                <option selected>1:10</option>
-              </select>
-            </div>
-          </div>
-          <div class="convrow">
-            <div class="convcell">
-              <div class="fl" data-i18n="ghRoast">Roast</div>
-              <select id="ghRoast" class="fin" onchange="grindHelperRender()"></select>
-            </div>
-            <div class="convcell">
-              <div class="fl" data-i18n="ghProcess">Process</div>
-              <select id="ghProcess" class="fin" onchange="grindHelperRender()"></select>
-            </div>
-          </div>
-          <div class="convrow">
-            <div class="convcell">
-              <div class="fl" data-i18n="ghOrigin">Origin</div>
-              <input
-                id="ghOrigin"
-                class="fin"
-                oninput="grindHelperRender()"
-                placeholder="Ethiopia"
-              />
-            </div>
-            <div class="convcell">
-              <div class="fl" data-i18n="ghVarietal">Varietal</div>
-              <input
-                id="ghVarietal"
-                class="fin"
-                oninput="grindHelperRender()"
-                placeholder="Gesha"
-              />
-            </div>
-          </div>
-          <div class="convout" id="ghOut"></div>
-          <div class="mut" style="text-align: left" data-i18n="ghHint">
-            Roast and process do the work; origin and varietal only nudge by density.
-          </div>
-        </div>
         <div
           onclick="toggleInv()"
           style="
@@ -1840,6 +1766,101 @@
           </div>
           <div class="fl" style="margin-top: 8px">Your inventory</div>
           <div id="invList"><div class="mut" style="text-align: left">loading...</div></div>
+        </div>
+      </div>
+      <div class="tabpanel" id="tab-grind">
+        <div class="tool" id="convTool">
+          <div class="toolhd" data-i18n="grindConverter">Grinder converter</div>
+          <div class="convrow">
+            <div class="convcell">
+              <div class="fl" data-i18n="from">From</div>
+              <select id="convFrom" class="fin"></select>
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="to">To</div>
+              <select id="convTo" class="fin"></select>
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="setting">Setting</div>
+              <input
+                id="convVal"
+                type="number"
+                step="0.1"
+                inputmode="decimal"
+                class="fin"
+                oninput="convCompute()"
+              />
+            </div>
+          </div>
+          <div class="convout" id="convOut"></div>
+          <div class="mut" style="text-align: left" data-i18n="convHint">
+            Same burr gap, on each grinder's dial.
+          </div>
+        </div>
+        <div class="tool" id="grindTool">
+          <div class="toolhd" data-i18n="grindHelper">Grind helper</div>
+          <div class="convrow">
+            <div class="convcell">
+              <div class="fl" data-i18n="ghMethod">Method</div>
+              <select id="ghMethod" class="fin" onchange="grindHelperRender()">
+                <option value="espresso">Espresso</option>
+                <option value="soup" selected>Soup</option>
+                <option value="filter">Filter</option>
+              </select>
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="ghGrinder">Grinder</div>
+              <select id="ghGrinder" class="fin" onchange="grindHelperRender()"></select>
+            </div>
+          </div>
+          <div class="convrow">
+            <div class="convcell" id="ghBrewerCell" style="display: none">
+              <div class="fl" data-i18n="ghBrewer">Brewer</div>
+              <select id="ghBrewer" class="fin" onchange="grindHelperRender()"></select>
+            </div>
+            <div class="convcell" id="ghRatioCell">
+              <div class="fl" data-i18n="ghRatio">Ratio</div>
+              <select id="ghRatio" class="fin" onchange="grindHelperRender()">
+                <option>1:3-4</option>
+                <option>1:5-8</option>
+                <option selected>1:10</option>
+              </select>
+            </div>
+          </div>
+          <div class="convrow">
+            <div class="convcell">
+              <div class="fl" data-i18n="ghRoast">Roast</div>
+              <select id="ghRoast" class="fin" onchange="grindHelperRender()"></select>
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="ghProcess">Process</div>
+              <select id="ghProcess" class="fin" onchange="grindHelperRender()"></select>
+            </div>
+          </div>
+          <div class="convrow">
+            <div class="convcell">
+              <div class="fl" data-i18n="ghOrigin">Origin</div>
+              <input
+                id="ghOrigin"
+                class="fin"
+                oninput="grindHelperRender()"
+                placeholder="Ethiopia"
+              />
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="ghVarietal">Varietal</div>
+              <input
+                id="ghVarietal"
+                class="fin"
+                oninput="grindHelperRender()"
+                placeholder="Gesha"
+              />
+            </div>
+          </div>
+          <div class="convout" id="ghOut"></div>
+          <div class="mut" style="text-align: left" data-i18n="ghHint">
+            Roast and process do the work; origin and varietal only nudge by density.
+          </div>
         </div>
       </div>
       <div class="tabpanel" id="tab-insights">
@@ -2016,6 +2037,10 @@
       <div class="tab" data-tab="beans" onclick="showTab('beans')">
         <div class="ic">▢</div>
         <span data-i18n="beans">BEANS</span>
+      </div>
+      <div class="tab" data-tab="grind" onclick="showTab('grind')">
+        <div class="ic">⚙</div>
+        <span data-i18n="grindTab">GRIND</span>
       </div>
       <div class="tab" data-tab="insights" onclick="showTab('insights')">
         <div class="ic">◎</div>
@@ -3832,6 +3857,10 @@
         });
         if (name === "beans") openPanel("invPanel", toggleInv);
         if (name === "insights") openPanel("insPanel", toggleInsights);
+        if (name === "grind")
+          try {
+            grindHelperInit();
+          } catch (e) {}
         window.scrollTo(0, 0);
       }
       function openPanel(id, fn) {
@@ -3997,6 +4026,8 @@
           csT: "Starting point",
           csHint: "Then dial by taste.",
           csTuned: "tuned to your {n} shots",
+          grindTab: "GRIND",
+          gRatioLbl: "Ratio (1: dose)",
           grindHelper: "Grind helper",
           ghMethod: "Method",
           ghGrinder: "Grinder",
@@ -4208,6 +4239,8 @@
           csT: "Punto de partida",
           csHint: "Luego ajusta por sabor.",
           csTuned: "ajustado a tus {n} cafes",
+          grindTab: "MOLIENDA",
+          gRatioLbl: "Proporción (1: dosis)",
           grindHelper: "Ayuda de molienda",
           ghMethod: "Método",
           ghGrinder: "Molino",
@@ -6198,13 +6231,12 @@
               : "in your rotation";
         } else {
           el.innerHTML =
-            "<span style='color:var(--sel-text);cursor:pointer' onclick='addCoffee()'>+ " +
+            "<button type='button' onclick='addCoffee()' style='padding:8px 12px;margin:2px 8px 2px 0;border-radius:10px;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text);font-size:12px;font-weight:600;cursor:pointer'>+ " +
             (isEs ? "rotación" : "rotation") +
-            "</span>" +
-            "<span style='color:var(--dim);margin:0 7px'>·</span>" +
-            "<span style='color:var(--sel-text);cursor:pointer' onclick='addToInventory()'>+ " +
+            "</button>" +
+            "<button type='button' onclick='addToInventory()' style='padding:8px 12px;margin:2px 0;border-radius:10px;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text);font-size:12px;font-weight:600;cursor:pointer'>+ " +
             (isEs ? "al inventario" : "to inventory") +
-            "</span>";
+            "</button>";
         }
       }
       function adaptedUm(brewer, method, baseUm) {
@@ -6752,6 +6784,20 @@
       }
       /* live ratio + the band check. RATIO_BAND and ratioInBand() existed but were
    dead code: no espresso ratio was ever produced, so nothing could call them. */
+      function gRatioApply() {
+        var ri = document.getElementById("gratioIn"),
+          d = document.getElementById("dose"),
+          y = document.getElementById("gyield");
+        if (!ri || !d || !y) return;
+        var rv = parseFloat(ri.value),
+          dv = parseFloat(d.value);
+        if (!isNaN(rv) && rv > 0 && !isNaN(dv) && dv > 0) {
+          y.value = Math.round(dv * rv * 10) / 10;
+          try {
+            gRatioLive();
+          } catch (e) {}
+        }
+      }
       function gRatioLive() {
         var el = document.getElementById("gratioLive");
         if (!el) return;
@@ -9032,7 +9078,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-21-0549-ad0808";
+      var BUILD = "2026-07-21-0819-bcd5a0";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
