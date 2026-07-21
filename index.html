@@ -5899,6 +5899,34 @@
           updateCoffeeHint();
         } catch (e) {}
       }
+      function addToInventory() {
+        var v = ((document.getElementById("coffee") || {}).value || "").trim();
+        if (!v) return;
+        try {
+          addCoffee();
+        } catch (e) {}
+        var st = function (id, val) {
+          var e = document.getElementById(id);
+          if (e && val != null && val !== "") e.value = val;
+        };
+        st("invcoffee", v);
+        st("invroaster", (document.getElementById("roaster") || {}).value || "");
+        st("invroast", (document.getElementById("roast") || {}).value || "");
+        st("invprocess", (document.getElementById("process") || {}).value || "");
+        try {
+          var p = document.getElementById("invPanel");
+          if (p && p.style.display === "none") {
+            toggleInv();
+          }
+        } catch (e) {}
+        try {
+          var el = document.getElementById("invcoffee");
+          if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+        } catch (e) {}
+        try {
+          updateCoffeeHint();
+        } catch (e) {}
+      }
       function updateCoffeeHint() {
         var el = document.getElementById("coffeeHint");
         if (!el) return;
@@ -5929,7 +5957,11 @@
         } else {
           el.innerHTML =
             "<span style='color:var(--sel-text);cursor:pointer' onclick='addCoffee()'>+ " +
-            (isEs ? "agregar a rotación" : "add to rotation") +
+            (isEs ? "rotación" : "rotation") +
+            "</span>" +
+            "<span style='color:var(--dim);margin:0 7px'>·</span>" +
+            "<span style='color:var(--sel-text);cursor:pointer' onclick='addToInventory()'>+ " +
+            (isEs ? "al inventario" : "to inventory") +
             "</span>";
         }
       }
@@ -8752,7 +8784,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-21-0427-0fe1e8";
+      var BUILD = "2026-07-21-0444-a9052c";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
