@@ -5808,10 +5808,11 @@
           return;
         }
         var ratings = [];
-        (typeof ROT !== "undefined" ? ROT : []).forEach(function (e) {
-          var r = (e.best && e.best.rating) || (e.last && e.last.rating);
-          if (r) ratings.push(r);
+        (typeof IROWS !== "undefined" ? IROWS : []).forEach(function (o) {
+          var r = parseFloat(o.rating);
+          if (!isNaN(r) && r > 0) ratings.push(r);
         });
+        ratings.reverse();
         if (!ratings.length) {
           phase.textContent = t("homeNone");
           sub.textContent = LANG === "es" ? "registra tu primer " + noun : "log your first " + noun;
@@ -9191,7 +9192,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-21-2218-c11339";
+      var BUILD = "2026-07-21-2225-2b6315";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
