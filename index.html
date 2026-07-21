@@ -1853,9 +1853,9 @@
             <div class="convcell" id="ghRatioCell">
               <div class="fl" data-i18n="ghRatio">Ratio</div>
               <select id="ghRatio" class="fin" onchange="grindHelperRender()">
-                <option>1:3-4</option>
+                <option selected>1:3-4</option>
                 <option>1:5-8</option>
-                <option selected>1:10</option>
+                <option>1:10</option>
               </select>
             </div>
           </div>
@@ -2549,7 +2549,7 @@
             if (a && a.length) return a;
           }
         } catch (e) {}
-        return ["K7", "A2", "QAir", "ZP6", "Motto80"];
+        return ["K7", "A2", "QAir", "ZP6", "ZP6s", "Motto80"];
       }
       function renderGrinderChips(e) {
         let box = document.getElementById("grchips");
@@ -2846,7 +2846,17 @@
           n: "ZP6",
           um: 22,
           burr: "conical",
-          k: 0.53,
+          k: 0.64,
+          measured: true,
+          dialPer: 10,
+          min: 240,
+          max: 1050,
+        },
+        ZP6s: {
+          n: "ZP6 Special",
+          um: 22,
+          burr: "conical",
+          k: 0.64,
           measured: true,
           dialPer: 10,
           min: 240,
@@ -3281,9 +3291,9 @@
       }
       let BREWER_UM = {
         Espresso: 340,
-        "Soup 1:3-4": 600,
-        "Soup 1:5-8": 650,
-        "Soup 1:10": 700,
+        "Soup 1:3-4": 500,
+        "Soup 1:5-8": 560,
+        "Soup 1:10": 620,
         V60: 700,
         "V60 Switch": 730,
         "V60 Neo": 720,
@@ -4591,7 +4601,7 @@
           method === "espresso"
             ? "Espresso"
             : method === "soup"
-              ? "Soup " + (g("ghRatio") || "1:10")
+              ? "Soup " + (g("ghRatio") || "1:3-4")
               : g("ghBrewer") || "V60";
         var um = typeof BREWER_UM === "object" && BREWER_UM[key] ? BREWER_UM[key] : 750;
         var rf = typeof ROAST_F === "object" && ROAST_F[roast] ? ROAST_F[roast] : 1;
@@ -9178,7 +9188,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-21-1854-c8ea57";
+      var BUILD = "2026-07-21-2036-464fbf";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
