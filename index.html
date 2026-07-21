@@ -216,7 +216,7 @@
         z-index: 20;
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        padding: 8px 0 10px;
+        padding: 4px 0 8px;
         background: var(--bg);
         border-top: 1px solid var(--line);
       }
@@ -224,13 +224,16 @@
         text-align: center;
         cursor: pointer;
         color: var(--dim);
-        font-size: 9px;
+        font-size: 10px;
         font-weight: 600;
         letter-spacing: 0.05em;
+        padding: 9px 4px 6px;
+        border-radius: 12px;
       }
       .tab .ic {
-        font-size: 16px;
+        font-size: 20px;
         line-height: 1;
+        margin-bottom: 2px;
       }
       .tab.on {
         color: var(--pressure);
@@ -1613,6 +1616,71 @@
           <div class="convout" id="convOut"></div>
           <div class="mut" style="text-align: left" data-i18n="convHint">
             Same burr gap, on each grinder's dial.
+          </div>
+        </div>
+        <div class="tool" id="grindTool">
+          <div class="toolhd" data-i18n="grindHelper">Grind helper</div>
+          <div class="convrow">
+            <div class="convcell">
+              <div class="fl" data-i18n="ghMethod">Method</div>
+              <select id="ghMethod" class="fin" onchange="grindHelperRender()">
+                <option value="espresso">Espresso</option>
+                <option value="soup" selected>Soup</option>
+                <option value="filter">Filter</option>
+              </select>
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="ghGrinder">Grinder</div>
+              <select id="ghGrinder" class="fin" onchange="grindHelperRender()"></select>
+            </div>
+          </div>
+          <div class="convrow">
+            <div class="convcell" id="ghBrewerCell" style="display: none">
+              <div class="fl" data-i18n="ghBrewer">Brewer</div>
+              <select id="ghBrewer" class="fin" onchange="grindHelperRender()"></select>
+            </div>
+            <div class="convcell" id="ghRatioCell">
+              <div class="fl" data-i18n="ghRatio">Ratio</div>
+              <select id="ghRatio" class="fin" onchange="grindHelperRender()">
+                <option>1:3-4</option>
+                <option>1:5-8</option>
+                <option selected>1:10</option>
+              </select>
+            </div>
+          </div>
+          <div class="convrow">
+            <div class="convcell">
+              <div class="fl" data-i18n="ghRoast">Roast</div>
+              <select id="ghRoast" class="fin" onchange="grindHelperRender()"></select>
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="ghProcess">Process</div>
+              <select id="ghProcess" class="fin" onchange="grindHelperRender()"></select>
+            </div>
+          </div>
+          <div class="convrow">
+            <div class="convcell">
+              <div class="fl" data-i18n="ghOrigin">Origin</div>
+              <input
+                id="ghOrigin"
+                class="fin"
+                oninput="grindHelperRender()"
+                placeholder="Ethiopia"
+              />
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="ghVarietal">Varietal</div>
+              <input
+                id="ghVarietal"
+                class="fin"
+                oninput="grindHelperRender()"
+                placeholder="Gesha"
+              />
+            </div>
+          </div>
+          <div class="convout" id="ghOut"></div>
+          <div class="mut" style="text-align: left" data-i18n="ghHint">
+            Roast and process do the work; origin and varietal only nudge by density.
           </div>
         </div>
         <div
@@ -3929,6 +3997,17 @@
           csT: "Starting point",
           csHint: "Then dial by taste.",
           csTuned: "tuned to your {n} shots",
+          grindHelper: "Grind helper",
+          ghMethod: "Method",
+          ghGrinder: "Grinder",
+          ghRatio: "Soup ratio",
+          ghBrewerL: "Brewer",
+          ghRoastL: "Roast",
+          ghProcL: "Process",
+          ghOrigin: "Origin (opt)",
+          ghVarL: "Varietal (opt)",
+          ghHint: "Roast and process do the work; origin and varietal are a small density nudge.",
+          ghSuggest: "Suggested grind",
           scoreBtn: "Just score this bag",
           restBtn: "Rest it (out to degas)",
           scoreBag: "Score this bag",
@@ -3992,6 +4071,16 @@
           recentShots: "recent shots",
           rating: "rating",
           grindConverter: "Grinder converter",
+          grindHelper: "Grind helper",
+          ghMethod: "Method",
+          ghGrinder: "Grinder",
+          ghBrewer: "Brewer",
+          ghRatio: "Ratio",
+          ghRoast: "Roast",
+          ghProcess: "Process",
+          ghOrigin: "Origin",
+          ghVarietal: "Varietal",
+          ghHint: "Roast and process do the work; origin and varietal only nudge by density.",
           from: "From",
           to: "To",
           setting: "Setting",
@@ -4119,6 +4208,18 @@
           csT: "Punto de partida",
           csHint: "Luego ajusta por sabor.",
           csTuned: "ajustado a tus {n} cafes",
+          grindHelper: "Ayuda de molienda",
+          ghMethod: "Método",
+          ghGrinder: "Molino",
+          ghRatio: "Ratio soup",
+          ghBrewerL: "Brewer",
+          ghRoastL: "Tueste",
+          ghProcL: "Proceso",
+          ghOrigin: "Origen (opc)",
+          ghVarL: "Variedad (opc)",
+          ghHint:
+            "El tueste y el proceso mandan; origen y variedad son un ajuste menor por densidad.",
+          ghSuggest: "Molienda sugerida",
           scoreBtn: "Solo calificar esta bolsa",
           restBtn: "Reposar (fuera del congelador)",
           scoreBag: "Calificar esta bolsa",
@@ -4182,6 +4283,17 @@
           recentShots: "shots recientes",
           rating: "nota",
           grindConverter: "Conversor de molienda",
+          grindHelper: "Ayuda de molienda",
+          ghMethod: "Metodo",
+          ghGrinder: "Molino",
+          ghBrewer: "Brewer",
+          ghRatio: "Proporcion",
+          ghRoast: "Tueste",
+          ghProcess: "Proceso",
+          ghOrigin: "Origen",
+          ghVarietal: "Variedad",
+          ghHint:
+            "El tueste y el proceso hacen el trabajo; origen y variedad solo ajustan por densidad.",
           from: "De",
           to: "A",
           setting: "Ajuste",
@@ -4280,6 +4392,133 @@
           box.appendChild(c);
         });
       }
+      function ghDensity(origin, varietal) {
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        var s = ((origin || "") + " " + (varietal || "")).toLowerCase();
+        if (
+          /ethiopia|kenya|colombia|guatemala|gesha|geisha|sl28|sl34|bourbon|pacamara|sudan rume|chiroso|ombligon/.test(
+            s,
+          )
+        )
+          return {
+            f: 0.97,
+            note: isEs ? "grano denso / de altura: ~3% mas fino" : "dense / high-grown: ~3% finer",
+          };
+        if (/robusta|conilon/.test(s))
+          return {
+            f: 1.03,
+            note: isEs ? "grano mas blando: ~3% mas grueso" : "softer bean: ~3% coarser",
+          };
+        return { f: 1.0, note: "" };
+      }
+      function grindHelperInit() {
+        var add = function (sel, items, selVal) {
+          var e = document.getElementById(sel);
+          if (!e || e.options.length) return;
+          items.forEach(function (it) {
+            var v = it && it.v !== undefined ? it.v : it;
+            var lab = it && it.n !== undefined ? it.n : it;
+            var o = document.createElement("option");
+            o.value = v;
+            o.textContent = lab;
+            if (selVal != null && v === selVal) o.selected = true;
+            e.appendChild(o);
+          });
+        };
+        add(
+          "ghGrinder",
+          ownedGrinders().map(function (id) {
+            return { v: id, n: GRINDERS[id] ? GRINDERS[id].n : id };
+          }),
+        );
+        add("ghBrewer", [
+          "V60",
+          "V60 Switch",
+          "V60 Neo",
+          "Orea",
+          "Origami",
+          "Chemex",
+          "Kalita",
+          "AeroPress",
+          "Other",
+        ]);
+        add(
+          "ghRoast",
+          ["Ultra Light", "Extra Light", "Light", "Light Medium", "Medium", "Medium Dark", "Dark"],
+          "Light",
+        );
+        add("ghProcess", [
+          "Washed",
+          "Natural",
+          "Honey",
+          "Anaerobic",
+          "Anaerobic Natural",
+          "Carbonic Maceration",
+          "Lactic",
+          "Extended Fermentation",
+          "Thermal Shock",
+        ]);
+        grindHelperRender();
+      }
+      function grindHelperRender() {
+        var g = function (id) {
+          var e = document.getElementById(id);
+          return e ? e.value : "";
+        };
+        var method = g("ghMethod") || "soup";
+        var brc = document.getElementById("ghBrewerCell"),
+          rac = document.getElementById("ghRatioCell");
+        if (brc) brc.style.display = method === "filter" ? "" : "none";
+        if (rac) rac.style.display = method === "soup" ? "" : "none";
+        var gid = g("ghGrinder") || ownedGrinders()[0] || "ZP6";
+        var roast = g("ghRoast") || "Light",
+          process = g("ghProcess") || "Washed";
+        var key =
+          method === "espresso"
+            ? "Espresso"
+            : method === "soup"
+              ? "Soup " + (g("ghRatio") || "1:10")
+              : g("ghBrewer") || "V60";
+        var um = typeof BREWER_UM === "object" && BREWER_UM[key] ? BREWER_UM[key] : 750;
+        var rf = typeof ROAST_F === "object" && ROAST_F[roast] ? ROAST_F[roast] : 1;
+        var pf = 1;
+        try {
+          pf = processTier(process) || 1;
+        } catch (e) {}
+        var dn = ghDensity(g("ghOrigin"), g("ghVarietal"));
+        um = Math.round(um * rf * pf * dn.f);
+        var out = document.getElementById("ghOut");
+        if (!out) return;
+        var gg = GRINDERS[gid];
+        var setStr;
+        if (!gg || gg.um === 0) {
+          setStr = um + "um";
+        } else {
+          var clicks = umToClicks(um, gid);
+          if (clicks == null) {
+            setStr = "--";
+          } else {
+            clicks = Math.max(0, Math.round(clicks));
+            setStr = gg.dialPer
+              ? (clicks / gg.dialPer).toFixed(1) + " (" + clicks + " clicks)"
+              : clicks + " clicks";
+          }
+        }
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        out.innerHTML =
+          "<b style='font-size:15px'>" +
+          setStr +
+          "</b> <span style='color:var(--dim);font-size:12px'>(" +
+          um +
+          "um · " +
+          (gg ? gg.n : gid) +
+          ")</span>" +
+          (dn.note
+            ? "<div style='color:var(--pressure);font-size:11px;margin-top:3px'>" +
+              dn.note +
+              "</div>"
+            : "");
+      }
       function convInit() {
         var f = document.getElementById("convFrom"),
           tt = document.getElementById("convTo");
@@ -4364,6 +4603,9 @@
       applyRole();
       renderRoleChips();
       convInit();
+      try {
+        grindHelperInit();
+      } catch (e) {}
       /* ---------------------------------------------------------------
    UI scheduler. No polling: the app's own code rewrites innerHTML at
    unpredictable times, so we watch for those writes instead of guessing.
@@ -8790,7 +9032,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-21-0525-72e434";
+      var BUILD = "2026-07-21-0549-ad0808";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
