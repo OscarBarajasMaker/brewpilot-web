@@ -1219,7 +1219,15 @@
           />
           <div id="planBox" class="planbox" style="display: none"></div>
           <div class="fl" style="margin-top: 8px">Coffee</div>
-          <input id="coffee" placeholder="e.g. Panama Gesha" class="fin" style="width: 100%" />
+          <input
+            id="coffee"
+            list="coffeeList"
+            oninput="updateCoffeeHint()"
+            placeholder="e.g. Panama Gesha"
+            class="fin"
+            style="width: 100%"
+          /><datalist id="coffeeList"></datalist>
+          <div id="coffeeHint" class="csfac" style="margin-top: 3px; font-size: 12px"></div>
           <div class="frow">
             <div class="fcell">
               <div class="fl">Roaster</div>
@@ -1731,7 +1739,20 @@
               <input id="invfreeze_date" type="date" class="fin" />
             </div>
             <div class="fcell fullrow">
-              <button class="grn" style="width: 100%" onclick="freezeCoffee()">Freeze it</button>
+              <button class="grn" style="width: 100%" onclick="freezeCoffee()">Freeze it</button
+              ><button
+                class="off"
+                data-i18n="scoreBtn"
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  color: var(--sel-text);
+                  border: 1px solid var(--sel-line);
+                "
+                onclick="quickScoreOpen()"
+              >
+                Just score this bag
+              </button>
             </div>
           </div>
           <div class="fl" style="margin-top: 8px">Your inventory</div>
@@ -2045,6 +2066,11 @@
         var paper = isFil ? FPAPER || "" : GPAPER || "";
         var yieldCol = isFil ? "" : out || "";
         var waterCol = isFil ? out || "" : "";
+        var grindUm = "";
+        try {
+          if (grn && !isNaN(gsetN) && typeof GRINDERS === "object" && GRINDERS[grn])
+            grindUm = Math.round(clicksToUm(gsetN, grn));
+        } catch (e) {}
         var cols = [
           "",
           "",
@@ -2073,6 +2099,7 @@
           basket,
           agit,
           waterCol,
+          grindUm,
         ];
         try {
           localPush(cols);
@@ -3471,7 +3498,8 @@
               tot +
               '</span><div style="color:var(--dim);font-size:11px;margin-top:2px">' +
               ((b.roaster || "") + (b.age ? " - " + b.age : "")) +
-              "</div>";
+              "</div>" +
+              bagStateChips(b);
             let acts = document.createElement("div");
             acts.style.cssText = "display:flex;gap:6px;margin-top:8px;flex-wrap:wrap";
             if (b.frozen_portion) {
@@ -3885,6 +3913,13 @@
           insLockGo: "Log a brew",
           csT: "Starting point",
           csHint: "Then dial by taste.",
+          csTuned: "tuned to your {n} shots",
+          scoreBtn: "Just score this bag",
+          scoreBag: "Score this bag",
+          scoreTap: "tap a rating",
+          scoreDone: "Scored {c} {n}/10",
+          scoreNeedCoffee: "Enter the coffee name first",
+          scoreCancel: "Cancel",
           csCoarser: "coarser",
           csFiner: "finer",
           csNoAdj: "no change",
@@ -4067,6 +4102,13 @@
           insLockGo: "Registrar un café",
           csT: "Punto de partida",
           csHint: "Luego ajusta por sabor.",
+          csTuned: "ajustado a tus {n} cafes",
+          scoreBtn: "Solo calificar esta bolsa",
+          scoreBag: "Calificar esta bolsa",
+          scoreTap: "toca una nota",
+          scoreDone: "Calificado {c} {n}/10",
+          scoreNeedCoffee: "Escribe el nombre del cafe primero",
+          scoreCancel: "Cancelar",
           csCoarser: "más grueso",
           csFiner: "más fino",
           csNoAdj: "sin cambio",
@@ -4605,6 +4647,12 @@
         });
         try {
           renderSheetLink();
+        } catch (e) {}
+        try {
+          renderCoffeeList();
+        } catch (e) {}
+        try {
+          updateCoffeeHint();
         } catch (e) {}
         if (m === "soup") {
           try {
@@ -5542,6 +5590,114 @@
         "Medium Dark": 1.13,
         Dark: 1.18,
       };
+      var REST_TIER = {
+        "Ultra Light": "ultra",
+        "Extra Light": "ultra",
+        Light: "light",
+        "Light Medium": "light",
+        Medium: "medium",
+        "Medium Dark": "medium",
+        Dark: "dark",
+      };
+      var REST_W = {
+        espresso: {
+          ultra: [14, 21, 45],
+          light: [10, 21, 35],
+          medium: [7, 10, 21],
+          dark: [2, 3, 8],
+        },
+        filter: { ultra: [10, 21, 42], light: [7, 14, 35], medium: [5, 7, 18], dark: [3, 3, 8] },
+      };
+      function restWindow(roast, process, method) {
+        var tier = REST_TIER[roast];
+        if (!tier) return null;
+        var fam = method === "filter" ? "filter" : "espresso";
+        var w = REST_W[fam][tier].slice();
+        var slow = /natural|anaerob|honey|carbonic|ferment|maceration/i.test(String(process || ""));
+        var pn = slow ? 4 : 0;
+        return {
+          start: w[0] + pn,
+          peakLo: w[1] + pn,
+          peakHi: w[2] + pn,
+          tier: tier,
+          family: fam,
+          slow: slow,
+        };
+      }
+      function restDaysSince(dateStr) {
+        var s = String(dateStr || "").slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+        var d = new Date(s + "T00:00:00");
+        if (isNaN(d.getTime())) return null;
+        return Math.floor((Date.now() - d.getTime()) / 86400000);
+      }
+      function restStatus(roast, process, method, roastDate) {
+        var w = restWindow(roast, process, method);
+        if (!w) return null;
+        var age = restDaysSince(roastDate);
+        var phase =
+          age == null
+            ? "unknown"
+            : age < w.start
+              ? "resting"
+              : age < w.peakLo
+                ? "nearing peak"
+                : age <= w.peakHi
+                  ? "in peak"
+                  : "past peak";
+        return { w: w, age: age, phase: phase };
+      }
+      function bagStateChips(b) {
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        var out = [];
+        var inRot = false;
+        try {
+          inRot = (typeof ROT !== "undefined" ? ROT : []).some(function (e) {
+            return String(e.coffee || "").toLowerCase() === String(b.coffee || "").toLowerCase();
+          });
+        } catch (e) {}
+        if (inRot)
+          out.push(
+            "<span style='padding:3px 8px;border-radius:12px;font-size:10px;color:var(--weight);border:1px solid var(--weight)'>" +
+              (isEs ? "en rotación" : "in rotation") +
+              "</span>",
+          );
+        if (b.frozen_portion)
+          out.push(
+            "<span style='padding:3px 8px;border-radius:12px;font-size:10px;color:var(--temp);border:1px solid var(--temp)'>" +
+              (isEs ? "congelado" : "frozen") +
+              "</span>",
+          );
+        var rd = b.portions && b.portions[0] ? b.portions[0].roast_date : "";
+        var rs = null;
+        try {
+          rs = restStatus(b.roast || "Light", b.process || "", "espresso", rd);
+        } catch (e) {}
+        if (rs && rs.age != null) {
+          var txt;
+          if (rs.phase === "resting" || rs.phase === "nearing peak") {
+            txt =
+              (isEs ? "reposando · pico en " : "resting · peak in ") +
+              Math.max(0, rs.w.peakLo - rs.age) +
+              "d";
+          } else if (rs.phase === "in peak") {
+            txt = isEs ? "en su punto" : "at peak";
+          } else {
+            txt = isEs ? "pasado el pico" : "past peak";
+          }
+          out.push(
+            "<span style='padding:3px 8px;border-radius:12px;font-size:10px;color:var(--pressure);border:1px solid var(--pressure)'>" +
+              txt +
+              "</span>",
+          );
+        }
+        if (!out.length) return "";
+        return (
+          "<div style='display:flex;gap:5px;flex-wrap:wrap;margin-top:6px'>" +
+          out.join("") +
+          "</div>"
+        );
+      }
       function roastWord(r) {
         if (!r) return t("roastLight");
         if (/Dark/i.test(r)) return t("roastDark");
@@ -5630,11 +5786,184 @@
         if (f < 0.995) return { dir: t("csFiner"), pct: Math.round((1 - f) * 100) };
         return null;
       }
+      function knownCoffees() {
+        var set = {};
+        try {
+          (typeof IROWS !== "undefined" ? IROWS : []).forEach(function (o) {
+            var c = String(o.coffee || "").trim();
+            if (c) set[c.toLowerCase()] = c;
+          });
+        } catch (e) {}
+        try {
+          (typeof IINV !== "undefined" ? IINV : []).forEach(function (o) {
+            var c = String(o.coffee || "").trim();
+            if (c) set[c.toLowerCase()] = c;
+          });
+        } catch (e) {}
+        try {
+          var ex = JSON.parse(localStorage.getItem("coffees") || "[]");
+          ex.forEach(function (c) {
+            c = String(c || "").trim();
+            if (c) set[c.toLowerCase()] = c;
+          });
+        } catch (e) {}
+        return Object.keys(set)
+          .map(function (k) {
+            return set[k];
+          })
+          .sort();
+      }
+      function coffeeAvg(coffee) {
+        /* recency-weighted average of ALL notes for this coffee (brews + quick scores).
+     Rows are in append order oldest->newest, so newest notes get the most weight. */
+        var key = String(coffee || "")
+          .trim()
+          .toLowerCase();
+        if (!key) return null;
+        var notes = [];
+        try {
+          (typeof IROWS !== "undefined" ? IROWS : []).forEach(function (o) {
+            if (
+              String(o.coffee || "")
+                .trim()
+                .toLowerCase() !== key
+            )
+              return;
+            var rt = parseFloat(o.rating);
+            if (!isNaN(rt) && rt > 0) notes.push(rt);
+          });
+        } catch (e) {}
+        if (!notes.length) return null;
+        var decay = 0.85,
+          w = 1,
+          sw = 0,
+          ssum = 0;
+        for (var i = notes.length - 1; i >= 0; i--) {
+          sw += w;
+          ssum += notes[i] * w;
+          w *= decay;
+        }
+        return {
+          avg: Math.round((ssum / sw) * 10) / 10,
+          n: notes.length,
+          last: notes[notes.length - 1],
+        };
+      }
+      function renderCoffeeList() {
+        var dl = document.getElementById("coffeeList");
+        if (!dl) return;
+        dl.innerHTML = "";
+        knownCoffees().forEach(function (c) {
+          var o = document.createElement("option");
+          o.value = c;
+          dl.appendChild(o);
+        });
+      }
+      function addCoffee() {
+        var v = ((document.getElementById("coffee") || {}).value || "").trim();
+        if (!v) return;
+        try {
+          var arr = JSON.parse(localStorage.getItem("coffees") || "[]");
+          if (
+            arr
+              .map(function (x) {
+                return String(x).toLowerCase();
+              })
+              .indexOf(v.toLowerCase()) < 0
+          ) {
+            arr.push(v);
+            localStorage.setItem("coffees", JSON.stringify(arr));
+          }
+        } catch (e) {}
+        try {
+          renderCoffeeList();
+        } catch (e) {}
+        try {
+          updateCoffeeHint();
+        } catch (e) {}
+      }
+      function updateCoffeeHint() {
+        var el = document.getElementById("coffeeHint");
+        if (!el) return;
+        var v = ((document.getElementById("coffee") || {}).value || "").trim();
+        if (!v) {
+          el.innerHTML = "";
+          return;
+        }
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        var known = knownCoffees().some(function (c) {
+          return c.toLowerCase() === v.toLowerCase();
+        });
+        if (known) {
+          var a = coffeeAvg(v);
+          el.style.color = "var(--dim)";
+          el.innerHTML = a
+            ? a.avg +
+              " " +
+              (isEs ? "promedio" : "avg") +
+              " (" +
+              a.n +
+              " " +
+              (isEs ? "notas" : "notes") +
+              ")"
+            : isEs
+              ? "en tu rotación"
+              : "in your rotation";
+        } else {
+          el.innerHTML =
+            "<span style='color:var(--sel-text);cursor:pointer' onclick='addCoffee()'>+ " +
+            (isEs ? "agregar a rotación" : "add to rotation") +
+            "</span>";
+        }
+      }
+      function adaptedUm(brewer, method, baseUm) {
+        /* Learn the user's preferred grind (in grinder-independent um) for this
+     method (+brewer for filter), rating-weighted, and shrink toward the research
+     default so one shot barely moves it and ~6-10 make it mostly theirs. */
+        try {
+          var rows = typeof IROWS !== "undefined" && IROWS ? IROWS : [];
+          var sw = 0,
+            ssum = 0,
+            n = 0;
+          for (var i = 0; i < rows.length; i++) {
+            var o = rows[i];
+            if (method && String(o.type || "") !== method) continue;
+            if (method === "filter" && brewer && String(o.brewer || "") !== brewer) continue;
+            var u = parseFloat(o.grind_um);
+            if (isNaN(u) || u <= 0) continue;
+            var rt = parseFloat(o.rating);
+            var w = !isNaN(rt) && rt > 0 ? rt : 5;
+            sw += w;
+            ssum += u * w;
+            n++;
+          }
+          if (!n) return { um: baseUm, n: 0, source: "research" };
+          var yours = ssum / sw,
+            K = 3;
+          var adapted = Math.round(baseUm * (K / (n + K)) + yours * (n / (n + K)));
+          return {
+            um: adapted,
+            n: n,
+            yours: Math.round(yours),
+            source: n >= 3 ? "yours" : "blend",
+          };
+        } catch (e) {
+          return { um: baseUm, n: 0, source: "research" };
+        }
+      }
       function csFor(brewer, gid) {
         var um = typeof BREWER_UM === "object" && BREWER_UM[brewer] ? BREWER_UM[brewer] : 750;
         var r = csRoast(),
           pr = csProcess();
         um = Math.round(um * r.f * pr.f);
+        var _ad = null;
+        try {
+          _ad = adaptedUm(brewer, typeof logMethod === "function" ? logMethod() : "", um);
+          if (_ad && _ad.um > 0) um = _ad.um;
+        } catch (e) {}
+        try {
+          window.CS_ADAPT = _ad;
+        } catch (e) {}
         var g = typeof GRINDERS === "object" ? GRINDERS[gid] : null;
         if (!g) return { txt: um + "um", um: um, warn: null };
         var range = gRange(um, gid);
@@ -5699,6 +6028,7 @@
           roastWord(r.v) +
           ". " +
           t("csHint") +
+          _csTuned() +
           "</div>" +
           (w ? "<div class='cswarn'>" + w + "</div>" : "") +
           "</div>";
@@ -5733,6 +6063,14 @@
           m = logMethod();
         } catch (e) {}
         return document.getElementById("gset");
+      }
+      function _csTuned() {
+        try {
+          var a = window.CS_ADAPT;
+          return a && a.source === "yours" ? " · " + t("csTuned").replace("{n}", a.n) : "";
+        } catch (e) {
+          return "";
+        }
       }
       function csInline() {
         var host = csHost();
@@ -5800,6 +6138,7 @@
           (g ? g.n : gid) +
           ". " +
           t("csHint") +
+          _csTuned() +
           "</div>" +
           (factors ? "<div class='csfacs'>" + factors + "</div>" : "") +
           (w ? "<div class='cswarn'>" + w + "</div>" : "");
@@ -6238,6 +6577,7 @@
         "basket",
         "agitation",
         "brew_water_g",
+        "grind_um",
       ];
       function colsToParams(cols) {
         var out = [];
@@ -6983,6 +7323,9 @@
       /* Turn the raw arrays into objects keyed by column name. */
       function iBuild(data) {
         ICOLS = data.cols || [];
+        for (var _ci = ICOLS.length; _ci < COLNAMES.length; _ci++) {
+          ICOLS[_ci] = COLNAMES[_ci];
+        }
         IINVCOLS = data.invCols || [];
         IROWS = (data.shots || []).map(function (r) {
           var o = {};
@@ -8148,6 +8491,112 @@
       async function gFreeze(o) {
         return gAppend(INV_TAB, gInvRow(o));
       }
+      async function quickScore(coffee, rating, roast, process, roaster) {
+        /* lightweight per-bag score for people who do not log every brew. A minimal
+     shot-log row (type=score) so it feeds cost/value insights but is skipped by
+     grind/time/water analysis and by the grind learner. 28 cols, aligned. */
+        var cols = [
+          "",
+          "",
+          coffee,
+          roaster || "",
+          "",
+          process || "",
+          roast || "",
+          "score",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          String(rating || ""),
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+        ];
+        try {
+          localPush(cols);
+        } catch (e) {}
+        if (dataMode() === "google") {
+          try {
+            await gAppend(SHOT_TAB, cols);
+          } catch (e) {
+            if (String(e.message).indexOf("needs-gesture") >= 0) {
+              var _ok = await gAuth(true);
+              if (_ok) {
+                try {
+                  await gAppend(SHOT_TAB, cols);
+                } catch (e2) {}
+              }
+            }
+          }
+        }
+      }
+      function quickScoreOpen() {
+        var coffee = ((document.getElementById("invcoffee") || {}).value || "").trim();
+        if (!coffee) {
+          alert(t("scoreNeedCoffee"));
+          return;
+        }
+        var roaster = ((document.getElementById("invroaster") || {}).value || "").trim();
+        var process = ((document.getElementById("invprocess") || {}).value || "").trim();
+        var roast = ((document.getElementById("invroast") || {}).value || "").trim();
+        var ov = document.createElement("div");
+        ov.style.cssText =
+          "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px";
+        var card = document.createElement("div");
+        card.style.cssText =
+          "background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;max-width:400px;width:100%;color:var(--text)";
+        card.innerHTML =
+          "<div style='font-weight:600;margin-bottom:2px'>" +
+          t("scoreBag") +
+          "</div><div style='color:var(--dim);font-size:12px;margin-bottom:12px'>" +
+          coffee +
+          " · " +
+          t("scoreTap") +
+          "</div>";
+        var grid = document.createElement("div");
+        grid.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px";
+        for (var i = 1; i <= 10; i++) {
+          (function (n) {
+            var bt = document.createElement("button");
+            bt.textContent = n;
+            bt.style.cssText =
+              "flex:1 1 40px;padding:12px 0;border-radius:10px;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text);font-weight:600;cursor:pointer";
+            bt.onclick = async function () {
+              if (ov.parentNode) ov.parentNode.removeChild(ov);
+              await quickScore(coffee, n, roast, process, roaster);
+              try {
+                loadInventory();
+              } catch (e) {}
+              alert(t("scoreDone").replace("{c}", coffee).replace("{n}", n));
+            };
+            grid.appendChild(bt);
+          })(i);
+        }
+        card.appendChild(grid);
+        var cx = document.createElement("button");
+        cx.textContent = t("scoreCancel");
+        cx.style.cssText =
+          "width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--dim);font-size:13px;cursor:pointer";
+        cx.onclick = function () {
+          if (ov.parentNode) ov.parentNode.removeChild(ov);
+        };
+        card.appendChild(cx);
+        ov.appendChild(card);
+        document.body.appendChild(ov);
+      }
       /* Ported from invList_: group by bean, skip Finished, sum quantities. */
       async function gInvList() {
         var rows = await gRead(INV_TAB);
@@ -8165,7 +8614,14 @@
           if (String(row[idx["status"]] || "") === "Finished") continue;
           var key = String(name).toLowerCase();
           if (!by[key])
-            by[key] = { coffee: name, roaster: row[idx["roaster"]] || "", portions: [], total: 0 };
+            by[key] = {
+              coffee: name,
+              roaster: row[idx["roaster"]] || "",
+              roast: row[idx["roast"]] || "",
+              process: row[idx["process"]] || "",
+              portions: [],
+              total: 0,
+            };
           var q = parseInt(row[idx["qty"]] || "0", 10) || 0;
           if (q <= 0) continue;
           by[key].portions.push({
@@ -8270,7 +8726,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-19-2032-2ff3a8";
+      var BUILD = "2026-07-21-0347-d48ebe";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
