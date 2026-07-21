@@ -3953,10 +3953,12 @@
         var box = document.getElementById("heroSpark");
         if (!box) return;
         var ratings = [];
-        (typeof ROT !== "undefined" ? ROT : []).forEach(function (e) {
-          var r = (e.best && e.best.rating) || (e.last && e.last.rating);
-          if (r) ratings.push(r);
+        (typeof IROWS !== "undefined" ? IROWS : []).forEach(function (o) {
+          var r = parseFloat(o.rating);
+          if (!isNaN(r) && r > 0) ratings.push(r);
         });
+        ratings.reverse();
+        var _htot = ratings.length;
         ratings = ratings.slice(0, 8);
         var num = document.getElementById("heroNum"),
           phase = document.getElementById("heroPhase"),
@@ -3970,7 +3972,7 @@
         }
         num.textContent = ratings[0];
         phase.textContent = t("lastRating");
-        sub.textContent = ratings.length + " " + (LANG === "es" ? "registrados" : "logged");
+        sub.textContent = _htot + " " + (LANG === "es" ? "registrados" : "logged");
         var cs = getComputedStyle(document.documentElement),
           w = cs.getPropertyValue("--weight").trim(),
           a = cs.getPropertyValue("--pressure").trim(),
@@ -9189,7 +9191,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-21-2124-047ef7";
+      var BUILD = "2026-07-21-2218-c11339";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
