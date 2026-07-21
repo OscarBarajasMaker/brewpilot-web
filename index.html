@@ -5731,7 +5731,7 @@
         try {
           fil = logMethod() === "filter";
         } catch (e) {}
-        return document.getElementById((fil ? "f" : "") + base);
+        return document.getElementById(base); /* merged form: one field set, no f-prefix */
       }
       function csRoast() {
         var e = csField("roast");
@@ -5980,10 +5980,16 @@
             if (method === "filter" && brewer && String(o.brewer || "") !== brewer) continue;
             var u = parseFloat(o.grind_um);
             if (isNaN(u) || u <= 0) continue;
+            var rf = typeof ROAST_F === "object" && ROAST_F[o.roast] ? ROAST_F[o.roast] : 1;
+            var pf = 1;
+            try {
+              pf = processTier(o.process || "") || 1;
+            } catch (e) {}
+            var norm = u / (rf * pf || 1);
             var rt = parseFloat(o.rating);
             var w = !isNaN(rt) && rt > 0 ? rt : 5;
             sw += w;
-            ssum += u * w;
+            ssum += norm * w;
             n++;
           }
           if (!n) return { um: baseUm, n: 0, source: "research" };
@@ -6004,12 +6010,12 @@
         var um = typeof BREWER_UM === "object" && BREWER_UM[brewer] ? BREWER_UM[brewer] : 750;
         var r = csRoast(),
           pr = csProcess();
-        um = Math.round(um * r.f * pr.f);
         var _ad = null;
         try {
           _ad = adaptedUm(brewer, typeof logMethod === "function" ? logMethod() : "", um);
           if (_ad && _ad.um > 0) um = _ad.um;
         } catch (e) {}
+        um = Math.round(um * r.f * pr.f);
         try {
           window.CS_ADAPT = _ad;
         } catch (e) {}
@@ -8784,7 +8790,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-21-0444-a9052c";
+      var BUILD = "2026-07-21-0510-a8184b";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
