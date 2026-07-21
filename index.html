@@ -4549,12 +4549,22 @@
             e.appendChild(o);
           });
         };
-        add(
-          "ghGrinder",
-          ownedGrinders().map(function (id) {
-            return { v: id, n: GRINDERS[id] ? GRINDERS[id].n : id };
-          }),
-        );
+        (function () {
+          var e = document.getElementById("ghGrinder");
+          if (e) {
+            var pv = e.value;
+            e.innerHTML = "";
+            ownedGrinders().forEach(function (id) {
+              var g = GRINDERS[id];
+              if (!g) return;
+              var o = document.createElement("option");
+              o.value = id;
+              o.textContent = g.n;
+              e.appendChild(o);
+            });
+            if (pv && GRINDERS[pv]) e.value = pv;
+          }
+        })();
         add("ghBrewer", [
           "V60",
           "V60 Switch",
@@ -9188,7 +9198,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-21-2036-464fbf";
+      var BUILD = "2026-07-21-2110-4f5f89";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
