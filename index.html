@@ -2842,16 +2842,7 @@
         K7: { n: "K7", um: 15, burr: "conical", k: 0.48, min: 220, max: 860, dialPer: 10 },
         A2: { n: "A2", um: 18, burr: "conical" },
         QAir: { n: "Q-Air", um: 25, burr: "conical", k: 0.45, measured: true },
-        ZP6: {
-          n: "ZP6",
-          um: 22,
-          burr: "conical",
-          k: 0.64,
-          measured: true,
-          dialPer: 10,
-          min: 240,
-          max: 1050,
-        },
+        ZP6: { n: "ZP6", um: 33, burr: "conical", k: 0.64, dialPer: 10, min: 240, max: 1050 },
         ZP6s: {
           n: "ZP6 Special",
           um: 22,
@@ -9198,7 +9189,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-21-2110-4f5f89";
+      var BUILD = "2026-07-21-2124-047ef7";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
