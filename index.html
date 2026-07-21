@@ -1742,6 +1742,21 @@
               <button class="grn" style="width: 100%" onclick="freezeCoffee()">Freeze it</button
               ><button
                 class="off"
+                data-i18n="restBtn"
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  color: var(--pressure);
+                  border: 1px solid var(--pressure);
+                "
+                onclick="
+                  window.REST_MODE = true;
+                  freezeCoffee();
+                "
+              >
+                Rest it (out to degas)</button
+              ><button
+                class="off"
                 data-i18n="scoreBtn"
                 style="
                   width: 100%;
@@ -3915,6 +3930,7 @@
           csHint: "Then dial by taste.",
           csTuned: "tuned to your {n} shots",
           scoreBtn: "Just score this bag",
+          restBtn: "Rest it (out to degas)",
           scoreBag: "Score this bag",
           scoreTap: "tap a rating",
           scoreDone: "Scored {c} {n}/10",
@@ -4104,6 +4120,7 @@
           csHint: "Luego ajusta por sabor.",
           csTuned: "ajustado a tus {n} cafes",
           scoreBtn: "Solo calificar esta bolsa",
+          restBtn: "Reposar (fuera del congelador)",
           scoreBag: "Calificar esta bolsa",
           scoreTap: "toca una nota",
           scoreDone: "Calificado {c} {n}/10",
@@ -5662,7 +5679,7 @@
               (isEs ? "en rotación" : "in rotation") +
               "</span>",
           );
-        if (b.frozen_portion)
+        if (b.frozen_portion && !b.resting)
           out.push(
             "<span style='padding:3px 8px;border-radius:12px;font-size:10px;color:var(--temp);border:1px solid var(--temp)'>" +
               (isEs ? "congelado" : "frozen") +
@@ -8433,6 +8450,12 @@
       }
       /* Same order as INV_COLNAMES. Position matters: the sheet is written by index. */
       function gInvRow(o) {
+        try {
+          if (window.REST_MODE) {
+            o.__rest = true;
+            window.REST_MODE = false;
+          }
+        } catch (e) {}
         var ppg = (function () {
           var p = parseFloat(o.price),
             b = parseFloat(o.bag_g);
@@ -8445,8 +8468,8 @@
           process: o.process || "",
           portion_g: gPortionG(o.portion),
           qty: parseInt(o.qty || "1", 10),
-          location: "Freezer",
-          status: "Sealed",
+          location: o.__rest ? "Counter" : "Freezer",
+          status: o.__rest ? "Resting" : "Sealed",
           freeze_date: gFreezeStr(o.freeze_date),
           roast_date: o.roast_date || "",
           bean_id: String(o.coffee || "")
@@ -8619,6 +8642,9 @@
               roaster: row[idx["roaster"]] || "",
               roast: row[idx["roast"]] || "",
               process: row[idx["process"]] || "",
+              resting:
+                String(row[idx["status"]] || "") === "Resting" ||
+                String(row[idx["location"]] || "") === "Counter",
               portions: [],
               total: 0,
             };
@@ -8726,7 +8752,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-21-0347-d48ebe";
+      var BUILD = "2026-07-21-0427-0fe1e8";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
