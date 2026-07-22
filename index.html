@@ -122,7 +122,7 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 14px 16px 10px;
+        padding: calc(14px + env(safe-area-inset-top)) 16px 10px;
         background: var(--bg);
         border-bottom: 1px solid var(--line);
       }
@@ -1065,6 +1065,7 @@
             <span data-i18n="recentShots">recent shots</span><span data-i18n="rating">rating</span>
           </div>
         </div>
+        <div id="homeExtra"></div>
         <div
           id="welcome"
           style="
@@ -5879,7 +5880,128 @@
       }
 
       /* method-agnostic home: no espresso assumption, adapts to role + what you brew */
+      function homeExtra() {
+        var box = document.getElementById("homeExtra");
+        if (!box) return;
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        var inv = (typeof IINV !== "undefined" && IINV ? IINV : []).filter(function (r) {
+          return String(r.status || "") !== "Finished" && String(r.coffee || "").trim();
+        });
+        var html = "";
+        /* today: prefer bags at peak, then nearing, tie-broken by your own average */
+        var best = null;
+        inv.forEach(function (r) {
+          var rs = null;
+          try {
+            rs = restStatus(r.roast || "Light", r.process || "", restDefaultMethod(), r.roast_date);
+          } catch (e) {}
+          var sc = 0;
+          if (rs) {
+            sc =
+              rs.phase === "in peak"
+                ? 3
+                : rs.phase === "nearing peak"
+                  ? 2
+                  : rs.phase === "past peak"
+                    ? 1
+                    : 0;
+          }
+          var a = null;
+          try {
+            a = coffeeAvg(r.coffee);
+          } catch (e) {}
+          var tot = sc * 10 + (a && a.avg ? a.avg : 0);
+          if (!best || tot > best.tot) best = { tot: tot, coffee: r.coffee, rs: rs, avg: a };
+        });
+        if (best) {
+          var why = "";
+          if (best.rs && best.rs.age != null) {
+            if (best.rs.phase === "in peak") why = isEs ? "en su punto" : "at peak";
+            else if (best.rs.phase === "nearing peak" || best.rs.phase === "resting")
+              why =
+                (isEs ? "pico en " : "peak in ") +
+                Math.max(0, best.rs.w.peakLo - best.rs.age) +
+                "d";
+            else why = isEs ? "pasado el pico" : "past peak";
+          }
+          if (best.avg && best.avg.n)
+            why += (why ? " · " : "") + best.avg.avg + (isEs ? " prom" : " avg");
+          html +=
+            "<div class='tool'><div class='toolhd'>" +
+            (isEs ? "Hoy" : "Today") +
+            "</div><div style='font-size:15px;font-weight:600'>" +
+            best.coffee +
+            "</div><div style='color:var(--dim);font-size:12px;margin-top:2px'>" +
+            why +
+            "</div></div>";
+        }
+        /* rotation */
+        var rot = typeof ROT !== "undefined" && ROT ? ROT : [];
+        if (rot.length) {
+          var items = rot
+            .slice(0, 5)
+            .map(function (e) {
+              var a = null;
+              try {
+                a = coffeeAvg(e.coffee);
+              } catch (err) {}
+              return (
+                "<div style='display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-size:13px'><span>" +
+                e.coffee +
+                "</span><span style='color:var(--dim)'>" +
+                (a && a.n ? a.avg : "") +
+                "</span></div>"
+              );
+            })
+            .join("");
+          html +=
+            "<div class='tool'><div class='toolhd'>" +
+            (isEs ? "Rotación" : "Rotation") +
+            "</div>" +
+            items +
+            "</div>";
+        }
+        /* inventory */
+        if (inv.length) {
+          var seen = {},
+            frozen = 0,
+            resting = 0,
+            using = 0;
+          inv.forEach(function (r) {
+            seen[String(r.coffee).toLowerCase()] = 1;
+            var st = String(r.status || "");
+            if (st === "Resting") resting++;
+            else if (st === "Open") using++;
+            else frozen++;
+          });
+          var n = Object.keys(seen).length;
+          html +=
+            "<div class='tool'><div class='toolhd'>" +
+            t("homeInv") +
+            "</div><div style='font-size:13px'>" +
+            n +
+            " " +
+            (isEs ? "cafés" : "coffees") +
+            "</div><div style='color:var(--dim);font-size:12px;margin-top:3px'>" +
+            frozen +
+            " " +
+            (isEs ? "congeladas" : "frozen") +
+            " · " +
+            resting +
+            " " +
+            (isEs ? "reposando" : "resting") +
+            " · " +
+            using +
+            " " +
+            (isEs ? "en uso" : "in use") +
+            "</div></div>";
+        }
+        box.innerHTML = html;
+      }
       function homeRender() {
+        try {
+          homeExtra();
+        } catch (e) {}
         var phase = document.getElementById("heroPhase"),
           sub = document.getElementById("heroSub"),
           num = document.getElementById("heroNum");
@@ -6092,28 +6214,28 @@
       };
       var REST_W = {
         espresso: {
-          ultra: [14, 21, 45],
-          light: [10, 21, 35],
-          medium: [7, 10, 21],
+          ultra: [14, 21, 28],
+          light: [10, 18, 28],
+          medium: [7, 12, 21],
           dark: [2, 3, 8],
         },
-        filter: { ultra: [10, 21, 42], light: [7, 14, 35], medium: [5, 7, 18], dark: [3, 3, 8] },
+        filter: { ultra: [10, 21, 56], light: [7, 14, 42], medium: [5, 10, 28], dark: [3, 5, 10] },
       };
       function restWindow(roast, process, method) {
         var tier = REST_TIER[roast];
         if (!tier) return null;
-        var fam = method === "filter" ? "filter" : "espresso";
+        var fam = method === "espresso" ? "espresso" : "filter";
         var w = REST_W[fam][tier].slice();
-        var slow = /natural|anaerob|honey|carbonic|ferment|maceration/i.test(String(process || ""));
-        var pn = slow ? 4 : 0;
-        return {
-          start: w[0] + pn,
-          peakLo: w[1] + pn,
-          peakHi: w[2] + pn,
-          tier: tier,
-          family: fam,
-          slow: slow,
-        };
+        var pr = String(process || "");
+        /* Hydrangea (published): shorter rest for process-forward coffees, longer for
+     traditionally processed. That is the opposite of the old assumption. */
+        var exp = /natural|anaerob|honey|carbonic|ferment|maceration|co-?ferment/i.test(pr);
+        var trad = /washed|lavado|lavat/i.test(pr);
+        var pn = exp ? -3 : trad ? 3 : 0;
+        var st = Math.max(1, w[0] + pn),
+          lo = Math.max(st, w[1] + pn),
+          hi = Math.max(lo, w[2] + pn);
+        return { start: st, peakLo: lo, peakHi: hi, tier: tier, family: fam, exp: exp, trad: trad };
       }
       function restDaysSince(dateStr) {
         var s = String(dateStr || "").slice(0, 10);
@@ -6121,6 +6243,12 @@
         var d = new Date(s + "T00:00:00");
         if (isNaN(d.getTime())) return null;
         return Math.floor((Date.now() - d.getTime()) / 86400000);
+      }
+      function restDefaultMethod() {
+        try {
+          if (typeof M_ESP !== "undefined" && M_ESP && !M_SOUP && !M_FIL) return "espresso";
+        } catch (e) {}
+        return "filter";
       }
       function restStatus(roast, process, method, roastDate) {
         var w = restWindow(roast, process, method);
@@ -6390,7 +6518,7 @@
         var rd = b.portions && b.portions[0] ? b.portions[0].roast_date : "";
         var rs = null;
         try {
-          rs = restStatus(b.roast || "Light", b.process || "", "espresso", rd);
+          rs = restStatus(b.roast || "Light", b.process || "", restDefaultMethod(), rd);
         } catch (e) {}
         if (rs && rs.age != null) {
           var txt;
@@ -9518,7 +9646,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-22-0300-d6164e";
+      var BUILD = "2026-07-22-0317-78a458";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
