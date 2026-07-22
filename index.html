@@ -103,7 +103,11 @@
       body {
         margin: 0 auto;
         max-width: 520px;
-        padding: 0 0 78px;
+        padding: 0;
+        min-height: 100vh;
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
         font-family:
           "Inter",
           -apple-system,
@@ -150,6 +154,7 @@
       }
       .wrap {
         padding: 14px 16px 0;
+        flex: 1 0 auto;
       }
       .tabpanel {
         display: none;
@@ -207,16 +212,14 @@
         font-family: "JetBrains Mono", monospace;
       }
       .tabbar {
-        position: fixed;
-        left: 50%;
+        position: sticky;
         bottom: 0;
-        transform: translateX(-50%);
         width: 100%;
-        max-width: 520px;
+        flex: 0 0 auto;
         z-index: 20;
         display: grid;
         grid-template-columns: repeat(5, 1fr);
-        padding: 2px 0 max(2px, calc(env(safe-area-inset-bottom) - 14px));
+        padding: 4px 0 max(4px, env(safe-area-inset-bottom));
         background: var(--bg);
         border-top: 1px solid var(--line);
       }
@@ -9745,7 +9748,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-22-0404-7c3fdf";
+      var BUILD = "2026-07-22-0426-9db528";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
