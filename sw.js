@@ -9,7 +9,7 @@
 // first meant they were only served offline, so this was survivable rather than
 // visible, which is the worst kind of bug. A new build now gets a new cache and
 // the old one is deleted on activate.
-var CACHE = 'brewpilot-2026-07-19-1845-be7294';
+var CACHE = 'brewpilot-__BUILD_STAMP__';
 
 self.addEventListener('install', function (e) {
   self.skipWaiting();
@@ -29,8 +29,16 @@ self.addEventListener('fetch', function (e) {
   var url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;   // never touch the Apps Script calls
 
+  // The SW's own fetch() still goes through the HTTP cache, so Safari can hand
+  // back a stale index.html and the network-first strategy silently serves an old
+  // build. Documents bypass the HTTP cache so a publish always lands.
+  var isDoc = (e.request.mode === 'navigate') ||
+              (e.request.destination === 'document') ||
+              /\/(index\.html)?$/.test(url.pathname);
+  var req = isDoc ? new Request(e.request, { cache: 'no-store' }) : e.request;
+
   e.respondWith(
-    fetch(e.request).then(function (res) {
+    fetch(req).then(function (res) {
       var copy = res.clone();
       caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
       return res;

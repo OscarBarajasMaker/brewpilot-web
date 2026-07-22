@@ -216,7 +216,7 @@
         z-index: 20;
         display: grid;
         grid-template-columns: repeat(5, 1fr);
-        padding: 3px 0 max(4px, env(safe-area-inset-bottom));
+        padding: 2px 0 max(2px, calc(env(safe-area-inset-bottom) - 14px));
         background: var(--bg);
         border-top: 1px solid var(--line);
       }
@@ -9728,7 +9728,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-22-0341-78c0fe";
+      var BUILD = "2026-07-22-0343-4d525a";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
