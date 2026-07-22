@@ -6305,16 +6305,28 @@
           } catch (err) {}
         }
       }
+      function dParse(v) {
+        /* Rows written before the freeze-date field settled carry values like
+     '2026-05-26 0:00'. replace(' ','T') makes that invalid ISO (one-digit hour)
+     and Date.parse returns NaN, so legacy bags showed no freeze age at all.
+     Take the date head and ignore whatever follows. */
+        var s = String(v || "")
+          .trim()
+          .slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return NaN;
+        var t = Date.parse(s + "T00:00:00");
+        return isFinite(t) ? t : NaN;
+      }
       function bagFreezeAge(b) {
         /* days since frozen + how old the bag was when it went in. FIFO helper. */
         var isEs = typeof LANG !== "undefined" && LANG === "es";
         var best = null,
           rd = null;
         (b.portions || []).forEach(function (p) {
-          var f = Date.parse(String(p.freeze_date || "").replace(" ", "T"));
+          var f = dParse(p.freeze_date);
           if (isFinite(f) && (best === null || f < best)) {
             best = f;
-            rd = Date.parse(String(p.roast_date || "").replace(" ", "T"));
+            rd = dParse(p.roast_date);
           }
         });
         if (best === null) return "";
@@ -6462,6 +6474,11 @@
               k: "freeze_date",
               label: isEs ? "Fecha de congelado (AAAA-MM-DD)" : "Freeze date (YYYY-MM-DD)",
               v: p.freeze_date,
+            },
+            {
+              k: "portion_g",
+              label: isEs ? "Tamaño de porción (g)" : "Portion size (g)",
+              v: p.portion_g,
             },
             { k: "qty", label: isEs ? "Cuantas" : "How many", v: p.qty, type: "number" },
           ],
@@ -9677,7 +9694,7 @@
           b.age = (function () {
             var best = null;
             b.portions.forEach(function (p) {
-              var d = Date.parse(String(p.roast_date || "").replace(" ", "T"));
+              var d = dParse(p.roast_date);
               if (isFinite(d) && (best === null || d > best)) best = d;
             });
             if (best === null) return "";
@@ -9748,7 +9765,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-22-0426-9db528";
+      var BUILD = "2026-07-22-0440-8e9a37";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
