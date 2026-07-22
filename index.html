@@ -1798,6 +1798,16 @@
               <div class="fl" data-i18n="invFreezeDate">Freeze date</div>
               <input id="invfreeze_date" type="date" class="fin" />
             </div>
+          </div>
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl" data-i18n="invVarietal">Varietal</div>
+              <input id="invvarietal" list="ghVarList" class="fin" />
+            </div>
+            <div class="fcell">
+              <div class="fl" data-i18n="invRegion">Origin</div>
+              <input id="invregion" list="ghOriginList" class="fin" />
+            </div>
             <div class="fcell fullrow">
               <button class="grn" style="width: 100%" onclick="freezeCoffee()">Freeze it</button
               ><button
@@ -3612,6 +3622,8 @@
             roast: invroast,
             process: invproc,
             freeze_date: (document.getElementById("invfreeze_date") || {}).value || "",
+            varietal: (document.getElementById("invvarietal") || {}).value || "",
+            region: (document.getElementById("invregion") || {}).value || "",
             bag_g: INVBAG,
             price: (document.getElementById("invprice") || {}).value || "",
             currency: INVCCY,
@@ -3770,6 +3782,12 @@
               "padding:6px 10px;border-radius:14px;font-size:11px;cursor:pointer;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text)";
             ed.onclick = () => editBagOpen(b);
             acts.appendChild(ed);
+            let lb = document.createElement("span");
+            lb.textContent = t("labelBtn");
+            lb.style.cssText =
+              "padding:6px 10px;border-radius:14px;font-size:11px;cursor:pointer;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text)";
+            lb.onclick = () => labelOpen(b);
+            acts.appendChild(lb);
             card.appendChild(acts);
             box.appendChild(card);
           });
@@ -3936,7 +3954,7 @@
         box.innerHTML = "";
         if (!ROT.length) {
           box.innerHTML =
-            "<span style='color:var(--dim);font-size:12px'>none yet - log a " + NOUN() + "</span>";
+            "<span style='color:var(--dim);font-size:12px'>" + t("rotEmptyHint") + "</span>";
           rotAddChip(box);
           return;
         }
@@ -4183,6 +4201,24 @@
           csHint: "Then dial by taste.",
           csTuned: "tuned to your {n} shots",
           editBtn: "Edit",
+          labelBtn: "Label",
+          logoAdd: "Add roaster logo",
+          logoChange: "Change logo",
+          logoRemove: "Remove logo",
+          logoFail: "Could not read that image.",
+          logoTooBig: "That logo is too large to store. Try a smaller image.",
+          logoHint:
+            "Saved on this device for every bag from this roaster. Converted to pure black for thermal printing.",
+          rotSuggestBtn: "suggest",
+          rotNoBags: "No bags in your inventory yet.",
+          rotEmptyHint: "none yet - log a brew, or mark a bag as in use",
+          rotPicked: "{c} - {why}. Add it to your rotation?",
+          invVarietal: "Varietal",
+          invRegion: "Origin",
+          labelTitle: "Label 50x30",
+          labelHint:
+            "Long-press the image to save it, then open NIIMBOT and import it as an image.",
+          labelSave: "Download PNG",
           savedFrozen: "Frozen",
           savedResting: "Resting out to degas",
           bagOutBtn: "Take out of freezer",
@@ -4413,6 +4449,24 @@
           csHint: "Luego ajusta por sabor.",
           csTuned: "ajustado a tus {n} cafes",
           editBtn: "Editar",
+          labelBtn: "Etiqueta",
+          logoAdd: "Agregar logo del tostador",
+          logoChange: "Cambiar logo",
+          logoRemove: "Quitar logo",
+          logoFail: "No se pudo leer esa imagen.",
+          logoTooBig: "Ese logo es muy grande para guardarse. Usa una imagen más chica.",
+          logoHint:
+            "Se guarda en este dispositivo y se usa en todas las bolsas de ese tostador. Se convierte a negro puro para impresión térmica.",
+          rotSuggestBtn: "sugerir",
+          rotNoBags: "Aún no tienes bolsas en el inventario.",
+          rotEmptyHint: "aún ninguno - registra una preparación, o marca una bolsa como en uso",
+          rotPicked: "{c} - {why}. ¿Agregarlo a tu rotación?",
+          invVarietal: "Variedad",
+          invRegion: "Origen",
+          labelTitle: "Etiqueta 50x30",
+          labelHint:
+            "Mantén presionada la imagen para guardarla, luego abre NIIMBOT e impórtala como imagen.",
+          labelSave: "Descargar PNG",
           savedFrozen: "Congelado",
           savedResting: "Reposando afuera",
           bagOutBtn: "Sacar del congelador",
@@ -6446,16 +6500,392 @@
         }
         return hit;
       }
+      function rotEnsure(name) {
+        if (typeof ROT === "undefined" || !ROT) return false;
+        var n = String(name || "").trim();
+        if (!n) return false;
+        if (
+          ROT.some(function (x) {
+            return String(x.coffee || "").toLowerCase() === n.toLowerCase();
+          })
+        )
+          return false;
+        ROT.push({ coffee: n });
+        try {
+          saveRot();
+        } catch (e) {}
+        try {
+          renderChips();
+        } catch (e) {}
+        try {
+          addCoffeeName(n);
+        } catch (e) {}
+        try {
+          homeExtra();
+        } catch (e) {}
+        return true;
+      }
       function bagSet(b, loc, status) {
         if (dataMode() !== "google") {
           alert(t("editNeedSheet"));
           return;
         }
         gBagState(b.coffee, loc, status).then(function () {
+          if (status === "Open") {
+            try {
+              rotEnsure(b.coffee);
+            } catch (e) {}
+          }
           try {
             loadInventory();
           } catch (e) {}
         });
+      }
+      function labelDate(v, withYear) {
+        var t = dParse(v);
+        if (!isFinite(t)) return "";
+        var d = new Date(t),
+          p = function (n) {
+            return (n < 10 ? "0" : "") + n;
+          };
+        return (
+          p(d.getDate()) +
+          "/" +
+          p(d.getMonth() + 1) +
+          (withYear ? "/" + String(d.getFullYear()).slice(2) : "")
+        );
+      }
+      function logoKey(r) {
+        return String(r || "")
+          .trim()
+          .toLowerCase();
+      }
+      function logoGet(r) {
+        try {
+          return JSON.parse(localStorage.getItem("roasterLogos") || "{}")[logoKey(r)] || "";
+        } catch (e) {
+          return "";
+        }
+      }
+      function logoSet(r, url) {
+        try {
+          var m = JSON.parse(localStorage.getItem("roasterLogos") || "{}");
+          if (url) m[logoKey(r)] = url;
+          else delete m[logoKey(r)];
+          localStorage.setItem("roasterLogos", JSON.stringify(m));
+        } catch (e) {
+          alert(t("logoTooBig"));
+        }
+      }
+      function logoThreshold(img, maxW) {
+        /* A thermal head is 1-bit: it fires a dot or it does not. Anti-aliased or
+     coloured artwork turns to mush, so everything is forced to pure black or
+     fully transparent. Artwork that was drawn light-on-dark is detected by its
+     mean luminance and inverted, otherwise it would vanish on white paper. */
+        var w = img.naturalWidth || img.width,
+          h = img.naturalHeight || img.height;
+        if (!w || !h) return "";
+        var sc = Math.min(1, maxW / w),
+          W = Math.max(1, Math.round(w * sc)),
+          H = Math.max(1, Math.round(h * sc));
+        var c = document.createElement("canvas");
+        c.width = W;
+        c.height = H;
+        var x = c.getContext("2d");
+        x.drawImage(img, 0, 0, W, H);
+        var d = x.getImageData(0, 0, W, H),
+          p = d.data,
+          sum = 0,
+          n = 0,
+          k;
+        for (k = 0; k < p.length; k += 4) {
+          if (p[k + 3] > 40) {
+            sum += 0.299 * p[k] + 0.587 * p[k + 1] + 0.114 * p[k + 2];
+            n++;
+          }
+        }
+        var invert = (n ? sum / n : 255) > 170;
+        for (k = 0; k < p.length; k += 4) {
+          if (p[k + 3] < 40) {
+            p[k + 3] = 0;
+            continue;
+          }
+          var l = 0.299 * p[k] + 0.587 * p[k + 1] + 0.114 * p[k + 2];
+          if (invert ? l > 128 : l < 165) {
+            p[k] = 0;
+            p[k + 1] = 0;
+            p[k + 2] = 0;
+            p[k + 3] = 255;
+          } else {
+            p[k + 3] = 0;
+          }
+        }
+        x.putImageData(d, 0, 0);
+        return c.toDataURL("image/png");
+      }
+      function bagMeta(b) {
+        /* Varietal and origin live on the bag now. Bags saved before that can still
+     borrow them from the newest brew of the same coffee, so the log-to-bag
+     direction works without migrating anything. */
+        var v = String(b.varietal || "").trim(),
+          r = String(b.region || "").trim();
+        if (v && r) return { varietal: v, region: r };
+        try {
+          var key = String(b.coffee || "")
+              .trim()
+              .toLowerCase(),
+            rows = typeof IROWS !== "undefined" ? IROWS : [];
+          for (var i = rows.length - 1; i >= 0; i--) {
+            var o = rows[i];
+            if (
+              String(o.coffee || "")
+                .trim()
+                .toLowerCase() !== key
+            )
+              continue;
+            if (!v) v = String(o.varietal || "").trim();
+            if (!r) r = String(o.region || "").trim();
+            if (v && r) break;
+          }
+        } catch (e) {}
+        return { varietal: v, region: r };
+      }
+      function labelDraw(b, logoImg) {
+        /* 50x30 mm at 5:3. Pure black on white, no grey: thermal heads are 1-bit. */
+        var W = 1200,
+          H = 720,
+          c = document.createElement("canvas");
+        c.width = W;
+        c.height = H;
+        var x = c.getContext("2d");
+        x.fillStyle = "#ffffff";
+        x.fillRect(0, 0, W, H);
+        x.fillStyle = "#000000";
+        var p = (b.portions && b.portions[0]) || {},
+          meta = bagMeta(b);
+        var isEs = typeof LANG !== "undefined" && LANG === "es",
+          pad = 60;
+        x.textAlign = "right";
+        var rx = W - pad,
+          ry = pad + 56,
+          maxw = 660;
+        x.font = "bold 60px -apple-system, system-ui, sans-serif";
+        var words = String(b.coffee || "").split(/\s+/),
+          line = "",
+          lines = [];
+        words.forEach(function (w) {
+          var tt = line ? line + " " + w : w;
+          if (x.measureText(tt).width > maxw && line) {
+            lines.push(line);
+            line = w;
+          } else {
+            line = tt;
+          }
+        });
+        if (line) lines.push(line);
+        lines.slice(0, 2).forEach(function (l) {
+          x.fillText(l, rx, ry);
+          ry += 68;
+        });
+        if (b.process) {
+          x.font = "48px -apple-system, system-ui, sans-serif";
+          x.fillText(b.process, rx, ry);
+          ry += 56;
+        }
+        if (meta.varietal) {
+          x.font = "42px -apple-system, system-ui, sans-serif";
+          x.fillText(meta.varietal, rx, ry);
+          ry += 50;
+        }
+        x.textAlign = "left";
+        if (logoImg) {
+          var bw = 400,
+            bh = 190,
+            iw = logoImg.width,
+            ih = logoImg.height;
+          var sc = Math.min(bw / iw, bh / ih),
+            dw = iw * sc,
+            dh = ih * sc;
+          x.drawImage(logoImg, pad + (bw - dw) / 2, 118 + (bh - dh) / 2, dw, dh);
+        } else if (b.roaster) {
+          x.font = "bold 54px Georgia, Times New Roman, serif";
+          x.fillText(String(b.roaster).toUpperCase(), pad, 232);
+        }
+        if (meta.region) {
+          x.font = "44px -apple-system, system-ui, sans-serif";
+          x.fillText(meta.region, pad, H - pad - 6);
+        }
+        var rows = [];
+        var rd = labelDate(p.roast_date, true),
+          fd = labelDate(p.freeze_date, true);
+        if (rd) rows.push((isEs ? "Tueste: " : "Roast: ") + rd);
+        if (fd) rows.push((isEs ? "Congelado: " : "Freeze: ") + fd);
+        try {
+          var w2 = restWindow(b.roast || "Light", b.process || "", restDefaultMethod()),
+            t0 = dParse(p.roast_date);
+          if (w2 && isFinite(t0))
+            rows.push(
+              (isEs ? "Pico: " : "Peak: ") +
+                labelDate(new Date(t0 + w2.peakLo * 86400000).toISOString().slice(0, 10)) +
+                " - " +
+                labelDate(new Date(t0 + w2.peakHi * 86400000).toISOString().slice(0, 10)),
+            );
+        } catch (e) {}
+        x.textAlign = "right";
+        x.font = "40px -apple-system, system-ui, sans-serif";
+        var by = H - pad - 6 - (Math.min(rows.length, 3) - 1) * 48;
+        rows.slice(0, 3).forEach(function (r) {
+          x.fillText(r, rx, by);
+          by += 48;
+        });
+        x.textAlign = "left";
+        return c;
+      }
+      function labelPick(b, after) {
+        var inp = document.createElement("input");
+        inp.type = "file";
+        inp.accept = "image/*";
+        inp.onchange = function () {
+          var f = inp.files && inp.files[0];
+          if (!f) return;
+          var fr = new FileReader();
+          fr.onload = function () {
+            var im = new Image();
+            im.onload = function () {
+              var url = logoThreshold(im, 360);
+              if (!url) {
+                alert(t("logoFail"));
+                return;
+              }
+              logoSet(b.roaster, url);
+              var im2 = new Image();
+              im2.onload = function () {
+                after(im2);
+              };
+              im2.onerror = function () {
+                after(null);
+              };
+              im2.src = url;
+            };
+            im.onerror = function () {
+              alert(t("logoFail"));
+            };
+            im.src = fr.result;
+          };
+          fr.readAsDataURL(f);
+        };
+        inp.click();
+      }
+      function labelOpen(b) {
+        var lg = logoGet(b.roaster);
+        if (lg) {
+          var im = new Image();
+          im.onload = function () {
+            labelShow(b, im);
+          };
+          im.onerror = function () {
+            labelShow(b, null);
+          };
+          im.src = lg;
+        } else labelShow(b, null);
+      }
+      function labelShow(b, logoImg) {
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        var old = document.getElementById("labelOv");
+        if (old && old.parentNode) old.parentNode.removeChild(old);
+        var url;
+        try {
+          url = labelDraw(b, logoImg).toDataURL("image/png");
+        } catch (e) {
+          return;
+        }
+        var ov = document.createElement("div");
+        ov.id = "labelOv";
+        ov.style.cssText =
+          "position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto";
+        var card = document.createElement("div");
+        card.style.cssText =
+          "background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;max-width:440px;width:100%;color:var(--text)";
+        var h = document.createElement("div");
+        h.textContent = t("labelTitle");
+        h.style.cssText = "font-weight:600;margin-bottom:9px";
+        card.appendChild(h);
+        var img = document.createElement("img");
+        img.src = url;
+        img.alt = "label";
+        img.style.cssText = "width:100%;display:block;border-radius:8px;background:#fff";
+        card.appendChild(img);
+        var hint = document.createElement("div");
+        hint.textContent = t("labelHint");
+        hint.style.cssText = "color:var(--dim);font-size:12px;margin:10px 0 10px;line-height:1.45";
+        card.appendChild(hint);
+        var mk = function (txt, fn, primary) {
+          var e = document.createElement("button");
+          e.textContent = txt;
+          e.style.cssText =
+            "flex:1;padding:10px;border-radius:10px;font-size:13px;cursor:pointer;border:1px solid " +
+            (primary ? "var(--sel-line)" : "var(--line)") +
+            ";background:" +
+            (primary ? "var(--sel-bg)" : "var(--panel)") +
+            ";color:" +
+            (primary ? "var(--sel-text)" : "var(--dim)") +
+            (primary ? ";font-weight:600" : "");
+          e.onclick = fn;
+          return e;
+        };
+        var r1 = document.createElement("div");
+        r1.style.cssText = "display:flex;gap:8px;margin-bottom:8px";
+        var dl = document.createElement("a");
+        dl.href = url;
+        dl.download = String(b.coffee || "label").replace(/[^a-z0-9]+/gi, "-") + "-50x30.png";
+        dl.textContent = t("labelSave");
+        dl.style.cssText =
+          "flex:1;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text);font-weight:600;text-decoration:none;font-size:13px";
+        r1.appendChild(dl);
+        r1.appendChild(
+          mk(
+            t("scoreCancel"),
+            function () {
+              if (ov.parentNode) ov.parentNode.removeChild(ov);
+            },
+            false,
+          ),
+        );
+        card.appendChild(r1);
+        if (b.roaster) {
+          var r2 = document.createElement("div");
+          r2.style.cssText = "display:flex;gap:8px";
+          var has = !!logoGet(b.roaster);
+          r2.appendChild(
+            mk(
+              has ? t("logoChange") : t("logoAdd"),
+              function () {
+                labelPick(b, function (im) {
+                  labelShow(b, im);
+                });
+              },
+              false,
+            ),
+          );
+          if (has)
+            r2.appendChild(
+              mk(
+                t("logoRemove"),
+                function () {
+                  logoSet(b.roaster, "");
+                  labelShow(b, null);
+                },
+                false,
+              ),
+            );
+          card.appendChild(r2);
+          var lh = document.createElement("div");
+          lh.textContent = t("logoHint");
+          lh.style.cssText = "color:var(--dim);font-size:11px;margin-top:8px;line-height:1.4";
+          card.appendChild(lh);
+        }
+        ov.appendChild(card);
+        document.body.appendChild(ov);
       }
       function editBagOpen(b) {
         if (dataMode() !== "google") {
@@ -6488,6 +6918,8 @@
               label: isEs ? "Tamaño de porción (g)" : "Portion size (g)",
               v: p.portion_g,
             },
+            { k: "varietal", label: isEs ? "Variedad" : "Varietal", v: b.varietal },
+            { k: "region", label: isEs ? "Origen / región" : "Origin / region", v: b.region },
             { k: "qty", label: isEs ? "Cuantas" : "How many", v: p.qty, type: "number" },
           ],
           async function (vals) {
@@ -6560,6 +6992,100 @@
           homeExtra();
         } catch (err) {}
       }
+      function rotSuggest() {
+        var inv = (typeof IINV !== "undefined" && IINV ? IINV : []).filter(function (r) {
+          return String(r.status || "") !== "Finished" && String(r.coffee || "").trim();
+        });
+        if (!inv.length) {
+          alert(t("rotNoBags"));
+          return;
+        }
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        var mode = typeof ROTMODE !== "undefined" && ROTMODE ? ROTMODE : "balanced";
+        var seen = {};
+        var scored = [];
+        inv.forEach(function (r) {
+          var key = String(r.coffee).trim().toLowerCase();
+          if (seen[key]) return;
+          seen[key] = 1;
+          var rs = null;
+          try {
+            rs = restStatus(r.roast || "Light", r.process || "", restDefaultMethod(), r.roast_date);
+          } catch (e) {}
+          var a = null;
+          try {
+            a = coffeeAvg(r.coffee);
+          } catch (e) {}
+          var t0 = dParse(r.roast_date),
+            age = isFinite(t0) ? Math.floor((Date.now() - t0) / 86400000) : 0;
+          var inRot = false;
+          try {
+            inRot = (ROT || []).some(function (x) {
+              return String(x.coffee || "").toLowerCase() === key;
+            });
+          } catch (e) {}
+          var peak = rs
+            ? rs.phase === "in peak"
+              ? 3
+              : rs.phase === "nearing peak"
+                ? 2
+                : rs.phase === "resting"
+                  ? 1
+                  : 0
+            : 0;
+          var s, why;
+          if (mode === "fifo") {
+            s = age;
+            why = isEs
+              ? "el más viejo, " + age + "d desde el tueste"
+              : "oldest, " + age + "d off roast";
+          } else if (mode === "variety") {
+            s = (inRot ? 0 : 500) + (a && a.n ? -a.n * 10 : 0) + age / 10;
+            why = inRot
+              ? isEs
+                ? "ya en rotación"
+                : "already in rotation"
+              : isEs
+                ? "aún no lo has puesto en rotación"
+                : "not in your rotation yet";
+          } else if (mode === "freshness") {
+            s = peak * 100 + (a && a.avg ? a.avg : 0);
+            why = rs
+              ? rs.phase === "in peak"
+                ? isEs
+                  ? "en su punto"
+                  : "at peak"
+                : rs.phase === "nearing peak"
+                  ? isEs
+                    ? "casi en su punto"
+                    : "nearing peak"
+                  : rs.phase === "resting"
+                    ? isEs
+                      ? "todavía reposando"
+                      : "still resting"
+                    : isEs
+                      ? "pasado el pico"
+                      : "past peak"
+              : isEs
+                ? "sin fecha de tueste"
+                : "no roast date";
+          } else {
+            s = peak * 60 + (a && a.avg ? a.avg * 8 : 0) + age / 4;
+            why =
+              (peak === 3 ? (isEs ? "en su punto" : "at peak") : "") +
+              (a && a.n ? (peak === 3 ? " · " : "") + a.avg + (isEs ? " prom" : " avg") : "");
+            if (!why) why = isEs ? "balance de edad y punto" : "balance of age and peak";
+          }
+          scored.push({ coffee: r.coffee, s: s, why: why });
+        });
+        scored.sort(function (p, q) {
+          return q.s - p.s;
+        });
+        var top = scored[0];
+        if (!top) return;
+        if (confirm(t("rotPicked").replace("{c}", top.coffee).replace("{why}", top.why)))
+          rotEnsure(top.coffee);
+      }
       function rotAdd() {
         var isEs = typeof LANG !== "undefined" && LANG === "es";
         var n = prompt(isEs ? "Café a agregar a la rotación" : "Coffee to add to rotation", "");
@@ -6614,6 +7140,12 @@
           "padding:8px 12px;border-radius:20px;border:1px dashed var(--sel-line);background:transparent;color:var(--sel-text);font-size:13px;cursor:pointer";
         c.onclick = rotAdd;
         box.appendChild(c);
+        var sg = document.createElement("div");
+        sg.textContent = "✨ " + t("rotSuggestBtn");
+        sg.style.cssText =
+          "padding:8px 12px;border-radius:20px;border:1px dashed var(--sel-line);background:transparent;color:var(--sel-text);font-size:13px;cursor:pointer";
+        sg.onclick = rotSuggest;
+        box.appendChild(sg);
       }
       function bagStateChips(b) {
         var isEs = typeof LANG !== "undefined" && LANG === "es";
@@ -6869,6 +7401,8 @@
         st("invroaster", (document.getElementById("roaster") || {}).value || "");
         st("invroast", (document.getElementById("roast") || {}).value || "");
         st("invprocess", (document.getElementById("process") || {}).value || "");
+        st("invvarietal", (document.getElementById("varietal") || {}).value || "");
+        st("invregion", (document.getElementById("fregion") || {}).value || "");
         try {
           var p = document.getElementById("invPanel");
           if (p && p.style.display === "none") {
@@ -8360,6 +8894,9 @@
           ICOLS[_ci] = COLNAMES[_ci];
         }
         IINVCOLS = data.invCols || [];
+        for (var _vi = IINVCOLS.length; _vi < INV_COLNAMES.length; _vi++) {
+          IINVCOLS[_vi] = INV_COLNAMES[_vi];
+        }
         IROWS = (data.shots || []).map(function (r, _i) {
           var o = {};
           ICOLS.forEach(function (c, i) {
@@ -8715,6 +9252,8 @@
         "price",
         "currency",
         "price_per_g",
+        "varietal",
+        "region",
       ];
 
       /* Build the same shape iBuild wants, straight from localStorage. */
@@ -9499,6 +10038,8 @@
           price: o.price || "",
           currency: o.currency || "USD",
           price_per_g: ppg,
+          varietal: o.varietal || "",
+          region: o.region || "",
         };
         return INV_COLNAMES.map(function (c) {
           return map[c] !== undefined ? map[c] : "";
@@ -9661,6 +10202,8 @@
               __row: r + 1,
               coffee: name,
               roaster: row[idx["roaster"]] || "",
+              varietal: row[idx["varietal"]] || "",
+              region: row[idx["region"]] || "",
               roast: row[idx["roast"]] || "",
               process: row[idx["process"]] || "",
               resting: String(row[idx["status"]] || "") === "Resting",
@@ -9772,7 +10315,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-22-0449-e2fc7c";
+      var BUILD = "2026-07-22-0645-613574";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
