@@ -5946,10 +5946,7 @@
           if (best.rs && best.rs.age != null) {
             if (best.rs.phase === "in peak") why = isEs ? "en su punto" : "at peak";
             else if (best.rs.phase === "nearing peak" || best.rs.phase === "resting")
-              why =
-                (isEs ? "pico en " : "peak in ") +
-                Math.max(0, best.rs.w.peakLo - best.rs.age) +
-                "d";
+              why = (isEs ? "pico en " : "peak in ") + dWeeks(best.rs.w.peakLo - best.rs.age, isEs);
             else why = isEs ? "pasado el pico" : "past peak";
           }
           if (best.avg && best.avg.n)
@@ -6305,6 +6302,15 @@
           } catch (err) {}
         }
       }
+      function dWeeks(d, isEs) {
+        /* Windows now run to 8 weeks, and '45d' is hard to read at a glance. */
+        d = Math.max(0, Math.round(d));
+        if (d < 14) return d + "d";
+        var w = Math.floor(d / 7),
+          r = d % 7,
+          u = isEs ? " sem" : "w";
+        return r ? w + u + " " + r + "d" : w + u;
+      }
       function dParse(v) {
         /* Rows written before the freeze-date field settled carry values like
      '2026-05-26 0:00'. replace(' ','T') makes that invalid ISO (one-digit hour)
@@ -6332,11 +6338,13 @@
         if (best === null) return "";
         var d = Math.floor((Date.now() - best) / 86400000);
         if (d < 0 || d > 3650) return "";
-        var txt = (isEs ? "congelado hace " : "frozen ") + d + "d" + (isEs ? "" : " ago");
+        var txt = (isEs ? "congelado hace " : "frozen ") + dWeeks(d, isEs) + (isEs ? "" : " ago");
         if (isFinite(rd)) {
           var at = Math.floor((best - rd) / 86400000);
           if (at >= 0 && at < 3650)
-            txt += isEs ? " (a los " + at + "d de tostado)" : " (at " + at + "d old)";
+            txt += isEs
+              ? " (a los " + dWeeks(at, isEs) + " de tostado)"
+              : " (at " + dWeeks(at, isEs) + " old)";
         }
         return txt;
       }
@@ -6644,8 +6652,7 @@
           if (rs.phase === "resting" || rs.phase === "nearing peak") {
             txt =
               (isEs ? "reposando · pico en " : "resting · peak in ") +
-              Math.max(0, rs.w.peakLo - rs.age) +
-              "d";
+              dWeeks(rs.w.peakLo - rs.age, isEs);
           } else if (rs.phase === "in peak") {
             txt = isEs ? "en su punto" : "at peak";
           } else {
@@ -9765,7 +9772,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-22-0440-8e9a37";
+      var BUILD = "2026-07-22-0449-e2fc7c";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
