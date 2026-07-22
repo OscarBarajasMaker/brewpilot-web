@@ -3934,6 +3934,7 @@
         if (!ROT.length) {
           box.innerHTML =
             "<span style='color:var(--dim);font-size:12px'>none yet - log a " + NOUN() + "</span>";
+          rotAddChip(box);
           return;
         }
         ROT.forEach((e, i) => {
@@ -3955,8 +3956,15 @@
           pin.onclick = () => togglePin(i);
           chip.appendChild(name);
           chip.appendChild(pin);
+          let rm = document.createElement("span");
+          rm.textContent = "\u00D7";
+          rm.style.cssText =
+            "color:var(--dim);font-size:15px;line-height:1;cursor:pointer;border-left:1px solid var(--line);padding-left:7px";
+          rm.onclick = () => rotRemove(i);
+          chip.appendChild(rm);
           box.appendChild(chip);
         });
+        rotAddChip(box);
       }
       loadRot();
       loadSens();
@@ -6487,6 +6495,80 @@
             } catch (e) {}
           },
         );
+      }
+      function rotRemove(i) {
+        var e = typeof ROT !== "undefined" && ROT ? ROT[i] : null;
+        if (!e) return;
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        if (
+          !confirm((isEs ? "Quitar de la rotación: " : "Remove from rotation: ") + e.coffee + "?")
+        )
+          return;
+        ROT.splice(i, 1);
+        try {
+          saveRot();
+        } catch (err) {}
+        try {
+          renderChips();
+        } catch (err) {}
+        try {
+          homeExtra();
+        } catch (err) {}
+      }
+      function rotAdd() {
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        var n = prompt(isEs ? "Café a agregar a la rotación" : "Coffee to add to rotation", "");
+        if (n === null) return;
+        n = String(n).trim();
+        if (!n) return;
+        if (typeof ROT === "undefined" || !ROT) return;
+        if (
+          ROT.some(function (x) {
+            return String(x.coffee || "").toLowerCase() === n.toLowerCase();
+          })
+        )
+          return;
+        ROT.push({ coffee: n });
+        try {
+          saveRot();
+        } catch (e) {}
+        try {
+          renderChips();
+        } catch (e) {}
+        try {
+          addCoffeeName(n);
+        } catch (e) {}
+        try {
+          homeExtra();
+        } catch (e) {}
+      }
+      function addCoffeeName(n) {
+        try {
+          var a = JSON.parse(localStorage.getItem("coffees") || "[]");
+          if (
+            a
+              .map(function (x) {
+                return String(x).toLowerCase();
+              })
+              .indexOf(n.toLowerCase()) < 0
+          ) {
+            a.push(n);
+            localStorage.setItem("coffees", JSON.stringify(a));
+          }
+        } catch (e) {}
+        try {
+          renderCoffeeList();
+        } catch (e) {}
+      }
+      function rotAddChip(box) {
+        if (!box) return;
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        var c = document.createElement("div");
+        c.textContent = "+ " + (isEs ? "agregar" : "add");
+        c.style.cssText =
+          "padding:8px 12px;border-radius:20px;border:1px dashed var(--sel-line);background:transparent;color:var(--sel-text);font-size:13px;cursor:pointer";
+        c.onclick = rotAdd;
+        box.appendChild(c);
       }
       function bagStateChips(b) {
         var isEs = typeof LANG !== "undefined" && LANG === "es";
@@ -9646,7 +9728,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-22-0317-78a458";
+      var BUILD = "2026-07-22-0335-81ea63";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
