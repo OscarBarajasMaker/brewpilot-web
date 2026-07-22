@@ -4846,6 +4846,23 @@
       try {
         grindHelperInit();
       } catch (e) {}
+      setTimeout(function () {
+        if (typeof iLoad === "function") {
+          iLoad()
+            .then(function () {
+              try {
+                homeRender();
+              } catch (e) {}
+              try {
+                renderChips();
+              } catch (e) {}
+              try {
+                loadInventory();
+              } catch (e) {}
+            })
+            .catch(function () {});
+        }
+      }, 0);
       /* ---------------------------------------------------------------
    UI scheduler. No polling: the app's own code rewrites innerHTML at
    unpredictable times, so we watch for those writes instead of guessing.
@@ -8843,7 +8860,7 @@
    Public by design: a client ID is not a secret, it is an identifier. The
    origin allowlist is what actually protects it. While empty, the Google
    option stays hidden and nothing changes for anyone. */
-      var GOOGLE_CLIENT_ID = "";
+      var GOOGLE_CLIENT_ID = "380224424258-stc6p0eapng5bqcb8o04dh47446o9ln3.apps.googleusercontent.com";
       var GSCOPE = "https://www.googleapis.com/auth/drive.file";
       var GTOKEN = null,
         GTOKEN_EXP = 0,
@@ -9728,7 +9745,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-22-0343-4d525a";
+      var BUILD = "2026-07-22-0404-7c3fdf";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
