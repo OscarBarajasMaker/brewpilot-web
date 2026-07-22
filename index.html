@@ -4202,6 +4202,8 @@
           csTuned: "tuned to your {n} shots",
           editBtn: "Edit",
           labelBtn: "Label",
+          layoutSplit: "Split",
+          layoutStacked: "Stacked",
           logoAdd: "Add roaster logo",
           logoChange: "Change logo",
           logoRemove: "Remove logo",
@@ -4450,6 +4452,8 @@
           csTuned: "ajustado a tus {n} cafes",
           editBtn: "Editar",
           labelBtn: "Etiqueta",
+          layoutSplit: "Dividido",
+          layoutStacked: "Apilado",
           logoAdd: "Agregar logo del tostador",
           logoChange: "Cambiar logo",
           logoRemove: "Quitar logo",
@@ -6650,6 +6654,75 @@
         } catch (e) {}
         return { varietal: v, region: r };
       }
+      var LBL_DEF = {
+        process: 1,
+        varietal: 1,
+        region: 1,
+        roast: 1,
+        freeze: 1,
+        peak: 1,
+        portion: 0,
+      };
+      function lblFields() {
+        try {
+          var m = JSON.parse(localStorage.getItem("labelFields") || "null");
+          if (m && typeof m === "object") {
+            var o = {};
+            for (var k in LBL_DEF) o[k] = m[k] !== undefined ? (m[k] ? 1 : 0) : LBL_DEF[k];
+            return o;
+          }
+        } catch (e) {}
+        var d = {};
+        for (var k2 in LBL_DEF) d[k2] = LBL_DEF[k2];
+        return d;
+      }
+      function lblToggle(k) {
+        var f = lblFields();
+        f[k] = f[k] ? 0 : 1;
+        try {
+          localStorage.setItem("labelFields", JSON.stringify(f));
+        } catch (e) {}
+      }
+      function lblLayout() {
+        try {
+          return localStorage.getItem("labelLayout") || "split";
+        } catch (e) {
+          return "split";
+        }
+      }
+      function lblSetLayout(v) {
+        try {
+          localStorage.setItem("labelLayout", v);
+        } catch (e) {}
+      }
+      function labelRows(b, p, meta, isEs) {
+        var f = lblFields(),
+          rows = [];
+        if (f.roast) {
+          var rd = labelDate(p.roast_date, true);
+          if (rd) rows.push([isEs ? "Tueste" : "Roast", rd]);
+        }
+        if (f.freeze) {
+          var fd = labelDate(p.freeze_date, true);
+          if (fd) rows.push([isEs ? "Congelado" : "Freeze", fd]);
+        }
+        if (f.peak) {
+          try {
+            var w = restWindow(b.roast || "Light", b.process || "", restDefaultMethod()),
+              t0 = dParse(p.roast_date);
+            if (w && isFinite(t0))
+              rows.push([
+                isEs ? "Pico" : "Peak",
+                labelDate(new Date(t0 + w.peakLo * 86400000).toISOString().slice(0, 10)) +
+                  " - " +
+                  labelDate(new Date(t0 + w.peakHi * 86400000).toISOString().slice(0, 10)),
+              ]);
+          } catch (e) {}
+        }
+        if (f.portion && p.portion_g)
+          rows.push([isEs ? "Porción" : "Portion", String(p.portion_g)]);
+        return rows;
+      }
       function labelDraw(b, logoImg) {
         /* 50x30 mm at 5:3. Pure black on white, no grey: thermal heads are 1-bit. */
         var W = 1200,
@@ -6664,100 +6737,146 @@
         var p = (b.portions && b.portions[0]) || {},
           meta = bagMeta(b);
         var isEs = typeof LANG !== "undefined" && LANG === "es",
-          pad = 60;
-        x.textAlign = "right";
-        var rx = W - pad,
-          ry = pad + 56,
-          maxw = 660;
-        x.font = "bold 60px -apple-system, system-ui, sans-serif";
-        var words = String(b.coffee || "").split(/\s+/),
-          line = "",
-          lines = [];
-        words.forEach(function (w) {
-          var tt = line ? line + " " + w : w;
-          if (x.measureText(tt).width > maxw && line) {
-            lines.push(line);
-            line = w;
-          } else {
-            line = tt;
+          pad = 60,
+          f = lblFields();
+        var wrap = function (s, maxw) {
+          var words = String(s || "").split(/\s+/),
+            line = "",
+            out = [];
+          words.forEach(function (w) {
+            var tt = line ? line + " " + w : w;
+            if (x.measureText(tt).width > maxw && line) {
+              out.push(line);
+              line = w;
+            } else {
+              line = tt;
+            }
+          });
+          if (line) out.push(line);
+          return out;
+        };
+        var drawLogo = function (bx, by, bw, bh) {
+          if (logoImg) {
+            var sc = Math.min(bw / logoImg.width, bh / logoImg.height),
+              dw = logoImg.width * sc,
+              dh = logoImg.height * sc;
+            x.drawImage(logoImg, bx + (bw - dw) / 2, by + (bh - dh) / 2, dw, dh);
+            return true;
           }
-        });
-        if (line) lines.push(line);
-        lines.slice(0, 2).forEach(function (l) {
-          x.fillText(l, rx, ry);
-          ry += 68;
-        });
-        if (b.process) {
-          x.font = "48px -apple-system, system-ui, sans-serif";
-          x.fillText(b.process, rx, ry);
-          ry += 56;
+          if (b.roaster) {
+            x.textAlign = "center";
+            x.font = "bold 46px Georgia, Times New Roman, serif";
+            x.fillText(String(b.roaster).toUpperCase(), bx + bw / 2, by + bh / 2 + 14);
+            x.textAlign = "left";
+            return true;
+          }
+          return false;
+        };
+        var rows = labelRows(b, p, meta, isEs);
+        if (lblLayout() === "stacked") {
+          x.textAlign = "center";
+          x.font = "bold 60px -apple-system, system-ui, sans-serif";
+          var ty = pad + 56;
+          wrap(b.coffee, W - pad * 2)
+            .slice(0, 1)
+            .forEach(function (l) {
+              x.fillText(l, W / 2, ty);
+              ty += 66;
+            });
+          x.textAlign = "left";
+          var ly = ty + 24;
+          x.font = "38px -apple-system, system-ui, sans-serif";
+          var left = [];
+          if (f.region && meta.region) left.push([isEs ? "Origen" : "Origin", meta.region]);
+          if (f.varietal && meta.varietal)
+            left.push([isEs ? "Variedad" : "Varietal", meta.varietal]);
+          if (f.process && b.process) left.push([isEs ? "Proceso" : "Process", b.process]);
+          left = left.concat(rows);
+          left.slice(0, 6).forEach(function (r) {
+            x.fillText(r[0] + ": " + r[1], pad, ly);
+            ly += 46;
+          });
+          drawLogo(W - pad - 330, ty + 30, 330, 180);
+        } else {
+          x.textAlign = "right";
+          var rx = W - pad,
+            ry = pad + 56;
+          x.font = "bold 60px -apple-system, system-ui, sans-serif";
+          wrap(b.coffee, 660)
+            .slice(0, 2)
+            .forEach(function (l) {
+              x.fillText(l, rx, ry);
+              ry += 68;
+            });
+          if (f.process && b.process) {
+            x.font = "48px -apple-system, system-ui, sans-serif";
+            x.fillText(b.process, rx, ry);
+            ry += 56;
+          }
+          if (f.varietal && meta.varietal) {
+            x.font = "42px -apple-system, system-ui, sans-serif";
+            x.fillText(meta.varietal, rx, ry);
+            ry += 50;
+          }
+          x.textAlign = "left";
+          drawLogo(pad, 118, 400, 190);
+          if (f.region && meta.region) {
+            x.font = "44px -apple-system, system-ui, sans-serif";
+            x.fillText(meta.region, pad, H - pad - 6);
+          }
+          x.textAlign = "right";
+          x.font = "40px -apple-system, system-ui, sans-serif";
+          var n = Math.min(rows.length, 3),
+            by2 = H - pad - 6 - (n - 1) * 48;
+          rows.slice(0, 3).forEach(function (r) {
+            x.fillText(r[0] + ": " + r[1], rx, by2);
+            by2 += 48;
+          });
+          x.textAlign = "left";
         }
-        if (meta.varietal) {
-          x.font = "42px -apple-system, system-ui, sans-serif";
-          x.fillText(meta.varietal, rx, ry);
-          ry += 50;
-        }
-        x.textAlign = "left";
-        if (logoImg) {
-          var bw = 400,
-            bh = 190,
-            iw = logoImg.width,
-            ih = logoImg.height;
-          var sc = Math.min(bw / iw, bh / ih),
-            dw = iw * sc,
-            dh = ih * sc;
-          x.drawImage(logoImg, pad + (bw - dw) / 2, 118 + (bh - dh) / 2, dw, dh);
-        } else if (b.roaster) {
-          x.font = "bold 54px Georgia, Times New Roman, serif";
-          x.fillText(String(b.roaster).toUpperCase(), pad, 232);
-        }
-        if (meta.region) {
-          x.font = "44px -apple-system, system-ui, sans-serif";
-          x.fillText(meta.region, pad, H - pad - 6);
-        }
-        var rows = [];
-        var rd = labelDate(p.roast_date, true),
-          fd = labelDate(p.freeze_date, true);
-        if (rd) rows.push((isEs ? "Tueste: " : "Roast: ") + rd);
-        if (fd) rows.push((isEs ? "Congelado: " : "Freeze: ") + fd);
-        try {
-          var w2 = restWindow(b.roast || "Light", b.process || "", restDefaultMethod()),
-            t0 = dParse(p.roast_date);
-          if (w2 && isFinite(t0))
-            rows.push(
-              (isEs ? "Pico: " : "Peak: ") +
-                labelDate(new Date(t0 + w2.peakLo * 86400000).toISOString().slice(0, 10)) +
-                " - " +
-                labelDate(new Date(t0 + w2.peakHi * 86400000).toISOString().slice(0, 10)),
-            );
-        } catch (e) {}
-        x.textAlign = "right";
-        x.font = "40px -apple-system, system-ui, sans-serif";
-        var by = H - pad - 6 - (Math.min(rows.length, 3) - 1) * 48;
-        rows.slice(0, 3).forEach(function (r) {
-          x.fillText(r, rx, by);
-          by += 48;
-        });
-        x.textAlign = "left";
         return c;
       }
       function labelPick(b, after) {
+        /* iOS ignores click() on a detached file input, so it must live in the DOM
+     for the duration of the pick. It is parked offscreen rather than hidden,
+     because display:none inputs are also skipped by some browsers. */
         var inp = document.createElement("input");
         inp.type = "file";
         inp.accept = "image/*";
+        inp.style.cssText = "position:fixed;left:-10000px;top:0;opacity:0";
+        var done = function () {
+          try {
+            if (inp.parentNode) inp.parentNode.removeChild(inp);
+          } catch (e) {}
+        };
         inp.onchange = function () {
           var f = inp.files && inp.files[0];
-          if (!f) return;
+          if (!f) {
+            done();
+            return;
+          }
           var fr = new FileReader();
+          fr.onerror = function () {
+            done();
+            alert(t("logoFail"));
+          };
           fr.onload = function () {
             var im = new Image();
             im.onload = function () {
-              var url = logoThreshold(im, 360);
+              var url = "";
+              try {
+                url = logoThreshold(im, 360);
+              } catch (e) {}
+              done();
               if (!url) {
                 alert(t("logoFail"));
                 return;
               }
               logoSet(b.roaster, url);
+              if (!logoGet(b.roaster)) {
+                alert(t("logoTooBig"));
+                return;
+              }
               var im2 = new Image();
               im2.onload = function () {
                 after(im2);
@@ -6768,13 +6887,21 @@
               im2.src = url;
             };
             im.onerror = function () {
+              done();
               alert(t("logoFail"));
             };
             im.src = fr.result;
           };
           fr.readAsDataURL(f);
         };
+        document.body.appendChild(inp);
+        /* Android fires no change event when the same file is chosen again unless the
+     value is cleared first. Harmless on iOS. */
+        try {
+          inp.value = "";
+        } catch (e) {}
         inp.click();
+        setTimeout(done, 120000);
       }
       function labelOpen(b) {
         var lg = logoGet(b.roaster);
@@ -6819,6 +6946,58 @@
         hint.textContent = t("labelHint");
         hint.style.cssText = "color:var(--dim);font-size:12px;margin:10px 0 10px;line-height:1.45";
         card.appendChild(hint);
+        var chipRow = function () {
+          var d = document.createElement("div");
+          d.style.cssText = "display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px";
+          return d;
+        };
+        var chip = function (txt, on, fn) {
+          var e = document.createElement("span");
+          e.textContent = txt;
+          e.style.cssText =
+            "padding:6px 11px;border-radius:14px;font-size:11px;cursor:pointer;border:1px solid " +
+            (on ? "var(--sel-line)" : "var(--line)") +
+            ";background:" +
+            (on ? "var(--sel-bg)" : "transparent") +
+            ";color:" +
+            (on ? "var(--sel-text)" : "var(--dim)");
+          e.onclick = fn;
+          return e;
+        };
+        var lay = lblLayout(),
+          lr = chipRow();
+        lr.appendChild(
+          chip(t("layoutSplit"), lay === "split", function () {
+            lblSetLayout("split");
+            labelShow(b, logoImg);
+          }),
+        );
+        lr.appendChild(
+          chip(t("layoutStacked"), lay === "stacked", function () {
+            lblSetLayout("stacked");
+            labelShow(b, logoImg);
+          }),
+        );
+        card.appendChild(lr);
+        var ff = lblFields(),
+          fr2 = chipRow();
+        [
+          ["process", isEs ? "Proceso" : "Process"],
+          ["varietal", isEs ? "Variedad" : "Varietal"],
+          ["region", isEs ? "Origen" : "Origin"],
+          ["roast", isEs ? "Tueste" : "Roast"],
+          ["freeze", isEs ? "Congelado" : "Freeze"],
+          ["peak", isEs ? "Pico" : "Peak"],
+          ["portion", isEs ? "Porción" : "Portion"],
+        ].forEach(function (k) {
+          fr2.appendChild(
+            chip(k[1], !!ff[k[0]], function () {
+              lblToggle(k[0]);
+              labelShow(b, logoImg);
+            }),
+          );
+        });
+        card.appendChild(fr2);
         var mk = function (txt, fn, primary) {
           var e = document.createElement("button");
           e.textContent = txt;
@@ -10315,7 +10494,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-22-0645-613574";
+      var BUILD = "2026-07-22-0702-33155d";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
