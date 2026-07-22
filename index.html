@@ -4205,6 +4205,7 @@
           layoutSplit: "Split",
           layoutStacked: "Stacked",
           logoAdd: "Add roaster logo",
+          logoInvert: "Invert",
           logoChange: "Change logo",
           logoRemove: "Remove logo",
           logoFail: "Could not read that image.",
@@ -4455,6 +4456,7 @@
           layoutSplit: "Dividido",
           layoutStacked: "Apilado",
           logoAdd: "Agregar logo del tostador",
+          logoInvert: "Invertir",
           logoChange: "Cambiar logo",
           logoRemove: "Quitar logo",
           logoFail: "No se pudo leer esa imagen.",
@@ -4919,6 +4921,9 @@
               } catch (e) {}
               try {
                 loadInventory();
+              } catch (e) {}
+              try {
+                gMigrateHeaders();
               } catch (e) {}
             })
             .catch(function () {});
@@ -6406,6 +6411,45 @@
         }
         return txt;
       }
+      async function gEnsureHeader(tab, want) {
+        /* Sheets created before a column was added still carry the old header, and
+     both gInvList and gPatchRow key off that header - so a value for a missing
+     column is dropped without any error. Missing names are appended at the end;
+     nothing is renamed, reordered or removed, so existing data cannot shift. */
+        try {
+          var rows = await gRead(tab);
+          if (!rows || !rows.length || !rows[0] || !rows[0].length) return false;
+          var head = rows[0].slice(),
+            have = {};
+          head.forEach(function (h) {
+            have[String(h).trim()] = 1;
+          });
+          var added = false;
+          want.forEach(function (c) {
+            if (!have[c]) {
+              head.push(c);
+              added = true;
+            }
+          });
+          if (added) await gUpdate(tab, 1, head);
+          return added;
+        } catch (e) {
+          return false;
+        }
+      }
+      async function gMigrateHeaders() {
+        if (dataMode() !== "google") return;
+        var a = await gEnsureHeader(SHOT_TAB, COLNAMES);
+        var b = await gEnsureHeader(INV_TAB, INV_COLNAMES);
+        if (a || b) {
+          try {
+            await iLoad();
+          } catch (e) {}
+          try {
+            loadInventory();
+          } catch (e) {}
+        }
+      }
       async function gPatchRow(tab, row1, patch) {
         /* Replace ONLY the named columns on an existing row. Every other column is
      copied back verbatim, so nothing can shift and no row is ever rebuilt. */
@@ -6444,6 +6488,8 @@
           i.className = "fin";
           i.style.width = "100%";
           if (f.type) i.type = f.type;
+          if (f.list) i.setAttribute("list", f.list);
+          if (f.step) i.setAttribute("step", f.step);
           i.value = f.v == null ? "" : String(f.v);
           card.appendChild(i);
           inputs[f.k] = i;
@@ -6581,11 +6627,13 @@
           alert(t("logoTooBig"));
         }
       }
-      function logoThreshold(img, maxW) {
-        /* A thermal head is 1-bit: it fires a dot or it does not. Anti-aliased or
-     coloured artwork turns to mush, so everything is forced to pure black or
-     fully transparent. Artwork that was drawn light-on-dark is detected by its
-     mean luminance and inverted, otherwise it would vanish on white paper. */
+      function logoThreshold(img, maxW, forceInvert) {
+        /* A thermal head is 1-bit. The hard part is deciding which pixels are ink.
+     Averaging every opaque pixel fails on the common case, a logo on a solid
+     white background, because the background dominates the mean and the whole
+     image gets inverted. The background is estimated from the border ring
+     instead; artwork is whatever differs from it. Fully transparent borders
+     fall back to the mean of the opaque pixels. */
         var w = img.naturalWidth || img.width,
           h = img.naturalHeight || img.height;
         if (!w || !h) return "";
@@ -6598,24 +6646,55 @@
         var x = c.getContext("2d");
         x.drawImage(img, 0, 0, W, H);
         var d = x.getImageData(0, 0, W, H),
-          p = d.data,
-          sum = 0,
-          n = 0,
+          p = d.data;
+        var lum = function (k) {
+          return 0.299 * p[k] + 0.587 * p[k + 1] + 0.114 * p[k + 2];
+        };
+        var bs = 0,
+          bn = 0,
+          be = 0,
+          os = 0,
+          on = 0,
+          yy,
+          xx,
           k;
-        for (k = 0; k < p.length; k += 4) {
-          if (p[k + 3] > 40) {
-            sum += 0.299 * p[k] + 0.587 * p[k + 1] + 0.114 * p[k + 2];
-            n++;
+        for (yy = 0; yy < H; yy++) {
+          for (xx = 0; xx < W; xx++) {
+            k = (yy * W + xx) * 4;
+            if (p[k + 3] > 40) {
+              os += lum(k);
+              on++;
+            }
+            if (yy < 2 || yy > H - 3 || xx < 2 || xx > W - 3) {
+              be++;
+              if (p[k + 3] > 40) {
+                bs += lum(k);
+                bn++;
+              }
+            }
           }
         }
-        var invert = (n ? sum / n : 255) > 170;
+        var darkInk, thr;
+        if (be && bn / be > 0.2) {
+          /* solid background: compare against it */
+          var bg = bs / bn;
+          darkInk = bg > 128;
+          thr = darkInk ? Math.max(70, bg - 45) : Math.min(190, bg + 45);
+        } else {
+          /* transparent cut-out: judge the artwork */
+          var mean = on ? os / on : 255;
+          darkInk = !(mean > 170);
+          thr = darkInk ? 165 : 128;
+        }
+        if (forceInvert) darkInk = !darkInk;
         for (k = 0; k < p.length; k += 4) {
           if (p[k + 3] < 40) {
             p[k + 3] = 0;
             continue;
           }
-          var l = 0.299 * p[k] + 0.587 * p[k + 1] + 0.114 * p[k + 2];
-          if (invert ? l > 128 : l < 165) {
+          var l = lum(k),
+            ink = darkInk ? l < thr : l > thr;
+          if (ink) {
             p[k] = 0;
             p[k + 1] = 0;
             p[k + 2] = 0;
@@ -6627,6 +6706,39 @@
         x.putImageData(d, 0, 0);
         return c.toDataURL("image/png");
       }
+      function logoFlip(r) {
+        /* The stored logo is already 1-bit, so flipping the mask is exact and needs
+     no reprocessing of the original. */
+        var url = logoGet(r);
+        if (!url) return;
+        var im = new Image();
+        im.onload = function () {
+          var c = document.createElement("canvas");
+          c.width = im.width;
+          c.height = im.height;
+          var x = c.getContext("2d");
+          x.drawImage(im, 0, 0);
+          var d = x.getImageData(0, 0, c.width, c.height),
+            p = d.data;
+          for (var k = 0; k < p.length; k += 4) {
+            if (p[k + 3] < 40) {
+              p[k] = 0;
+              p[k + 1] = 0;
+              p[k + 2] = 0;
+              p[k + 3] = 255;
+            } else {
+              p[k + 3] = 0;
+            }
+          }
+          x.putImageData(d, 0, 0);
+          logoSet(r, c.toDataURL("image/png"));
+          try {
+            LOGO_FLIP_CB && LOGO_FLIP_CB();
+          } catch (e) {}
+        };
+        im.src = url;
+      }
+      var LOGO_FLIP_CB = null;
       function bagMeta(b) {
         /* Varietal and origin live on the bag now. Bags saved before that can still
      borrow them from the newest brew of the same coffee, so the log-to-bag
@@ -6654,8 +6766,11 @@
         } catch (e) {}
         return { varietal: v, region: r };
       }
+      var LBL_PORTION = "";
       var LBL_DEF = {
+        coffee: 1,
         process: 1,
+        roastlvl: 0,
         varietal: 1,
         region: 1,
         roast: 1,
@@ -6719,12 +6834,27 @@
               ]);
           } catch (e) {}
         }
-        if (f.portion && p.portion_g)
-          rows.push([isEs ? "Porción" : "Portion", String(p.portion_g)]);
+        if (f.portion) {
+          var pv =
+            typeof LBL_PORTION === "string" && LBL_PORTION !== ""
+              ? LBL_PORTION
+              : String(p.portion_g || "");
+          if (pv) rows.push([isEs ? "Porción" : "Portion", pv]);
+        }
         return rows;
       }
+      function lblScale() {
+        var v = parseFloat(localStorage.getItem("labelScale") || "1");
+        return isFinite(v) && v > 0.5 && v < 2 ? v : 1;
+      }
+      function lblSetScale(v) {
+        try {
+          localStorage.setItem("labelScale", String(v));
+        } catch (e) {}
+      }
       function labelDraw(b, logoImg) {
-        /* 50x30 mm at 5:3. Pure black on white, no grey: thermal heads are 1-bit. */
+        /* 50x30 mm at 5:3. Pure black on white, no grey: thermal heads are 1-bit.
+     Every size runs through S so one control scales the whole label. */
         var W = 1200,
           H = 720,
           c = document.createElement("canvas");
@@ -6738,7 +6868,19 @@
           meta = bagMeta(b);
         var isEs = typeof LANG !== "undefined" && LANG === "es",
           pad = 60,
-          f = lblFields();
+          f = lblFields(),
+          S = lblScale();
+        var F = function (px, bold, serif) {
+          return (
+            (bold ? "bold " : "") +
+            Math.round(px * S) +
+            "px " +
+            (serif ? "Georgia, Times New Roman, serif" : "-apple-system, system-ui, sans-serif")
+          );
+        };
+        var G = function (px) {
+          return Math.round(px * S);
+        };
         var wrap = function (s, maxw) {
           var words = String(s || "").split(/\s+/),
             line = "",
@@ -6765,7 +6907,7 @@
           }
           if (b.roaster) {
             x.textAlign = "center";
-            x.font = "bold 46px Georgia, Times New Roman, serif";
+            x.font = F(50, true, true);
             x.fillText(String(b.roaster).toUpperCase(), bx + bw / 2, by + bh / 2 + 14);
             x.textAlign = "left";
             return true;
@@ -6775,62 +6917,70 @@
         var rows = labelRows(b, p, meta, isEs);
         if (lblLayout() === "stacked") {
           x.textAlign = "center";
-          x.font = "bold 60px -apple-system, system-ui, sans-serif";
-          var ty = pad + 56;
-          wrap(b.coffee, W - pad * 2)
-            .slice(0, 1)
-            .forEach(function (l) {
-              x.fillText(l, W / 2, ty);
-              ty += 66;
-            });
+          x.font = F(66, true);
+          var ty = pad + G(56);
+          if (f.coffee)
+            wrap(b.coffee, W - pad * 2)
+              .slice(0, 1)
+              .forEach(function (l) {
+                x.fillText(l, W / 2, ty);
+                ty += G(72);
+              });
           x.textAlign = "left";
-          var ly = ty + 24;
-          x.font = "38px -apple-system, system-ui, sans-serif";
+          var ly = ty + G(24);
+          x.font = F(42);
           var left = [];
           if (f.region && meta.region) left.push([isEs ? "Origen" : "Origin", meta.region]);
           if (f.varietal && meta.varietal)
             left.push([isEs ? "Variedad" : "Varietal", meta.varietal]);
           if (f.process && b.process) left.push([isEs ? "Proceso" : "Process", b.process]);
+          if (f.roastlvl && b.roast) left.push([isEs ? "Tueste" : "Roast", b.roast]);
           left = left.concat(rows);
           left.slice(0, 6).forEach(function (r) {
             x.fillText(r[0] + ": " + r[1], pad, ly);
-            ly += 46;
+            ly += G(50);
           });
-          drawLogo(W - pad - 330, ty + 30, 330, 180);
+          drawLogo(W - pad - 330, ty + G(30), 330, 180);
         } else {
           x.textAlign = "right";
           var rx = W - pad,
-            ry = pad + 56;
-          x.font = "bold 60px -apple-system, system-ui, sans-serif";
-          wrap(b.coffee, 660)
-            .slice(0, 2)
-            .forEach(function (l) {
-              x.fillText(l, rx, ry);
-              ry += 68;
-            });
+            ry = pad + G(56);
+          x.font = F(66, true);
+          if (f.coffee)
+            wrap(b.coffee, 660)
+              .slice(0, 2)
+              .forEach(function (l) {
+                x.fillText(l, rx, ry);
+                ry += G(74);
+              });
           if (f.process && b.process) {
-            x.font = "48px -apple-system, system-ui, sans-serif";
+            x.font = F(52);
             x.fillText(b.process, rx, ry);
-            ry += 56;
+            ry += G(60);
+          }
+          if (f.roastlvl && b.roast) {
+            x.font = F(46);
+            x.fillText(b.roast, rx, ry);
+            ry += G(54);
           }
           if (f.varietal && meta.varietal) {
-            x.font = "42px -apple-system, system-ui, sans-serif";
+            x.font = F(46);
             x.fillText(meta.varietal, rx, ry);
-            ry += 50;
+            ry += G(54);
           }
           x.textAlign = "left";
           drawLogo(pad, 118, 400, 190);
           if (f.region && meta.region) {
-            x.font = "44px -apple-system, system-ui, sans-serif";
+            x.font = F(48);
             x.fillText(meta.region, pad, H - pad - 6);
           }
           x.textAlign = "right";
-          x.font = "40px -apple-system, system-ui, sans-serif";
+          x.font = F(44);
           var n = Math.min(rows.length, 3),
-            by2 = H - pad - 6 - (n - 1) * 48;
+            by2 = H - pad - 6 - (n - 1) * G(52);
           rows.slice(0, 3).forEach(function (r) {
             x.fillText(r[0] + ": " + r[1], rx, by2);
-            by2 += 48;
+            by2 += G(52);
           });
           x.textAlign = "left";
         }
@@ -6964,6 +7114,22 @@
           e.onclick = fn;
           return e;
         };
+        var sc = lblScale(),
+          sr = chipRow();
+        [
+          ["A-", 0.85],
+          ["A", 1],
+          ["A+", 1.2],
+          ["A++", 1.45],
+        ].forEach(function (o) {
+          sr.appendChild(
+            chip(o[0], Math.abs(sc - o[1]) < 0.01, function () {
+              lblSetScale(o[1]);
+              labelShow(b, logoImg);
+            }),
+          );
+        });
+        card.appendChild(sr);
         var lay = lblLayout(),
           lr = chipRow();
         lr.appendChild(
@@ -6982,11 +7148,13 @@
         var ff = lblFields(),
           fr2 = chipRow();
         [
+          ["coffee", isEs ? "Nombre" : "Name"],
           ["process", isEs ? "Proceso" : "Process"],
+          ["roastlvl", isEs ? "Tueste" : "Roast level"],
           ["varietal", isEs ? "Variedad" : "Varietal"],
           ["region", isEs ? "Origen" : "Origin"],
-          ["roast", isEs ? "Tueste" : "Roast"],
-          ["freeze", isEs ? "Congelado" : "Freeze"],
+          ["roast", isEs ? "F. tueste" : "Roast date"],
+          ["freeze", isEs ? "F. congelado" : "Freeze date"],
           ["peak", isEs ? "Pico" : "Peak"],
           ["portion", isEs ? "Porción" : "Portion"],
         ].forEach(function (k) {
@@ -6998,6 +7166,26 @@
           );
         });
         card.appendChild(fr2);
+        if (lblFields().portion) {
+          var pw = document.createElement("div");
+          pw.style.cssText = "display:flex;align-items:center;gap:8px;margin-bottom:8px";
+          var pl = document.createElement("span");
+          pl.textContent = isEs ? "Porción" : "Portion";
+          pl.style.cssText = "color:var(--dim);font-size:11px";
+          pw.appendChild(pl);
+          var pi = document.createElement("input");
+          pi.className = "fin";
+          pi.style.cssText = "flex:1;padding:7px 9px;font-size:13px";
+          var pb = (b.portions && b.portions[0]) || {};
+          pi.value = LBL_PORTION !== "" ? LBL_PORTION : String(pb.portion_g || "");
+          pi.placeholder = isEs ? "p. ej. 20g o bolsa completa" : "e.g. 20g or whole bag";
+          pi.onchange = function () {
+            LBL_PORTION = pi.value;
+            labelShow(b, logoImg);
+          };
+          pw.appendChild(pi);
+          card.appendChild(pw);
+        }
         var mk = function (txt, fn, primary) {
           var e = document.createElement("button");
           e.textContent = txt;
@@ -7049,6 +7237,20 @@
           if (has)
             r2.appendChild(
               mk(
+                t("logoInvert"),
+                function () {
+                  LOGO_FLIP_CB = function () {
+                    LOGO_FLIP_CB = null;
+                    labelOpen(b);
+                  };
+                  logoFlip(b.roaster);
+                },
+                false,
+              ),
+            );
+          if (has)
+            r2.appendChild(
+              mk(
                 t("logoRemove"),
                 function () {
                   logoSet(b.roaster, "");
@@ -7066,6 +7268,30 @@
         ov.appendChild(card);
         document.body.appendChild(ov);
       }
+      function ensureList(id, srcId) {
+        /* The pickers already exist as selects elsewhere in the app. Mirror their
+     options into a datalist so an edit field offers the same choices and only
+     needs typing for something genuinely new. */
+        if (document.getElementById(id)) return;
+        var s = document.getElementById(srcId);
+        if (!s) return;
+        var dl = document.createElement("datalist");
+        dl.id = id;
+        Array.prototype.forEach.call(s.querySelectorAll("option"), function (o) {
+          var v = (o.value || o.textContent || "").trim();
+          if (!v || /\.\.\.$/.test(v)) return;
+          var e = document.createElement("option");
+          e.value = v;
+          dl.appendChild(e);
+        });
+        document.body.appendChild(dl);
+      }
+      function dOnly(v) {
+        var s = String(v || "")
+          .trim()
+          .slice(0, 10);
+        return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
+      }
       function editBagOpen(b) {
         if (dataMode() !== "google") {
           alert(t("editNeedSheet"));
@@ -7077,28 +7303,60 @@
         }
         var p = (b.portions && b.portions[0]) || {};
         var isEs = typeof LANG !== "undefined" && LANG === "es";
+        ensureList("roasterList", "roaster");
+        ensureList("roastList", "roast");
+        ensureList("processList", "process");
+        try {
+          renderCoffeeList();
+        } catch (e) {}
         editOverlay(
           t("editBag"),
           [
-            { k: "coffee", label: isEs ? "Café" : "Coffee", v: b.coffee },
-            { k: "roaster", label: isEs ? "Tostador" : "Roaster", v: b.roaster },
+            { k: "coffee", label: isEs ? "Café" : "Coffee", v: b.coffee, list: "coffeeList" },
+            {
+              k: "roaster",
+              label: isEs ? "Tostador" : "Roaster",
+              v: b.roaster,
+              list: "roasterList",
+            },
+            { k: "roast", label: isEs ? "Tueste" : "Roast level", v: b.roast, list: "roastList" },
+            {
+              k: "process",
+              label: isEs ? "Proceso" : "Process",
+              v: b.process,
+              list: "processList",
+            },
             {
               k: "roast_date",
-              label: isEs ? "Fecha de tueste (AAAA-MM-DD)" : "Roast date (YYYY-MM-DD)",
-              v: p.roast_date,
+              label: isEs ? "Fecha de tueste" : "Roast date",
+              v: dOnly(p.roast_date),
+              type: "date",
             },
             {
               k: "freeze_date",
-              label: isEs ? "Fecha de congelado (AAAA-MM-DD)" : "Freeze date (YYYY-MM-DD)",
-              v: p.freeze_date,
+              label: isEs ? "Fecha de congelado" : "Freeze date",
+              v: dOnly(p.freeze_date),
+              type: "date",
             },
             {
               k: "portion_g",
               label: isEs ? "Tamaño de porción (g)" : "Portion size (g)",
               v: p.portion_g,
+              type: "number",
+              step: "0.1",
             },
-            { k: "varietal", label: isEs ? "Variedad" : "Varietal", v: b.varietal },
-            { k: "region", label: isEs ? "Origen / región" : "Origin / region", v: b.region },
+            {
+              k: "varietal",
+              label: isEs ? "Variedad" : "Varietal",
+              v: b.varietal,
+              list: "ghVarList",
+            },
+            {
+              k: "region",
+              label: isEs ? "Origen / región" : "Origin / region",
+              v: b.region,
+              list: "ghOriginList",
+            },
             { k: "qty", label: isEs ? "Cuantas" : "How many", v: p.qty, type: "number" },
           ],
           async function (vals) {
@@ -7127,10 +7385,13 @@
           return;
         }
         var isEs = typeof LANG !== "undefined" && LANG === "es";
+        try {
+          renderCoffeeList();
+        } catch (e) {}
         editOverlay(
           t("editShot"),
           [
-            { k: "coffee", label: isEs ? "Café" : "Coffee", v: last.coffee },
+            { k: "coffee", label: isEs ? "Café" : "Coffee", v: last.coffee, list: "coffeeList" },
             { k: "dose_g", label: isEs ? "Dosis (g)" : "Dose (g)", v: last.dose_g },
             {
               k: "yield_g",
@@ -10494,7 +10755,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-22-0702-33155d";
+      var BUILD = "2026-07-22-0718-df3100";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
