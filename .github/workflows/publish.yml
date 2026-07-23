@@ -49,18 +49,30 @@ jobs:
       - name: Gate - audit.py
         run: python audit.py index.html
 
-      - name: Inject client ID and stamp cache
-        env:
-          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      # No secret any more. The client ID lives in client-id.js, committed, so a
+      # publish from any route is correct. prep.py now VERIFIES and fails the
+      # build rather than writing files, because its old inject-and-stamp code
+      # silently no-ops against the current app and reported success while doing
+      # nothing.
+      - name: Pre-deploy checks
         run: python3 .github/prep.py
 
+      # client-id.js was missing from this list on 2026-07-23. It was committed,
+      # it was on main, and it still 404'd on the live site from every edge,
+      # because only what is copied here is deployed. The verify step below is
+      # what stops that from being possible again.
       - name: Assemble site
         run: |
           mkdir -p _site
-          cp index.html manifest.json sw.js _site/ 2>/dev/null || true
+          cp index.html client-id.js manifest.json sw.js _site/ 2>/dev/null || true
           cp *.png _site/ 2>/dev/null || true
           [ -f CNAME ] && cp CNAME _site/ || true
           ls -la _site
+
+      # Every local file index.html references must be in _site. Derived from
+      # the shipped HTML, not from a list anyone has to remember to update.
+      - name: Verify the assembled site
+        run: python3 .github/verify_site.py _site
 
       - uses: actions/upload-pages-artifact@v3
         with:
