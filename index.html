@@ -7350,6 +7350,68 @@
         });
         return out;
       }
+      function pickerize(id) {
+        /* A datalist on iOS is only a keyboard suggestion strip, never a tappable
+     list, so these fields read as plain free text on a phone. Upgrade them in
+     place to real selects, keeping the SAME id so every getElementById read and
+     write in the app keeps working untouched. The choices come from the same
+     datalist that was already there, so there is still one source of truth.
+     The last option swaps a text input back in for anything not on the list. */
+        var el = document.getElementById(id);
+        if (!el || el.tagName !== "INPUT") return;
+        var listId = el.getAttribute("list");
+        if (!listId) return;
+        var opts = listOptions(listId);
+        if (!opts.length) return;
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        var cls = el.className || "fin";
+        var ph = el.getAttribute("placeholder") || "";
+        var oi = el.getAttribute("oninput") || "";
+        var cur = el.value || "";
+        var sel = document.createElement("select");
+        sel.id = id;
+        sel.className = cls;
+        sel.style.width = "100%";
+        if (oi) sel.setAttribute("onchange", oi);
+        var b = document.createElement("option");
+        b.value = "";
+        b.textContent = ph ? ph : isEs ? "elige..." : "choose...";
+        sel.appendChild(b);
+        if (cur && opts.indexOf(cur) < 0) opts.unshift(cur);
+        opts.forEach(function (o) {
+          var e = document.createElement("option");
+          e.value = o;
+          e.textContent = o;
+          if (o === cur) e.selected = true;
+          sel.appendChild(e);
+        });
+        var oth = document.createElement("option");
+        oth.value = "__other__";
+        oth.textContent = isEs ? "+ escribir otro..." : "+ type another...";
+        sel.appendChild(oth);
+        sel.addEventListener("change", function () {
+          if (sel.value !== "__other__") return;
+          var ti = document.createElement("input");
+          ti.id = id;
+          ti.className = cls;
+          ti.value = "";
+          if (ph) ti.setAttribute("placeholder", ph);
+          if (listId) ti.setAttribute("list", listId);
+          if (oi) ti.setAttribute("oninput", oi);
+          if (sel.parentNode) sel.parentNode.replaceChild(ti, sel);
+          try {
+            ti.focus();
+          } catch (e) {}
+        });
+        if (el.parentNode) el.parentNode.replaceChild(sel, el);
+      }
+      function pickerizeAll() {
+        ["ghOrigin", "ghVarietal", "invvarietal", "invregion", "fregion"].forEach(function (id) {
+          try {
+            pickerize(id);
+          } catch (e) {}
+        });
+      }
       function ensureList(id, srcId) {
         /* The pickers already exist as selects elsewhere in the app. Mirror their
      options into a datalist so an edit field offers the same choices and only
@@ -7619,31 +7681,77 @@
           rotEnsure(top.coffee);
       }
       function rotAdd() {
+        /* Was a bare prompt(), which meant retyping a coffee name that the app
+     already knows, on a phone keyboard, with no protection against a typo
+     creating a second entry for the same bag. Offer the inventory instead,
+     minus anything already in the rotation, and keep a type-it-yourself route
+     for a bag that has not been added to inventory yet. */
         var isEs = typeof LANG !== "undefined" && LANG === "es";
-        var n = prompt(isEs ? "Café a agregar a la rotación" : "Coffee to add to rotation", "");
-        if (n === null) return;
-        n = String(n).trim();
-        if (!n) return;
         if (typeof ROT === "undefined" || !ROT) return;
-        if (
-          ROT.some(function (x) {
-            return String(x.coffee || "").toLowerCase() === n.toLowerCase();
-          })
-        )
-          return;
-        ROT.push({ coffee: n });
+        var seen = {},
+          names = [];
+        (typeof IINV !== "undefined" && IINV ? IINV : []).forEach(function (r) {
+          var n = String(r.coffee || "").trim();
+          if (!n) return;
+          if (String(r.status || "") === "Finished") return;
+          var k = n.toLowerCase();
+          if (seen[k]) return;
+          seen[k] = 1;
+          var already = ROT.some(function (x) {
+            return String(x.coffee || "").toLowerCase() === k;
+          });
+          if (!already) names.push(n);
+        });
         try {
-          saveRot();
+          var extra = JSON.parse(localStorage.getItem("coffees") || "[]");
+          extra.forEach(function (x) {
+            var n = String(x || "").trim();
+            if (!n) return;
+            var k = n.toLowerCase();
+            if (seen[k]) return;
+            seen[k] = 1;
+            if (
+              !ROT.some(function (y) {
+                return String(y.coffee || "").toLowerCase() === k;
+              })
+            )
+              names.push(n);
+          });
         } catch (e) {}
-        try {
-          renderChips();
-        } catch (e) {}
-        try {
-          addCoffeeName(n);
-        } catch (e) {}
-        try {
-          homeExtra();
-        } catch (e) {}
+        names.sort(function (a, b) {
+          return a.toLowerCase() < b.toLowerCase() ? -1 : 1;
+        });
+        var title = isEs ? "Agregar a la rotación" : "Add to rotation";
+        var label = names.length
+          ? isEs
+            ? "Café de tu inventario"
+            : "Coffee from your inventory"
+          : isEs
+            ? "Nombre del café"
+            : "Coffee name";
+        editOverlay(title, [{ k: "coffee", label: label, v: "", options: names }], function (o) {
+          var n = String((o && o.coffee) || "").trim();
+          if (!n || n === "__other__") return;
+          if (
+            ROT.some(function (x) {
+              return String(x.coffee || "").toLowerCase() === n.toLowerCase();
+            })
+          )
+            return;
+          ROT.push({ coffee: n });
+          try {
+            saveRot();
+          } catch (e) {}
+          try {
+            renderChips();
+          } catch (e) {}
+          try {
+            addCoffeeName(n);
+          } catch (e) {}
+          try {
+            homeExtra();
+          } catch (e) {}
+        });
       }
       function addCoffeeName(n) {
         try {
@@ -7925,9 +8033,25 @@
         try {
           addCoffee();
         } catch (e) {}
+        /* Setting .value on a select does nothing when no option carries that value,
+     which is exactly what happens once these fields became selects. Add the
+     option first, then assign. */
         var st = function (id, val) {
           var e = document.getElementById(id);
-          if (e && val != null && val !== "") e.value = val;
+          if (!e || val == null || val === "") return;
+          if (e.tagName === "SELECT") {
+            var found = false;
+            Array.prototype.forEach.call(e.options, function (o) {
+              if (o.value === val) found = true;
+            });
+            if (!found) {
+              var n = document.createElement("option");
+              n.value = val;
+              n.textContent = val;
+              e.insertBefore(n, e.options.length > 1 ? e.options[1] : null);
+            }
+          }
+          e.value = val;
         };
         st("invcoffee", v);
         st("invroaster", (document.getElementById("roaster") || {}).value || "");
@@ -10853,7 +10977,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-23-1919-685783";
+      var BUILD = "2026-07-23-2044-8030d6";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -11269,6 +11393,9 @@
    empty stub left over from the /exec cut, the other lazy-loaded screenshots of a
    flow that no longer exists. Bootstrap is the worst place to leave a dead call. */
       uiStart();
+      try {
+        pickerizeAll();
+      } catch (e) {}
     </script>
   </body>
 </html>
