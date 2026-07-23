@@ -9,7 +9,16 @@
 // first meant they were only served offline, so this was survivable rather than
 // visible, which is the worst kind of bug. A new build now gets a new cache and
 // the old one is deleted on activate.
-var CACHE = 'brewpilot-2026-07-22-0718-df3100';
+// The version now rides in on the registration URL: index.html registers
+// sw.js?v=<BUILD>, so the cache name is DERIVED, never stamped. update.ps1 used
+// to rewrite this line, which meant a publish that skipped update.ps1 (a phone
+// upload through Working Copy, say) left the cache name frozen at whatever the
+// last PC publish wrote. That is exactly how the live sw.js ended up on
+// brewpilot-2026-07-22-0718-df3100 while index.html was 12a3b2. No script has to
+// touch this file any more, so no route can get it wrong.
+var SWV = '';
+try { SWV = new URL(self.location.href).searchParams.get('v') || ''; } catch (e) {}
+var CACHE = 'brewpilot-' + (SWV || 'dev');
 
 self.addEventListener('install', function (e) {
   self.skipWaiting();
@@ -29,16 +38,8 @@ self.addEventListener('fetch', function (e) {
   var url = new URL(e.request.url);
   if (url.origin !== self.location.origin) return;   // never touch the Apps Script calls
 
-  // The SW's own fetch() still goes through the HTTP cache, so Safari can hand
-  // back a stale index.html and the network-first strategy silently serves an old
-  // build. Documents bypass the HTTP cache so a publish always lands.
-  var isDoc = (e.request.mode === 'navigate') ||
-              (e.request.destination === 'document') ||
-              /\/(index\.html)?$/.test(url.pathname);
-  var req = isDoc ? new Request(e.request, { cache: 'no-store' }) : e.request;
-
   e.respondWith(
-    fetch(req).then(function (res) {
+    fetch(e.request).then(function (res) {
       var copy = res.clone();
       caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
       return res;

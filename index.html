@@ -10,6 +10,7 @@
     </script>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="client-id.js"></script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="BrewPilot" />
@@ -6484,15 +6485,53 @@
           l.textContent = f.label;
           l.style.cssText = "color:var(--dim);font-size:11px;margin-top:9px";
           card.appendChild(l);
-          var i = document.createElement("input");
-          i.className = "fin";
-          i.style.width = "100%";
-          if (f.type) i.type = f.type;
-          if (f.list) i.setAttribute("list", f.list);
-          if (f.step) i.setAttribute("step", f.step);
-          i.value = f.v == null ? "" : String(f.v);
-          card.appendChild(i);
-          inputs[f.k] = i;
+          if (f.options && f.options.length) {
+            var isEs2 = typeof LANG !== "undefined" && LANG === "es";
+            var sel = document.createElement("select");
+            sel.className = "fin";
+            sel.style.width = "100%";
+            var cur = f.v == null ? "" : String(f.v).trim();
+            var blank = document.createElement("option");
+            blank.value = "";
+            blank.textContent = isEs2 ? "elige..." : "choose...";
+            sel.appendChild(blank);
+            var opts = f.options.slice();
+            if (cur && opts.indexOf(cur) < 0) opts.unshift(cur);
+            opts.forEach(function (o) {
+              var e = document.createElement("option");
+              e.value = o;
+              e.textContent = o;
+              if (o === cur) e.selected = true;
+              sel.appendChild(e);
+            });
+            var oth = document.createElement("option");
+            oth.value = "__other__";
+            oth.textContent = isEs2 ? "+ escribir otro..." : "+ type another...";
+            sel.appendChild(oth);
+            sel.onchange = function () {
+              if (sel.value !== "__other__") return;
+              var ti = document.createElement("input");
+              ti.className = "fin";
+              ti.style.width = "100%";
+              ti.value = "";
+              if (sel.parentNode) sel.parentNode.replaceChild(ti, sel);
+              inputs[f.k] = ti;
+              try {
+                ti.focus();
+              } catch (e) {}
+            };
+            card.appendChild(sel);
+            inputs[f.k] = sel;
+          } else {
+            var i = document.createElement("input");
+            i.className = "fin";
+            i.style.width = "100%";
+            if (f.type) i.type = f.type;
+            if (f.step) i.setAttribute("step", f.step);
+            i.value = f.v == null ? "" : String(f.v);
+            card.appendChild(i);
+            inputs[f.k] = i;
+          }
         });
         var row = document.createElement("div");
         row.style.cssText = "display:flex;gap:8px;margin-top:14px";
@@ -6704,6 +6743,34 @@
           }
         }
         x.putImageData(d, 0, 0);
+        /* Whatever margin the source had is transparent now but still occupies the
+     canvas, and drawImage would scale that empty border into the label box,
+     making the artwork look tiny. Crop to the ink bounding box. */
+        var mnx = W,
+          mny = H,
+          mxx = -1,
+          mxy = -1;
+        for (yy = 0; yy < H; yy++) {
+          for (xx = 0; xx < W; xx++) {
+            k = (yy * W + xx) * 4;
+            if (p[k + 3] > 0) {
+              if (xx < mnx) mnx = xx;
+              if (xx > mxx) mxx = xx;
+              if (yy < mny) mny = yy;
+              if (yy > mxy) mxy = yy;
+            }
+          }
+        }
+        if (mxx < mnx || mxy < mny) return "";
+        var cw = mxx - mnx + 1,
+          ch = mxy - mny + 1;
+        if (cw < W || ch < H) {
+          var c2 = document.createElement("canvas");
+          c2.width = cw;
+          c2.height = ch;
+          c2.getContext("2d").drawImage(c, mnx, mny, cw, ch, 0, 0, cw, ch);
+          return c2.toDataURL("image/png");
+        }
         return c.toDataURL("image/png");
       }
       function logoFlip(r) {
@@ -6940,7 +7007,7 @@
             x.fillText(r[0] + ": " + r[1], pad, ly);
             ly += G(50);
           });
-          drawLogo(W - pad - 330, ty + G(30), 330, 180);
+          drawLogo(W - pad - 340, ty + G(16), 340, Math.max(150, H - pad - 14 - (ty + G(16))));
         } else {
           x.textAlign = "right";
           var rx = W - pad,
@@ -6969,7 +7036,8 @@
             ry += G(54);
           }
           x.textAlign = "left";
-          drawLogo(pad, 118, 400, 190);
+          var lb = f.region && meta.region ? H - pad - G(48) - 26 : H - pad - 14;
+          drawLogo(pad, 104, 430, Math.max(150, lb - 104));
           if (f.region && meta.region) {
             x.font = F(48);
             x.fillText(meta.region, pad, H - pad - 6);
@@ -7015,7 +7083,7 @@
             im.onload = function () {
               var url = "";
               try {
-                url = logoThreshold(im, 360);
+                url = logoThreshold(im, 480);
               } catch (e) {}
               done();
               if (!url) {
@@ -7268,6 +7336,20 @@
         ov.appendChild(card);
         document.body.appendChild(ov);
       }
+      function listOptions(srcId) {
+        /* iOS renders a datalist only as keyboard suggestions, never as a tappable
+     list, so real selects are used instead. The choices are mirrored from the
+     pickers the app already has, which keeps a single source of truth. */
+        var s = document.getElementById(srcId);
+        if (!s) return [];
+        var out = [];
+        Array.prototype.forEach.call(s.querySelectorAll("option"), function (o) {
+          var v = (o.value || o.textContent || "").trim();
+          if (!v || /\.\.\.$/.test(v)) return;
+          if (out.indexOf(v) < 0) out.push(v);
+        });
+        return out;
+      }
       function ensureList(id, srcId) {
         /* The pickers already exist as selects elsewhere in the app. Mirror their
      options into a datalist so an edit field offers the same choices and only
@@ -7312,19 +7394,24 @@
         editOverlay(
           t("editBag"),
           [
-            { k: "coffee", label: isEs ? "Café" : "Coffee", v: b.coffee, list: "coffeeList" },
+            { k: "coffee", label: isEs ? "Café" : "Coffee", v: b.coffee, options: knownCoffees() },
             {
               k: "roaster",
               label: isEs ? "Tostador" : "Roaster",
               v: b.roaster,
-              list: "roasterList",
+              options: listOptions("roaster"),
             },
-            { k: "roast", label: isEs ? "Tueste" : "Roast level", v: b.roast, list: "roastList" },
+            {
+              k: "roast",
+              label: isEs ? "Tueste" : "Roast level",
+              v: b.roast,
+              options: listOptions("roast"),
+            },
             {
               k: "process",
               label: isEs ? "Proceso" : "Process",
               v: b.process,
-              list: "processList",
+              options: listOptions("process"),
             },
             {
               k: "roast_date",
@@ -7349,13 +7436,13 @@
               k: "varietal",
               label: isEs ? "Variedad" : "Varietal",
               v: b.varietal,
-              list: "ghVarList",
+              options: listOptions("ghVarList"),
             },
             {
               k: "region",
               label: isEs ? "Origen / región" : "Origin / region",
               v: b.region,
-              list: "ghOriginList",
+              options: listOptions("ghOriginList"),
             },
             { k: "qty", label: isEs ? "Cuantas" : "How many", v: p.qty, type: "number" },
           ],
@@ -7391,7 +7478,12 @@
         editOverlay(
           t("editShot"),
           [
-            { k: "coffee", label: isEs ? "Café" : "Coffee", v: last.coffee, list: "coffeeList" },
+            {
+              k: "coffee",
+              label: isEs ? "Café" : "Coffee",
+              v: last.coffee,
+              options: knownCoffees(),
+            },
             { k: "dose_g", label: isEs ? "Dosis (g)" : "Dose (g)", v: last.dose_g },
             {
               k: "yield_g",
@@ -8205,7 +8297,10 @@
       })();
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
-          navigator.serviceWorker.register("sw.js").catch(function () {});
+          var _swv = typeof BUILD !== "undefined" && BUILD ? BUILD : "0";
+          navigator.serviceWorker
+            .register("sw.js?v=" + encodeURIComponent(_swv))
+            .catch(function () {});
         });
       }
 
@@ -9866,7 +9961,10 @@
    Public by design: a client ID is not a secret, it is an identifier. The
    origin allowlist is what actually protects it. While empty, the Google
    option stays hidden and nothing changes for anyone. */
-      var GOOGLE_CLIENT_ID = "380224424258-stc6p0eapng5bqcb8o04dh47446o9ln3.apps.googleusercontent.com";
+      var GOOGLE_CLIENT_ID =
+        typeof window !== "undefined" && window.BREWPILOT_CLIENT_ID
+          ? String(window.BREWPILOT_CLIENT_ID).trim()
+          : "";
       var GSCOPE = "https://www.googleapis.com/auth/drive.file";
       var GTOKEN = null,
         GTOKEN_EXP = 0,
@@ -10755,7 +10853,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-22-0718-df3100";
+      var BUILD = "2026-07-23-1919-685783";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
