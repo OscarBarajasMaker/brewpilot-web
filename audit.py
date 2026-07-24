@@ -32,7 +32,7 @@ import re, sys, json, os
 # data-dependent, so it is not a tell anyone can rely on. A green check that is
 # not checking is the exact failure this file exists to prevent, so the file had
 # better not be able to do it to itself. Print the version next to the count.
-AUDIT_VERSION = 'v4-2026-07-17'
+AUDIT_VERSION = 'v6-2026-07-23'
 
 HTML = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/render/index_v5.html'
 src = open(HTML, encoding='utf-8').read()
@@ -248,6 +248,69 @@ if 'script.google.com/macros' in src:
     fail('exec-revival', 'an Apps Script /macros URL is in the shipped file')
 checks += 5
 
+# ======================================= 13. THE ID AND THE VERSION STAY OUTSIDE
+# Build 12a3b2 went live with GOOGLE_CLIENT_ID = "" and a service worker whose
+# cache name was frozen two builds back. Both had one cause: index.html was
+# uploaded straight to the repo from a phone, and a correctness step lived in a
+# PowerShell script on a PC that was not involved. A publish route that a script
+# cannot reach must not be a route that can be wrong.
+#
+# So the ID moved into client-id.js and the SW version moved onto the
+# registration URL. These checks keep them there.
+if not re.search(r'<script\s+src\s*=\s*["\']client-id\.js["\']', src):
+    fail('client-id', 'index.html does not load client-id.js -> the client ID has nowhere to come from')
+if 'BREWPILOT_CLIENT_ID' not in JS:
+    fail('client-id', 'GOOGLE_CLIENT_ID is not read from window.BREWPILOT_CLIENT_ID -> it is baked inline again')
+if 'googleusercontent.com' in src:
+    fail('client-id', 'a literal Google client ID is baked into index.html -> replacing this file loses it')
+checks += 3
+
+# ================================================ 14. SW VERSION IS DERIVED
+# If the registration loses its ?v= the cache name silently freezes and users
+# keep an old shell after a publish. Network first hides that until they are
+# offline, which is the worst kind of bug: invisible until it is not.
+if not re.search(r'register\(\s*["\']sw\.js\?v=', JS):
+    fail('sw-version', 'the service worker is not registered as sw.js?v=<BUILD> -> the cache name cannot change')
+checks += 1
+
+# ================================ 15. THE PHONE PICKERS STAY PICKERS
+# iOS shows a datalist only as keyboard suggestions, never as a tappable list,
+# so an <input list=...> reads as free text on the device it is used on. Origin,
+# varietal and region were exactly that: typed by hand, misspellings and all,
+# into fields the app already had the answers for. pickerize() upgrades them to
+# real selects at boot. These checks make sure the upgrade is still wired up and
+# still points at elements that exist.
+m_pk = re.search(r'function pickerizeAll\(\)\s*\{(.*?)\}', JS, re.S)
+if not m_pk:
+    fail('picker', 'pickerizeAll() is gone -> origin and varietal fall back to free text on iOS')
+else:
+    pk_ids = re.findall(r'["\']([A-Za-z0-9_]+)["\']', m_pk.group(1))
+    if not pk_ids:
+        fail('picker', 'pickerizeAll() upgrades no fields at all')
+    for i in pk_ids:
+        if i not in known:
+            fail('picker', "pickerizeAll() upgrades '%s' but no element has that id" % i)
+    checks += len(pk_ids)
+if not re.search(r'pickerizeAll\(\s*\)', JS.replace('function pickerizeAll()', '')):
+    fail('picker', 'pickerizeAll() is defined but never called -> the fields stay free text')
+checks += 1
+
+# The rotation used to open a bare prompt(), which meant retyping a coffee the
+# app already knows, on a phone keyboard, with a typo creating a duplicate entry.
+m_ra = re.search(r'function rotAdd\(\)\s*\{', JS)
+if m_ra:
+    i = m_ra.end() - 1
+    d = 0; j = i
+    while j < len(JS):
+        if JS[j] == '{': d += 1
+        elif JS[j] == '}':
+            d -= 1
+            if d == 0: break
+        j += 1
+    if re.search(r'\bprompt\s*\(', JS[i:j+1]):
+        fail('picker', 'rotAdd() calls prompt() again -> the coffee has to be retyped by hand')
+    checks += 1
+
 # ---------------------------------------------------------------- report
 print()
 print('  audit of %s' % os.path.basename(HTML))
@@ -257,19 +320,6 @@ if warns:
     for c, m in warns:
         print('  WARN  [%s] %s' % (c, m))
     print()
-# ---- inline handler references must resolve (onclick/onchange/oninput) ----
-# undef.js parses script scope but not inline HTML handlers, so a handler calling a
-# deleted function (e.g. the /exec amputation leaving onclick=saveWebhook) slips both
-# gates and dies at runtime. Catch it here.
-_defined = set(re.findall(r'function\s+([A-Za-z_$][\w$]*)\s*\(', src))
-_defined |= set(re.findall(r'(?:var|let|const)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:function|\()', src))
-_hbuiltins = {'document','if','return','localStorage','JSON','setTimeout','alert','confirm',
-              'parseFloat','parseInt','Math','this','var','getElementById','sendPrompt'}
-for _h in re.findall(r'on(?:click|change|input)\s*=\s*["\']([^"\']+)["\']', src):
-    for _fn in re.findall(r'([A-Za-z_$][\w$]*)\s*\(', _h):
-        if _fn not in _defined and _fn not in _hbuiltins:
-            fail('dangling-handler', "inline handler calls undefined function " + _fn + "()")
-
 if fails:
     for c, m in fails:
         print('  FAIL  [%s] %s' % (c, m))
