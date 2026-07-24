@@ -5107,15 +5107,32 @@
           } catch (e) {}
           return;
         }
-        if (kind === "filter") {
-          try {
-            return logFilter();
-          } catch (e) {}
-          return;
-        }
-        try {
-          return logshot();
-        } catch (e) {}
+        /* The identity gate runs first and can rewrite #coffee, so the save has to
+     happen after it resolves, not beside it. */
+        bpCoffeeGate()
+          .then(function (ok) {
+            if (!ok) return;
+            if (kind === "filter") {
+              try {
+                return logFilter();
+              } catch (e) {}
+              return;
+            }
+            try {
+              return logshot();
+            } catch (e) {}
+          })
+          .catch(function () {
+            if (kind === "filter") {
+              try {
+                return logFilter();
+              } catch (e) {}
+              return;
+            }
+            try {
+              return logshot();
+            } catch (e) {}
+          });
       }
       function logMethods() {
         /* All three, always. This used to list only the methods enabled in the wizard,
@@ -7679,6 +7696,306 @@
         if (!top) return;
         if (confirm(t("rotPicked").replace("{c}", top.coffee).replace("{why}", top.why)))
           rotEnsure(top.coffee);
+      }
+      /* ---- coffee identity gate ------------------------------------------------
+   Two failures this fixes, both seen in real data on 2026-07-23. A brew was
+   logged against a coffee that had no bag in inventory, so cost and rest never
+   applied to it. And the same bag got logged twice under two spellings,
+   'Bombe Honey' and 'Bomber honey', which splits its history in half and
+   quietly poisons every average built on it. Neither threw, neither showed. */
+      function bpNorm(s) {
+        return String(s || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, " ")
+          .trim();
+      }
+      function bpDigits(s) {
+        var m = String(s || "").match(/[0-9]/g);
+        return m ? m.join("") : "";
+      }
+      function bpDist(a, b) {
+        var m = a.length,
+          n = b.length;
+        if (!m) return n;
+        if (!n) return m;
+        var prev = [],
+          cur = [],
+          i,
+          j;
+        for (j = 0; j <= n; j++) prev[j] = j;
+        for (i = 1; i <= m; i++) {
+          cur[0] = i;
+          for (j = 1; j <= n; j++) {
+            var cost = a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1;
+            cur[j] = Math.min(cur[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+          }
+          for (j = 0; j <= n; j++) prev[j] = cur[j];
+        }
+        return prev[n];
+      }
+      function bpInvNames() {
+        var out = [],
+          seen = {};
+        (typeof IINV !== "undefined" && IINV ? IINV : []).forEach(function (r) {
+          if (String(r.status || "") === "Finished") return;
+          var n = String(r.coffee || "").trim();
+          if (!n) return;
+          var k = bpNorm(n);
+          if (seen[k]) return;
+          seen[k] = 1;
+          out.push(n);
+        });
+        return out;
+      }
+      function bpKnownNames() {
+        var out = bpInvNames().slice(),
+          seen = {};
+        out.forEach(function (x) {
+          seen[bpNorm(x)] = 1;
+        });
+        try {
+          JSON.parse(localStorage.getItem("coffees") || "[]").forEach(function (x) {
+            var n = String(x || "").trim();
+            if (!n) return;
+            var k = bpNorm(n);
+            if (seen[k]) return;
+            seen[k] = 1;
+            out.push(n);
+          });
+        } catch (e) {}
+        return out;
+      }
+      function bpInInventory(name) {
+        var k = bpNorm(name);
+        return bpInvNames().some(function (x) {
+          return bpNorm(x) === k;
+        });
+      }
+      function bpNearName(name, list) {
+        /* One character apart is a typo inside a word and a DIFFERENT LOT inside a
+     number. Bombe Honey and Bomber honey are one bag; Lot #25/047 and Lot
+     #25/048 are two, and merging those would be worse than never suggesting
+     anything at all. So a candidate whose digits differ is never a typo. */
+        var n = bpNorm(name);
+        if (n.length < 4) return "";
+        var nd = bpDigits(name),
+          best = "",
+          bd = 99;
+        for (var i = 0; i < list.length; i++) {
+          var cand = list[i],
+            m = bpNorm(cand);
+          if (!m || m === n) continue;
+          if (bpDigits(cand) !== nd) continue;
+          var lim = m.length <= 6 ? 1 : m.length <= 14 ? 2 : 3;
+          var d = bpDist(n, m);
+          if (d <= lim && d < bd) {
+            bd = d;
+            best = cand;
+          }
+        }
+        return best;
+      }
+      function bpSingleList() {
+        try {
+          return JSON.parse(localStorage.getItem("bpSingleDose") || "[]");
+        } catch (e) {
+          return [];
+        }
+      }
+      function bpIsSingle(name) {
+        var k = bpNorm(name);
+        return bpSingleList().some(function (x) {
+          return bpNorm(x) === k;
+        });
+      }
+      function bpMarkSingle(name) {
+        try {
+          if (bpIsSingle(name)) return;
+          var a = bpSingleList();
+          a.push(String(name).trim());
+          localStorage.setItem("bpSingleDose", JSON.stringify(a));
+        } catch (e) {}
+      }
+      function bpChoice(title, body, opts) {
+        /* Real buttons, because confirm() has room for a yes and a no and these
+     questions have three honest answers. Resolves null when dismissed. */
+        return new Promise(function (res) {
+          var ov = document.createElement("div");
+          ov.style.cssText =
+            "position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
+          var card = document.createElement("div");
+          card.style.cssText =
+            "background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;max-width:420px;width:100%;color:var(--text)";
+          var h = document.createElement("div");
+          h.textContent = title;
+          h.style.cssText = "font-weight:600;margin-bottom:6px";
+          card.appendChild(h);
+          if (body) {
+            var p = document.createElement("div");
+            p.textContent = body;
+            p.style.cssText = "color:var(--dim);font-size:13px;line-height:1.45;margin-bottom:6px";
+            card.appendChild(p);
+          }
+          function close(v) {
+            if (ov.parentNode) ov.parentNode.removeChild(ov);
+            res(v);
+          }
+          opts.forEach(function (o) {
+            var b = document.createElement("button");
+            b.textContent = o.l;
+            b.style.cssText =
+              "display:block;width:100%;margin-top:8px;padding:12px;border-radius:10px;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text);font-weight:600;cursor:pointer";
+            b.onclick = function () {
+              close(o.v);
+            };
+            card.appendChild(b);
+          });
+          var cx = document.createElement("button");
+          cx.textContent = t("scoreCancel");
+          cx.style.cssText =
+            "display:block;width:100%;margin-top:10px;padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--dim);cursor:pointer";
+          cx.onclick = function () {
+            close(null);
+          };
+          card.appendChild(cx);
+          ov.appendChild(card);
+          document.body.appendChild(ov);
+        });
+      }
+      function bpRegisterBag(name) {
+        /* Deliberately NOT awaited by the gate. If it were, cancelling this form
+     would leave the brew unsaved with nothing on screen explaining why. The
+     brew is already good; the bag is a separate piece of bookkeeping. */
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        if (typeof dataMode === "function" && dataMode() !== "google") {
+          alert(t("gSaveFirst"));
+          return;
+        }
+        var stIn = isEs ? "En uso, en la barra" : "In use, on the counter";
+        var stRest = isEs ? "Reposando afuera" : "Resting out to degas";
+        var stFrozen = isEs ? "Congelada y sellada" : "Frozen and sealed";
+        editOverlay(
+          isEs ? "Registrar una bolsa de " + name : "Register a bag of " + name,
+          [
+            {
+              k: "bag_g",
+              label: isEs ? "Gramos por bolsa" : "Grams per bag",
+              v: "250",
+              type: "number",
+            },
+            { k: "qty", label: isEs ? "Cuantas bolsas" : "How many bags", v: "1", type: "number" },
+            {
+              k: "roast_date",
+              label: isEs ? "Fecha de tueste" : "Roast date",
+              v: "",
+              type: "date",
+            },
+            {
+              k: "state",
+              label: isEs ? "Estado" : "State",
+              v: stIn,
+              options: [stIn, stRest, stFrozen],
+            },
+          ],
+          async function (o) {
+            var st = String((o && o.state) || stIn);
+            try {
+              window.REST_MODE = st !== stFrozen;
+            } catch (e) {}
+            var fo = {
+              coffee: name,
+              roaster: "",
+              portion: "",
+              qty: (o && o.qty) || "1",
+              roast_date: (o && o.roast_date) || "",
+              roast: "",
+              process: "",
+              freeze_date: "",
+              varietal: "",
+              region: "",
+              bag_g: (o && o.bag_g) || "",
+              price: "",
+              currency: typeof INVCCY !== "undefined" ? INVCCY : "",
+            };
+            await gFreeze(fo);
+            if (st === stIn) {
+              try {
+                await gBagState(name, "Counter", "Open");
+              } catch (e) {}
+            }
+            try {
+              iLocalInvPush(fo);
+            } catch (e) {}
+            try {
+              loadInventory();
+            } catch (e) {}
+            try {
+              addCoffeeName(name);
+            } catch (e) {}
+          },
+        );
+      }
+      async function bpCoffeeGate() {
+        /* Runs BEFORE the row is written, so a corrected name is the name that gets
+     saved. Returns false only when the person backed out on purpose. */
+        var el = document.getElementById("coffee");
+        if (!el) return true;
+        var c = String(el.value || "").trim();
+        if (!c) return true;
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        if (bpInInventory(c)) return true;
+        var near = bpNearName(c, bpKnownNames());
+        if (near) {
+          var a = await bpChoice(
+            isEs
+              ? "Se parece a un cafe que ya tienes"
+              : "This looks like a coffee you already have",
+            isEs
+              ? 'Escribiste "' +
+                  c +
+                  '". Ya existe "' +
+                  near +
+                  '". Si son el mismo, usar dos nombres parte su historial en dos y ensucia los promedios.'
+              : 'You typed "' +
+                  c +
+                  '". You already have "' +
+                  near +
+                  '". If they are the same bag, two spellings split its history and skew every average built on it.',
+            [
+              { l: isEs ? 'Es "' + near + '"' : 'It is "' + near + '"', v: "use" },
+              { l: isEs ? "Es un cafe distinto" : "It is a different coffee", v: "other" },
+            ],
+          );
+          if (a === null) return false;
+          if (a === "use") {
+            el.value = near;
+            c = near;
+            if (bpInInventory(c)) return true;
+          }
+        }
+        if (bpIsSingle(c)) return true;
+        var b = await bpChoice(
+          isEs ? '"' + c + '" no esta en tu inventario' : '"' + c + '" is not in your inventory',
+          isEs
+            ? "Sin una bolsa no puedo calcular su costo por taza ni su ventana de reposo."
+            : "Without a bag I cannot work out its cost per cup or its rest window.",
+          [
+            { l: isEs ? "Registrar una bolsa" : "Register a bag", v: "bag" },
+            { l: isEs ? "Fue una dosis unica" : "It was a single dose", v: "single" },
+          ],
+        );
+        if (b === null) return false;
+        if (b === "single") {
+          bpMarkSingle(c);
+          return true;
+        }
+        if (b === "bag") {
+          try {
+            bpRegisterBag(c);
+          } catch (e) {}
+          return true;
+        }
+        return true;
       }
       function rotAdd() {
         /* Was a bare prompt(), which meant retyping a coffee name that the app
@@ -10977,7 +11294,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-23-2044-8030d6";
+      var BUILD = "2026-07-23-2112-35d874";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
