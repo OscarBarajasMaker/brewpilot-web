@@ -2901,6 +2901,13 @@ FEATURES_JS = r'''
         }
         if (!done) {
           setTimeout(function () {
+            /* A handoff outranks onboarding. By the time this timer fires,
+     bpHandoff has already put the shot metrics into the log form and switched
+     to that tab, so pulling the person to settings leaves the data sitting on
+     a screen nobody is looking at. Onboarding is a guess that someone is new;
+     a handoff is an explicit instruction to log THIS shot. The flag is left
+     unset on purpose, so the next plain load still offers onboarding. */
+            if (typeof BPSHOT !== "undefined" && BPSHOT) return;
             try {
               showTab("insights");
             } catch (e) {}
