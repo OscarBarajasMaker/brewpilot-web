@@ -1421,15 +1421,43 @@
         }
         return fallback;
       }
+      function lastShotByName(name) {
+        /* Not every coffee is in Inventory. A bag can have logged shots and no
+     inventory row at all, and those shots carry the same identity columns, so a
+     coffee you have brewed twice should never present an empty form. Newest
+     first: a later shot is the more recent correction. */
+        var k = bpNorm(name);
+        if (!k) return null;
+        var rows = typeof IROWS !== "undefined" && IROWS ? IROWS : [];
+        for (var i = rows.length - 1; i >= 0; i--) {
+          if (rows[i] && bpNorm(rows[i].coffee) === k) return rows[i];
+        }
+        return null;
+      }
+      function coffeeIdentity(name) {
+        /* Inventory, then your own logged history, then whatever the rotation
+     entry happens to carry. Three sources, most authoritative first, each field
+     taken from the first source that actually has it rather than the first
+     source that exists: an Inventory row with a blank varietal must not veto a
+     varietal the Shot Log knows. */
+        var src = [invRowByName(name), lastShotByName(name)];
+        return function (k, entry) {
+          for (var i = 0; i < src.length; i++) {
+            if (!src[i]) continue;
+            var v = src[i][k];
+            if (v !== undefined && v !== null && String(v).trim() !== "") return v;
+          }
+          var e = entry ? entry[k] : "";
+          return e === undefined || e === null ? "" : e;
+        };
+      }
       function fillEntry(e) {
         /* A rotation entry added from the picker carries only a name, so filling
      from the entry alone left every field blank. Inventory first, the entry as
      fallback, because a chip built from a logged shot does carry these. */
-        var inv = invRowByName(e.coffee) || {};
+        var id = coffeeIdentity(e.coffee);
         var pick = function (k) {
-          var v = inv[k];
-          if (v === undefined || v === null || String(v).trim() === "") v = e[k];
-          return v === undefined || v === null ? "" : v;
+          return id(k, e);
         };
         /* Method BEFORE the fields. setLogMethod re-renders the form, so anything
      filled ahead of it is wiped. Same ordering trap as the ESP handoff. */

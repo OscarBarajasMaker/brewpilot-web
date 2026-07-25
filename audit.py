@@ -724,9 +724,9 @@ if not m_fe:
     fail('rotation', 'fillEntry is gone')
 else:
     b = m_fe.group(1)
-    if 'invRowByName(' not in b:
-        fail('rotation', 'fillEntry no longer reads Inventory -> a chip added from the picker '
-                         'carries only a name and fills nothing else')
+    if 'coffeeIdentity(' not in b:
+        fail('rotation', 'fillEntry no longer resolves the coffee identity -> a chip added from '
+                         'the picker carries only a name and fills nothing else')
     if re.search(r'getElementById\("(varietal|roast)"\)\.value\s*=', b):
         fail('rotation', 'fillEntry assigns straight to the varietal or roast SELECT -> a value '
                          'with no matching option is silently dropped')
@@ -750,6 +750,31 @@ elif not (re.search(r'var k = bpNorm\(name\)', m_ir.group(1))
     fail('rotation', 'invRowByName does not normalise BOTH sides of the comparison -> casing or '
                      'punctuation splits one bag into two identities')
 checks += 1
+
+# The identity lookup must consult BOTH sources. A coffee can have logged shots
+# and no Inventory row at all, and those shots carry the same identity columns,
+# so Inventory alone would leave a brewed coffee presenting an empty form.
+m_ci = re.search(r'function coffeeIdentity\(name\)\s*\{(.*?)\n      \};\n      \}', JS, re.S)
+if not m_ci:
+    m_ci = re.search(r'function coffeeIdentity\(name\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_ci:
+    fail('rotation', 'coffeeIdentity is gone')
+else:
+    b = m_ci.group(1)
+    if 'invRowByName(' not in b:
+        fail('rotation', 'coffeeIdentity no longer consults Inventory')
+    if 'lastShotByName(' not in b:
+        fail('rotation', 'coffeeIdentity no longer falls back to logged shots -> a coffee with '
+                         'history but no Inventory row fills nothing')
+    checks += 2
+
+m_ls4 = re.search(r'function lastShotByName\(name\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_ls4:
+    fail('rotation', 'lastShotByName is gone')
+elif 'rows.length - 1' not in m_ls4.group(1):
+    fail('rotation', 'lastShotByName no longer scans newest first -> an old shot overrides a '
+                     'later correction')
+checks += 2
 
 # ---------------------------------------------------------------- report
 print()
