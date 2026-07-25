@@ -55,6 +55,8 @@ $ROUTES = @(
   @{ Name = 'build_v5.py';           Dest = 'generator' },
   @{ Name = 'src_v5.html';           Dest = 'generator' },
   @{ Name = 'adv2.js';               Dest = 'generator' },
+  @{ Name = 'prep.py';               Dest = '.github' },
+  @{ Name = 'verify_site.py';        Dest = '.github' },
   @{ Name = 'panel.h';               Dest = 'FIRMWARE' },
   @{ Name = 'panel_v5.h';            Dest = 'FIRMWARE' }
 )

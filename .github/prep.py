@@ -29,6 +29,25 @@ import os
 import re
 import sys
 
+# The audit floor. CI runs whatever audit.py is committed, and an OLD audit
+# passes: that is precisely how v7 gated three versions of new work while
+# reporting green, and nobody could have noticed, because a weaker gate looks
+# exactly like a passing one.
+#
+# Raise this in the SAME commit that raises AUDIT_VERSION. publish.ps1 stages by
+# .gitignore now, so the two files move together and cannot drift apart the way
+# they did under the old allowlist.
+MIN_AUDIT = 'v13-2026-07-25'
+
+def audit_rank(v):
+    """(major, date) from a version like v13-2026-07-25. Sorts by number first,
+    then by date, so v9 is correctly OLDER than v13 despite sorting later as a
+    string. A string compare here would have been the bug all over again."""
+    m = re.match(r'v(\d+)-(\d{4}-\d{2}-\d{2})$', str(v).strip())
+    if not m:
+        return None
+    return (int(m.group(1)), m.group(2))
+
 fails = []
 
 # ---------------------------------------------------------------- index.html
@@ -83,6 +102,29 @@ else:
         fails.append('sw.js does not derive its cache name from the ?v= query. That is '
                      'the old stamped sw.js, whose cache name freezes on any publish '
                      'route that does not rewrite it.')
+
+# ------------------------------------------------------------------ audit.py
+if not os.path.exists('audit.py'):
+    fails.append('audit.py is missing from the repo. The workflow would have nothing to '
+                 'gate on and would still report green.')
+else:
+    av = re.search(r"^AUDIT_VERSION\s*=\s*['\"]([^'\"]+)['\"]", open('audit.py', encoding='utf-8').read(), re.M)
+    if not av:
+        fails.append('audit.py has no AUDIT_VERSION, so there is no way to tell whether the '
+                     'committed gate is current.')
+    else:
+        got, want = audit_rank(av.group(1)), audit_rank(MIN_AUDIT)
+        if got is None:
+            fails.append('audit.py AUDIT_VERSION is not in the vN-YYYY-MM-DD form: ' + av.group(1))
+        elif want is None:
+            fails.append('MIN_AUDIT in prep.py is malformed: ' + MIN_AUDIT)
+        elif got < want:
+            fails.append('committed audit.py is ' + av.group(1) + ' but this app needs at least '
+                         + MIN_AUDIT + '. An older audit passes by checking less, so this build '
+                         'would deploy against a gate that never saw its own features. Commit the '
+                         'current audit.py.')
+        else:
+            print('audit: ' + av.group(1) + ' (floor ' + MIN_AUDIT + ')')
 
 # -------------------------------------------------------------------- report
 print()
