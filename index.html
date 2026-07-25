@@ -12,6 +12,7 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="client-id.js"></script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="BrewPilot" />
     <meta name="theme-color" content="#0E1116" />
@@ -2383,6 +2384,13 @@
             } else alert(t("gSaveFailed"));
           }
         }
+        /* After the row is saved, never before: a lane must not claim a shot the
+   sheet rejected. laneRecord re-checks inventory identity itself, so a shot that
+   reached here through logAction's catch path (which skips bpCoffeeGate) is
+   still filed only if the coffee is canonical. */
+        try {
+          await laneRecord(cols);
+        } catch (e) {}
         try {
           pushRotation(
             {
@@ -3577,15 +3585,42 @@
         }
       }
       function renderSheetStatus() {
+        /* "Connected" was the whole message, which is the one thing that was never
+   in doubt. It never said WHICH spreadsheet, so an auto-adopted stray file and
+   the real log looked identical on screen and the only way to tell them apart
+   was to open Drive. The name goes in as a text node, not innerHTML: it comes
+   from Drive and a file can be named anything at all. */
         let el = document.getElementById("sheetStatus");
         if (!el) return;
-        if (dataMode() === "google") {
-          el.innerHTML =
-            "<span style='color:var(--hi-text)'>Connected - inventory and history are saving</span>";
-        } else {
-          el.innerHTML =
+        el.innerHTML = "";
+        let line = document.createElement("div");
+        if (dataMode() !== "google") {
+          line.innerHTML =
             "<span style='color:var(--warn)'>Not connected - live advice works, but nothing is saved</span>";
+          el.appendChild(line);
+          return;
         }
+        line.innerHTML =
+          "<span style='color:var(--hi-text)'>Connected - inventory and history are saving</span>";
+        el.appendChild(line);
+        let who = GNAME || (GSHEET ? "sheet " + String(GSHEET).slice(0, 10) : "");
+        if (!who) return;
+        let sub = document.createElement("div");
+        sub.style.cssText = "color:var(--dim);margin-top:2px";
+        sub.appendChild(document.createTextNode("Writing to "));
+        let url = gSheetUrl();
+        if (url) {
+          let a = document.createElement("a");
+          a.href = url;
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.style.color = "var(--dim)";
+          a.textContent = who;
+          sub.appendChild(a);
+        } else {
+          sub.appendChild(document.createTextNode(who));
+        }
+        el.appendChild(sub);
       }
       async function renderRotModes() {
         let box = document.getElementById("rotmodechips");
@@ -6529,6 +6564,9 @@
         var b = await gEnsureHeader(INV_TAB, INV_COLNAMES);
         try {
           await gEnsureTab(LANE_TAB, LANE_COLNAMES);
+        } catch (e) {}
+        try {
+          await gLaneList();
         } catch (e) {}
         if (a || b) {
           try {
@@ -10534,6 +10572,342 @@
         "h5",
       ];
 
+      /* ---- the lane store -----------------------------------------------------
+   A lane is one row per (coffee, type). Traditional espresso, soup and filter
+   of the SAME bag are three lanes and are never averaged: they run at wildly
+   different pressures, so folding them together would read a style switch as a
+   grind collapse and advise a correction that is not needed.
+
+   A shot files into a lane only when the coffee is a canonical INVENTORY name.
+   That is re-checked here rather than trusted from a flag bpCoffeeGate set
+   earlier, for two reasons. logAction has a catch path that calls logshot()
+   WITHOUT the gate, so a flag would carry the previous shot's grant into a shot
+   the gate never saw. And bpInInventory is pure, so re-asking costs nothing and
+   cannot go stale. A single dose has no bag, no rest window and no second shot
+   to compare against; a name the gate could not place is more likely a typo
+   than a new coffee, and starting a lane on a typo is how one bag turns into
+   two histories that each look thin. Both get advised generically by type. */
+      var LANE_TYPES = ["espresso", "soup", "filter"];
+      var LANE_HIST = 5;
+      var LANE_MIN = 3;
+      /* Weight cap on the running mean. Without it a lane twenty shots old is
+   effectively frozen and a real change in the bag never moves it; with it the
+   baseline stays responsive without whipsawing on any single shot. */
+      var LANE_WCAP = 20;
+      /* Measured, not guessed, and from four verified shots only. Soup
+   resistance is genuinely noisy at low pressure - two shots of the same coffee
+   read 0.09 and 0.20 - so its band is wide on purpose. A tight band there would
+   fire on every shot and be ignored within a week. Traditional sat at 2.78 and
+   2.88, so its band is tight and a miss there means something.
+   Filter is null. There is no measured filter baseline yet and inventing one
+   would be worse than saying so. */
+      var LANE_SEED = {
+        espresso: {
+          resistance: 2.83,
+          band: 0.12,
+          adherence: 0.85,
+          channel: 0.05,
+          yield_g: 56,
+          obs: [2.78, 2.88],
+          n: 2,
+        },
+        soup: {
+          resistance: 0.15,
+          band: 0.6,
+          adherence: 0.75,
+          channel: 0.25,
+          yield_g: 81,
+          obs: [0.09, 0.2],
+          n: 2,
+        },
+        filter: null,
+      };
+
+      function laneNum(v) {
+        if (v === undefined || v === null || String(v).trim() === "") return "";
+        var n = parseFloat(v);
+        return isFinite(n) ? n : "";
+      }
+      function laneRound(v, d) {
+        if (v === "") return "";
+        var m = Math.pow(10, d);
+        return Math.round(v * m) / m;
+      }
+      function laneNormType(t) {
+        var v = String(t || "")
+          .trim()
+          .toLowerCase();
+        if (v === "traditional") v = "espresso";
+        return LANE_TYPES.indexOf(v) >= 0 ? v : "";
+      }
+      function laneId(coffee, type) {
+        /* The type is part of the identity, not a column that happens to sit
+     next to it. No type, no lane: a row keyed on the coffee alone would collect
+     all three styles into one baseline the first time it was written. bpNorm
+     collapses every non-alphanumeric to a space, so the coffee half can never
+     contain the separator and the id cannot be ambiguous. */
+        var c = bpNorm(coffee || ""),
+          t = laneNormType(type);
+        if (!c || !t) return "";
+        return c + "|" + t;
+      }
+      function laneDay(ts) {
+        var s = String(ts || "").trim();
+        var m = s.match(/^\d{4}-\d{2}-\d{2}/);
+        if (m) return m[0];
+        var d = new Date(s);
+        if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+        return new Date().toISOString().slice(0, 10);
+      }
+      function laneCellSafe(v) {
+        if (v === undefined || v === null) return "";
+        return String(v)
+          .replace(/[|\r\n]/g, " ")
+          .trim();
+      }
+      function laneHistCell(shot) {
+        /* date|grind_setting|resistance|rating, one shot per cell. Five plain
+     cells rather than one JSON blob, so a lane can be read and corrected in the
+     sheet by hand. The separator is stripped from every field first: a grind
+     setting typed as "3|4" would otherwise split the cell and shift every
+     field after it. */
+        return [laneDay(shot.date), shot.grind, shot.resistance, shot.rating]
+          .map(laneCellSafe)
+          .join("|");
+      }
+      function laneCache() {
+        try {
+          var o = JSON.parse(localStorage.getItem("bpLanes") || "{}");
+          return o && typeof o === "object" ? o : {};
+        } catch (e) {
+          return {};
+        }
+      }
+      function laneCacheWrite(map) {
+        try {
+          localStorage.setItem("bpLanes", JSON.stringify(map));
+        } catch (e) {}
+      }
+      function laneGet(coffee, type) {
+        var id = laneId(coffee, type);
+        if (!id) return null;
+        return laneCache()[id] || null;
+      }
+      function laneBlank(id) {
+        /* Built from LANE_COLNAMES, so a column added to the schema exists on a
+     new lane without a second edit here. */
+        var o = {};
+        LANE_COLNAMES.forEach(function (k) {
+          o[k] = "";
+        });
+        o.lane_id = id;
+        o.n_shots = 0;
+        return o;
+      }
+      function laneShotFromCols(cols) {
+        /* Read by NAME through COLNAMES, never by a literal index. The metric
+     tail is appended by concat, so an index written here would be correct until
+     the day a column moves and then silently wrong. */
+        function at(name) {
+          var i = COLNAMES.indexOf(name);
+          if (i < 0) return "";
+          var v = cols[i];
+          return v === undefined || v === null ? "" : v;
+        }
+        return {
+          coffee: String(at("coffee") || "").trim(),
+          type: laneNormType(at("type")),
+          date: String(at("timestamp") || ""),
+          grind: at("grind_setting"),
+          grindUm: laneNum(at("grind_um")),
+          rating: at("rating"),
+          resistance: laneNum(at("resistance")),
+          adherence: laneNum(at("adherence")),
+          channel: laneNum(at("channel")),
+          yieldG: laneNum(at("yield_g")),
+        };
+      }
+      function laneBlend(prev, w, v) {
+        /* Running mean against a capped weight, not a recompute. The sheet keeps
+     five shots of history and a lane may be twenty shots old, so there is
+     nothing left to recompute from. A blank shot value leaves the baseline
+     alone rather than dragging it toward zero. */
+        if (v === "") return prev;
+        if (prev === "" || !(w > 0)) return v;
+        return (prev * w + v) / (w + 1);
+      }
+      function laneApply(lane, shot) {
+        var n = laneNum(lane.n_shots);
+        if (n === "") n = 0;
+        var w = Math.min(n, LANE_WCAP);
+        lane.lane_id = laneId(shot.coffee, shot.type);
+        lane.coffee = shot.coffee;
+        lane.type = shot.type;
+        lane.updated = laneDay(shot.date);
+        lane.n_shots = n + 1;
+        lane.base_resistance = laneRound(
+          laneBlend(laneNum(lane.base_resistance), w, shot.resistance),
+          3,
+        );
+        lane.base_adherence = laneRound(
+          laneBlend(laneNum(lane.base_adherence), w, shot.adherence),
+          3,
+        );
+        lane.base_channel = laneRound(laneBlend(laneNum(lane.base_channel), w, shot.channel), 3);
+        lane.base_yield_g = laneRound(laneBlend(laneNum(lane.base_yield_g), w, shot.yieldG), 1);
+        lane.base_grind_um = laneRound(laneBlend(laneNum(lane.base_grind_um), w, shot.grindUm), 0);
+        var hist = [];
+        for (var i = 1; i <= LANE_HIST; i++) hist.push(lane["h" + i] || "");
+        hist.unshift(laneHistCell(shot));
+        hist = hist.slice(0, LANE_HIST);
+        for (var j = 0; j < LANE_HIST; j++) lane["h" + (j + 1)] = hist[j];
+        return lane;
+      }
+      function laneBaseline(coffee, type) {
+        /* Three honest answers, and which one it is comes back in .source so a
+     caller cannot mistake the population figure for this bag's own. */
+        var t = laneNormType(type);
+        var l = laneGet(coffee, t);
+        var n = l ? laneNum(l.n_shots) : "";
+        if (n === "") n = 0;
+        if (l && n >= LANE_MIN) {
+          var s0 = LANE_SEED[t];
+          return {
+            source: "lane",
+            type: t,
+            n: n,
+            resistance: laneNum(l.base_resistance),
+            adherence: laneNum(l.base_adherence),
+            channel: laneNum(l.base_channel),
+            yield_g: laneNum(l.base_yield_g),
+            grind_um: laneNum(l.base_grind_um),
+            band: s0 ? s0.band : 0.4,
+          };
+        }
+        var s = LANE_SEED[t];
+        if (!s) return { source: "none", type: t, n: n };
+        return {
+          source: "type",
+          type: t,
+          n: n,
+          resistance: s.resistance,
+          adherence: s.adherence,
+          channel: s.channel,
+          yield_g: s.yield_g,
+          band: s.band,
+          obs: s.obs,
+        };
+      }
+      function laneEligible(coffee) {
+        /* The whole gate, in one place. Inventory identity and not a single
+     dose. Pure, so it can be re-asked at file time without going stale. */
+        var c = String(coffee || "").trim();
+        if (!c) return false;
+        if (typeof bpIsSingle === "function" && bpIsSingle(c)) return false;
+        return typeof bpInInventory === "function" && bpInInventory(c);
+      }
+      function laneRowToObj(head, row) {
+        var o = {};
+        for (var i = 0; i < head.length; i++) {
+          var k = String(head[i]).trim();
+          if (k) o[k] = row && row[i] !== undefined ? row[i] : "";
+        }
+        return o;
+      }
+      async function gLaneList() {
+        /* Reconciliation. The sheet is the truth and this replaces the cache
+     wholesale, so a lane corrected by hand in the sheet wins over whatever the
+     browser was carrying. Any failure leaves the cache exactly as it was. */
+        if (dataMode() !== "google") return laneCache();
+        var rows = [];
+        try {
+          rows = await gRead(LANE_TAB);
+        } catch (e) {
+          return laneCache();
+        }
+        if (!rows.length || !rows[0] || !rows[0].length) return laneCache();
+        var head = rows[0],
+          map = {};
+        for (var i = 1; i < rows.length; i++) {
+          var o = laneRowToObj(head, rows[i]);
+          var id = String(o.lane_id || "").trim();
+          if (!id) continue;
+          map[id] = o;
+        }
+        laneCacheWrite(map);
+        return map;
+      }
+      async function gLaneUpsert(lane) {
+        if (dataMode() !== "google") return false;
+        try {
+          await gEnsureTab(LANE_TAB, LANE_COLNAMES);
+        } catch (e) {}
+        var rows = [];
+        try {
+          rows = await gRead(LANE_TAB);
+        } catch (e) {
+          return false;
+        }
+        if (!rows.length || !rows[0] || !rows[0].length) return false;
+        var head = rows[0],
+          idc = -1;
+        for (var i = 0; i < head.length; i++) {
+          if (String(head[i]).trim() === "lane_id") idc = i;
+        }
+        if (idc < 0) return false;
+        var want = String(lane.lane_id),
+          at = -1;
+        for (var r = 1; r < rows.length; r++) {
+          if (String((rows[r] || [])[idc] || "").trim() === want) {
+            at = r + 1;
+            break;
+          }
+        }
+        if (at > 0) {
+          /* note and note_date are deliberately NOT in the patch. They are the
+     one part of a lane a person writes by hand, and filing a shot must not be
+     able to erase a note. gPatchRow copies every unnamed column back verbatim,
+     so leaving them out is what preserves them. */
+          var patch = {};
+          LANE_COLNAMES.forEach(function (k) {
+            if (k === "note" || k === "note_date") return;
+            if (lane[k] !== undefined) patch[k] = lane[k];
+          });
+          await gPatchRow(LANE_TAB, at, patch);
+          return true;
+        }
+        await gAppend(
+          LANE_TAB,
+          head.map(function (h) {
+            var k = String(h).trim();
+            return lane[k] === undefined ? "" : lane[k];
+          }),
+        );
+        return true;
+      }
+      async function laneRecord(cols) {
+        /* Returns the reason it declined rather than just falling through. A
+     silent no-op is indistinguishable from a bug, and this one runs after the
+     row is already saved where nobody would go looking. */
+        var shot = laneShotFromCols(cols);
+        if (!shot.coffee) return "no-coffee";
+        if (!shot.type) return "no-type";
+        if (!laneEligible(shot.coffee)) return "not-in-inventory";
+        var id = laneId(shot.coffee, shot.type);
+        if (!id) return "no-id";
+        var map = laneCache();
+        var lane = map[id] || laneBlank(id);
+        laneApply(lane, shot);
+        map[id] = lane;
+        laneCacheWrite(map);
+        try {
+          await gLaneUpsert(lane);
+        } catch (e) {
+          return "filed-local-only";
+        }
+        return "filed";
+      }
+
       function gConfigured() {
         return !!(typeof GOOGLE_CLIENT_ID !== "undefined" && GOOGLE_CLIENT_ID);
       }
@@ -10786,21 +11160,85 @@
         );
         return d && d.files ? d.files : [];
       }
+      async function gHasSchema(id) {
+        /* Both tabs, not either. A spreadsheet with only Shot Log could be an
+     export, a copy, or someone else's tool; the pair is what this app creates
+     and nothing else in a Drive is likely to have. Missing tab, no permission
+     and malformed response all answer false, so an unreadable file is never
+     adopted on the strength of its name. */
+        try {
+          var meta = await gApi(
+            "https://sheets.googleapis.com/v4/spreadsheets/" +
+              id +
+              "?fields=sheets.properties.title",
+          );
+          var have = {};
+          ((meta && meta.sheets) || []).forEach(function (s) {
+            if (s.properties && s.properties.title) have[String(s.properties.title)] = 1;
+          });
+          return !!(have[SHOT_TAB] && have[INV_TAB]);
+        } catch (e) {
+          return false;
+        }
+      }
+      async function gRealLogs(files) {
+        var out = [];
+        for (var i = 0; i < files.length; i++) {
+          if (await gHasSchema(files[i].id)) out.push(files[i]);
+        }
+        return out;
+      }
       async function gScoreLogs(files) {
         var withData = [];
         for (var i = 0; i < files.length; i++) {
           var rc = await gRowCount(files[i].id);
-          if (rc > 0) withData.push({ id: files[i].id, rows: rc });
+          if (rc > 0) withData.push({ id: files[i].id, name: files[i].name || "", rows: rc });
         }
         withData.sort(function (a, b) {
           return b.rows - a.rows;
         });
         return withData;
       }
-      function gAdopt(id) {
+      async function gLearnName(id) {
+        /* Some adoption paths know the spreadsheet's name, some do not. The ones
+     that do not learn it here rather than leaving the status line blank. The
+     GSHEET re-check is not paranoia: this is fired and not awaited, so a second
+     adoption during the round trip would otherwise be relabelled by the first. */
+        try {
+          var d = await gApi(
+            "https://sheets.googleapis.com/v4/spreadsheets/" + id + "?fields=properties.title",
+          );
+          var n = d && d.properties ? String(d.properties.title || "") : "";
+          if (!n || GSHEET !== id) return "";
+          GNAME = n;
+          try {
+            localStorage.setItem("gsheetname", n);
+          } catch (e) {}
+          try {
+            renderSheetStatus();
+          } catch (e) {}
+          return n;
+        } catch (e) {
+          return "";
+        }
+      }
+      function gAdopt(id, name) {
         GSHEET = id;
         try {
           localStorage.setItem("gsheet", id);
+        } catch (e) {}
+        GNAME = String(name || "");
+        try {
+          if (GNAME) localStorage.setItem("gsheetname", GNAME);
+          else localStorage.removeItem("gsheetname");
+        } catch (e) {}
+        if (!GNAME) {
+          try {
+            gLearnName(id);
+          } catch (e) {}
+        }
+        try {
+          renderSheetStatus();
         } catch (e) {}
       }
       async function gAutoLink() {
@@ -10815,13 +11253,18 @@
           return true;
         }
         if (!files.length) return false;
-        var withData = await gScoreLogs(files);
+        /* Filter BEFORE scoring. The zero-rows branch below adopts a candidate
+     outright with no further test, and that is the exact branch the stray file
+     came in through: it had the name, it had no rows, so it won by default. */
+        var real = await gRealLogs(files);
+        if (!real.length) return false;
+        var withData = await gScoreLogs(real);
         if (withData.length === 0) {
-          gAdopt(files[0].id);
+          gAdopt(real[0].id, real[0].name);
           return true;
         }
         if (withData.length === 1 || withData[0].rows >= withData[1].rows * 2) {
-          gAdopt(withData[0].id);
+          gAdopt(withData[0].id, withData[0].name);
           return true;
         }
         gPickSheet(withData);
@@ -10830,11 +11273,11 @@
       async function gTryUpgrade() {
         /* linked sheet is empty: adopt a populated log if one exists, else stay put */
         try {
-          var files = await gListLogs();
+          var files = await gRealLogs(await gListLogs());
           var withData = await gScoreLogs(files);
           if (!withData.length) return;
           if (withData.length === 1 || withData[0].rows >= withData[1].rows * 2) {
-            gAdopt(withData[0].id);
+            gAdopt(withData[0].id, withData[0].name);
           } else gPickSheet(withData);
         } catch (e) {}
       }
@@ -10849,11 +11292,12 @@
           "<div style='font-weight:600;margin-bottom:4px'>Which log is yours?</div><div style='color:var(--dim);font-size:12px;margin-bottom:12px'>Found more than one BrewPilot Log. Pick the one with your history.</div>";
         cands.forEach(function (c) {
           var bt = document.createElement("button");
-          bt.textContent = c.rows + " logged " + (c.rows === 1 ? "row" : "rows");
+          bt.textContent =
+            (c.name ? c.name + " - " : "") + c.rows + " logged " + (c.rows === 1 ? "row" : "rows");
           bt.style.cssText =
             "width:100%;margin-bottom:8px;padding:12px;border-radius:10px;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text);font-weight:600;cursor:pointer";
           bt.onclick = function () {
-            gAdopt(c.id);
+            gAdopt(c.id, c.name);
             if (ov.parentNode) ov.parentNode.removeChild(ov);
             try {
               renderSheetStatus();
@@ -10903,6 +11347,13 @@
           await gRead(SHOT_TAB);
           try {
             localStorage.setItem("gsheet", id);
+          } catch (e) {}
+          GNAME = "";
+          try {
+            localStorage.removeItem("gsheetname");
+          } catch (e) {}
+          try {
+            gLearnName(id);
           } catch (e) {}
           el.value = "";
           try {
@@ -11433,7 +11884,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-25-0626-0497f0";
+      var BUILD = "2026-07-25-0717-df4820";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -11963,7 +12414,7 @@
         if (BPSHOT.m.resistance !== "") bits.push("R " + BPSHOT.m.resistance.toFixed(2));
         var head = isEs ? "Datos del shot recibidos" : "Shot data received";
         var tail = isEs
-          ? "Agrega cafe, dosis y calificacion, luego guarda."
+          ? "Agrega café, dosis y calificación, luego guarda."
           : "Add coffee, dose and rating, then save.";
         el.textContent =
           head +
