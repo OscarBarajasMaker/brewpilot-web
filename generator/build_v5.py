@@ -9987,12 +9987,18 @@ print('prettier:', _pv, 'via', ' '.join(PRETTIER))
 # check the whole verification ritual rests on.
 with tempfile.NamedTemporaryFile('w', suffix='.html', delete=False, encoding='utf-8', newline='') as f:
     f.write(ASSEMBLED); tmp = f.name
+# encoding='utf-8' is not optional. text=True alone decodes with the LOCALE
+# codec, which is cp1252 on a Spanish Windows install, and the app carries UTF-8
+# characters. The reader thread dies mid-decode, stdout comes back None, and the
+# build then fails somewhere unrelated with a TypeError.
 pretty = subprocess.run(PRETTIER + ['--parser', 'html', '--print-width', '100', '--tab-width', '2', tmp],
-                        capture_output=True, text=True)
+                        capture_output=True, text=True, encoding='utf-8')
 os.unlink(tmp)
 if pretty.returncode != 0:
-    print('PRETTIER FAILED:\n', pretty.stderr[:800]); raise SystemExit(1)
+    print('PRETTIER FAILED:\n', (pretty.stderr or '')[:800]); raise SystemExit(1)
 webapp = pretty.stdout
+if not webapp:
+    raise SystemExit('BUILD ABORTED: prettier returned success but produced no output.')
 if '__BUILD_STAMP__' not in webapp:
     raise SystemExit('BUILD ABORTED: __BUILD_STAMP__ vanished before stamping')
 # Date plus a hash of the actual bytes. The sha6 suffix is deterministic for a
