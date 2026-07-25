@@ -32,7 +32,7 @@ import re, sys, json, os
 # data-dependent, so it is not a tell anyone can rely on. A green check that is
 # not checking is the exact failure this file exists to prevent, so the file had
 # better not be able to do it to itself. Print the version next to the count.
-AUDIT_VERSION = 'v10-2026-07-25'
+AUDIT_VERSION = 'v11-2026-07-25'
 
 HTML = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/render/index_v5.html'
 src = open(HTML, encoding='utf-8').read()
@@ -588,6 +588,19 @@ if not m_sf:
 elif 'COLNAMES.indexOf(' not in m_sf.group(1):
     fail('lane', 'laneShotFromCols reads the row by literal index instead of by COLNAMES name -> '
                  'appending a column silently shifts every metric it reads')
+checks += 1
+
+# ============================ 21. THE BUILT FILE IS LF
+# Python text mode translates '\n' to os.linesep on write, so a build on Windows
+# emits CRLF. The build stamp is a sha1 of the string still in MEMORY, which is
+# LF either way, so a CRLF build prints a stamp identical to a Linux build while
+# the file on disk differs in every line. The stamp is the check the whole
+# verification ritual rests on, and that is exactly the case it cannot see.
+if b'\r' in open(HTML, 'rb').read():
+    n = open(HTML, 'rb').read().count(b'\r')
+    fail('newline', 'the built file contains %d carriage returns -> this was written in text '
+                    'mode on Windows. The build stamp will still match a Linux build while the '
+                    'bytes do not. Rebuild with a generator that pins newline=%s' % (n, "''"))
 checks += 1
 
 # ---------------------------------------------------------------- report

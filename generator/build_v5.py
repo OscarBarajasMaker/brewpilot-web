@@ -9980,7 +9980,12 @@ def find_prettier():
 PRETTIER, _pv = find_prettier()
 print('prettier:', _pv, 'via', ' '.join(PRETTIER))
 
-with tempfile.NamedTemporaryFile('w', suffix='.html', delete=False, encoding='utf-8') as f:
+# Every write below pins newline='' on purpose. Python text mode translates
+# '\n' to os.linesep, so on Windows this build would emit CRLF while the stamp
+# is a sha1 of the LF string still in memory. The stamp would MATCH a Linux
+# build byte for byte while the file on disk did not, which defeats the one
+# check the whole verification ritual rests on.
+with tempfile.NamedTemporaryFile('w', suffix='.html', delete=False, encoding='utf-8', newline='') as f:
     f.write(ASSEMBLED); tmp = f.name
 pretty = subprocess.run(PRETTIER + ['--parser', 'html', '--print-width', '100', '--tab-width', '2', tmp],
                         capture_output=True, text=True)
@@ -9995,17 +10000,17 @@ if '__BUILD_STAMP__' not in webapp:
 _stamp = datetime.datetime.now().strftime('%Y-%m-%d-%H%M') + '-' + hashlib.sha1(webapp.encode()).hexdigest()[:6]
 webapp = webapp.replace('__BUILD_STAMP__', _stamp)
 print('build stamp:', _stamp)
-open(OUT, 'w', encoding='utf-8').write(webapp)
+open(OUT, 'w', encoding='utf-8', newline='').write(webapp)
 
 def cstring(s):
     s = s.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '')   # compact for flash
     chunks = [s[i:i+3800] for i in range(0, len(s), 3800)]
     return 'static const char PANEL_HTML[] PROGMEM =\n' + '\n'.join('  "%s"' % c for c in chunks) + ';\n'
-open(PANEL, 'w', encoding='utf-8').write(cstring(ASSEMBLED))
+open(PANEL, 'w', encoding='utf-8', newline='').write(cstring(ASSEMBLED))
 
 resid = [h for h in re.findall(r'#[0-9a-fA-F]{3,6}\b', body + script) if h.lower() != '#fff']
 print('residual raw hex in src body+script (should be 0):', len(resid), resid[:10])
-print('webapp bytes:', len(webapp), '| firmware bytes:', len(open(PANEL, encoding='utf-8').read()))
+print('webapp bytes:', len(webapp), '| firmware bytes:', len(open(PANEL, encoding='utf-8', newline='').read()))
 
 # ---------------------------------------------------------------------------
 # RECONSTRUCTION NOTES (2026-07-24)
