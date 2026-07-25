@@ -1,0 +1,4 @@
+﻿*.pyc
+__pycache__/
+index_v5.html
+panel_v5.h
