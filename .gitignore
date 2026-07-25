@@ -1,0 +1,19 @@
+﻿# Generator lives in BrewPilot\source. A second copy here is how it got lost.
+build_v5.py
+src_v5.html
+index_v5.html
+
+# Firmware belongs to the firmware project
+panel.h
+panel_v5.h
+Firmware/
+
+# Retired with the /exec amputation
+*.gs
+set-client-id.ps1
+
+# Local only, never published
+client_id.txt
+*.zip
+shot119.json
+profiles_raw.json

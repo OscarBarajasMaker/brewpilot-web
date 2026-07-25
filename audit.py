@@ -32,7 +32,7 @@ import re, sys, json, os
 # data-dependent, so it is not a tell anyone can rely on. A green check that is
 # not checking is the exact failure this file exists to prevent, so the file had
 # better not be able to do it to itself. Print the version next to the count.
-AUDIT_VERSION = 'v6-2026-07-23'
+AUDIT_VERSION = 'v7-2026-07-25'
 
 HTML = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/render/index_v5.html'
 src = open(HTML, encoding='utf-8').read()
@@ -309,6 +309,96 @@ if m_ra:
         j += 1
     if re.search(r'\bprompt\s*\(', JS[i:j+1]):
         fail('picker', 'rotAdd() calls prompt() again -> the coffee has to be retyped by hand')
+    checks += 1
+
+# ================================ 16. THE PRE-I18N BOOT WINDOW
+# t() is reachable from the boot sequence at the tail of the source script, which
+# is concatenated BEFORE the blob that assigns I18N. var hoists the name and not
+# the value, so I18N[LANG] read a property of undefined and threw. Both callers
+# were async, so it surfaced as an unhandled rejection instead of a script abort:
+# the page booted, nothing was visibly wrong, and applyHwLocks() silently never
+# ran for the life of the build. Two checks, because two separate things had to
+# be true for that to cost anything.
+m_t = re.search(r'function t\(k\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_t:
+    fail('boot-order', 't(k) is gone or reshaped -> the pre-I18N guard cannot be verified')
+elif 'typeof I18N' not in m_t.group(1):
+    fail('boot-order', 't(k) does not guard on I18N being defined -> any boot-time caller '
+                       'that reaches it throws again, and async callers hide it as a rejection')
+checks += 1
+
+# The flag that closes a one-time boot block must be set AFTER the work it guards,
+# or a thrower skips the rest and no later call ever retries it.
+m_r = re.search(r'async function refresh\(\)\s*\{', JS)
+if not m_r:
+    fail('boot-order', 'refresh() is gone -> the one-time boot block cannot be verified')
+else:
+    i = m_r.end() - 1
+    d = 0; j = i
+    while j < len(JS):
+        if JS[j] == '{': d += 1
+        elif JS[j] == '}':
+            d -= 1
+            if d == 0: break
+        j += 1
+    rbody = JS[i:j+1]
+    p_flag = rbody.find('M_INIT = true')
+    p_hw   = rbody.find('applyHwLocks()')
+    if p_flag < 0 or p_hw < 0:
+        fail('boot-order', 'refresh() no longer sets M_INIT or no longer calls applyHwLocks()')
+    elif p_flag < p_hw:
+        fail('boot-order', 'refresh() sets M_INIT before applyHwLocks() -> a throw above it '
+                           'skips the lock and the block never runs again')
+    checks += 1
+
+# ================================ 17. THE SHOT ROW REACHES THE SHEET
+# The metric tail is appended to COLNAMES by concat rather than typed into the
+# literal, so the list that defines the sheet header and the list bpApplyShot
+# writes values from are one array. If that ever becomes two, a row is written
+# with values under the wrong names and nothing errors.
+if not re.search(r'\]\.concat\(BP_METRIC_COLS\)', JS):
+    fail('schema', 'COLNAMES no longer concatenates BP_METRIC_COLS -> the metric columns '
+                   'never reach the sheet header and every metric is written under a name '
+                   'that does not exist')
+if 'BP_METRIC_COLS.map(' not in JS:
+    fail('schema', 'bpApplyShot no longer builds its tail from BP_METRIC_COLS -> the header '
+                   'and the values can drift apart silently')
+checks += 2
+
+# A brew row that never goes through bpApplyShot is written at the OLD width, so
+# its metric columns land empty and its shot_id, peak_bar and avg_flow_mls stay
+# blank even when a handoff supplied them.
+m_ls = re.search(r'async function logshot\(\)\s*\{', JS)
+if m_ls:
+    i = m_ls.end() - 1
+    d = 0; j = i
+    while j < len(JS):
+        if JS[j] == '{': d += 1
+        elif JS[j] == '}':
+            d -= 1
+            if d == 0: break
+        j += 1
+    if 'bpApplyShot(' not in JS[i:j+1]:
+        fail('schema', 'logshot() builds a row without bpApplyShot() -> the row is written at '
+                       'the old width and every metric column is dropped')
+    checks += 1
+
+# The Sheets read range is a fixed A1 range. It was pinned at AC, which is 29
+# columns, against a 28 column schema. Nothing errors when a row runs past it:
+# the API just returns fewer columns, and gEnsureHeader, gPatchRow and gInvList
+# all key off rows[0], so they would silently read a truncated header.
+m_rng = re.search(r'!A1:([A-Z]+)\d+', JS)
+m_cols = re.search(r'var COLNAMES = \[(.*?)\]\.concat', JS, re.S)
+m_met = re.search(r'var BP_METRIC_COLS = \[(.*?)\]', JS, re.S)
+if m_rng and m_cols and m_met:
+    width = 0
+    for ch in m_rng.group(1):
+        width = width * 26 + (ord(ch) - 64)
+    need = len(re.findall(r'"', m_cols.group(1))) // 2 + len(re.findall(r'"', m_met.group(1))) // 2
+    if width < need:
+        fail('schema', 'the Sheets read range covers %d columns but the shot schema needs %d '
+                       '-> the header is read truncated and writes past it are dropped'
+                       % (width, need))
     checks += 1
 
 # ---------------------------------------------------------------- report
