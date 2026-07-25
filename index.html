@@ -1250,6 +1250,19 @@
             style="width: 100%"
           /><datalist id="coffeeList"></datalist>
           <div id="coffeeHint" class="csfac" style="margin-top: 3px; font-size: 12px"></div>
+          <div
+            id="laneCard"
+            style="
+              display: none;
+              margin-top: 8px;
+              padding: 10px 12px;
+              border-radius: 12px;
+              border: 1px solid var(--line);
+              background: var(--panel2);
+              font-size: 13px;
+              line-height: 1.4;
+            "
+          ></div>
           <div class="frow">
             <div class="fcell">
               <div class="fl">Roaster</div>
@@ -4236,6 +4249,14 @@
           laneChan:
             "Channelling above this lane\u2019s norm. That is distribution and puck prep, not grind.",
           laneNoTaste: "These are flow numbers only. They cannot tell you how it tasted.",
+          laneCardHead: "This coffee, {m}: {n} logged",
+          laneUsually: "Usually {g}",
+          laneAbout: "about {n} um",
+          laneHold: "Last one sat in range. Same setting.",
+          laneGoCoarse: "Last one ran {n}% tight. Go coarser.",
+          laneGoFine: "Last one ran {n}% loose. Go finer.",
+          laneTry: "Try about {g}.",
+          laneNoPhysics: "No flow data on this lane, so grind and rating only.",
           insSpend: "You spent {v} on coffee in {m}",
           insSpendAvg: "That averages {v} a month",
           insPerCup: "A cup costs you {v} on average",
@@ -4518,6 +4539,14 @@
           laneChan:
             "Canalización por encima de lo normal en este carril. Eso es distribución y preparación, no molienda.",
           laneNoTaste: "Estos son solo números de flujo. No pueden decirte a qué supo.",
+          laneCardHead: "Este café, {m}: {n} registrados",
+          laneUsually: "Normalmente {g}",
+          laneAbout: "unos {n} um",
+          laneHold: "El anterior quedó en rango. Mismo ajuste.",
+          laneGoCoarse: "El anterior salió {n}% apretado. Muele más grueso.",
+          laneGoFine: "El anterior salió {n}% suelto. Muele más fino.",
+          laneTry: "Prueba alrededor de {g}.",
+          laneNoPhysics: "Sin datos de flujo en este carril, así que solo molienda y calificación.",
           invBagSize: "Tamaño de bolsa",
           invPrice: "Precio por bolsa",
           invFreezeDate: "Fecha de congelado (o puesta al vacío)",
@@ -5330,6 +5359,9 @@
    gSheetUrl() already existed; nothing on the logging screen ever offered it. */
       function renderSheetLink() {}
       function renderLogForm() {
+        try {
+          renderLaneCard();
+        } catch (e) {}
         var m = logMethod();
         document.querySelectorAll(".mmethod").forEach(function (el) {
           var mg = el.getAttribute("data-mgag") === "1",
@@ -8534,6 +8566,9 @@
         } catch (e) {}
       }
       function updateCoffeeHint() {
+        try {
+          renderLaneCard();
+        } catch (e) {}
         var el = document.getElementById("coffeeHint");
         if (!el) return;
         var v = ((document.getElementById("coffee") || {}).value || "").trim();
@@ -11956,7 +11991,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-25-1613-5ad5b0";
+      var BUILD = "2026-07-25-1637-d120d1";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -12494,6 +12529,128 @@
           (bits.length ? ": " + bits.join(", ") : "") +
           ". " +
           tail;
+        el.style.display = "";
+      }
+      function laneHistParse(cell) {
+        var p = String(cell || "").split("|");
+        return { date: p[0] || "", grind: p[1] || "", resistance: p[2] || "", rating: p[3] || "" };
+      }
+      function laneCardData(coffee, type) {
+        /* Pure, so the card can be tested without a DOM. */
+        var ty = laneNormType(type);
+        if (!String(coffee || "").trim() || !ty) return null;
+        var l = laneGet(coffee, ty),
+          hist = [];
+        if (l) {
+          for (var i = 1; i <= LANE_HIST; i++) {
+            var c = String(l["h" + i] || "").trim();
+            if (c) hist.push(laneHistParse(c));
+          }
+        }
+        var physics = hist.some(function (h) {
+          return laneNum(h.resistance) !== "";
+        });
+        return {
+          type: ty,
+          lane: l,
+          base: laneBaseline(coffee, ty),
+          hist: hist,
+          physics: physics,
+          n: l ? laneNum(l.n_shots) || 0 : 0,
+        };
+      }
+      function laneGrindHint(d) {
+        /* The last setting actually used is a fact. The click figure is derived
+     from stored microns and only appears when a grinder is selected, because
+     a setting number means nothing without knowing which grinder it is on. */
+        var last = d.hist.length ? d.hist[0].grind : "";
+        var um = d.lane ? laneNum(d.lane.base_grind_um) : "";
+        var gid = typeof lastGrinder === "function" ? lastGrinder() : "";
+        var clicks = "";
+        if (um !== "" && gid && typeof umToClicks === "function") {
+          var c = umToClicks(um, gid);
+          if (c !== null && isFinite(c)) clicks = String(Math.round(c * 10) / 10);
+        }
+        return { last: last, um: um, clicks: clicks };
+      }
+      function laneNudge(d) {
+        /* Silent unless the lane carries flow data AND the last shot has a
+     reading. A nudge invented from grind alone would be a guess wearing the
+     clothes of a measurement. */
+        if (!d.physics || !d.base || !d.base.resistance) return "";
+        var h = d.hist.length ? d.hist[0] : null;
+        if (!h) return "";
+        var r = laneNum(h.resistance);
+        if (r === "") return "";
+        var dv = (r - d.base.resistance) / d.base.resistance;
+        if (Math.abs(dv) <= (d.base.band || 0.4)) return t("laneHold");
+        return t(dv > 0 ? "laneGoCoarse" : "laneGoFine").replace(
+          "{n}",
+          Math.round(Math.abs(dv) * 100),
+        );
+      }
+      function laneLine(el, txt, dim) {
+        var d = document.createElement("div");
+        if (dim) d.style.color = "var(--dim)";
+        d.textContent = txt;
+        el.appendChild(d);
+      }
+      function renderLaneCard() {
+        var el = document.getElementById("laneCard");
+        if (!el) return;
+        var coffee = ((document.getElementById("coffee") || {}).value || "").trim();
+        var type = (document.getElementById("type") || {}).value || "";
+        var d = laneCardData(coffee, type);
+        if (!d) {
+          el.style.display = "none";
+          el.textContent = "";
+          return;
+        }
+        el.innerHTML = "";
+        if (d.n <= 0) {
+          /* Nothing of this coffee in this method yet. Say which figures are
+       standing in, or that none exist, rather than showing an empty card. */
+          if (d.base.source === "none") laneLine(el, t("laneNoBase").replace("{m}", d.type));
+          else
+            laneLine(
+              el,
+              t("laneTypeBase")
+                .replace("{m}", d.type)
+                .replace("{n}", Math.max(1, LANE_MIN - (d.base.n || 0))),
+            );
+          el.style.display = "";
+          return;
+        }
+        laneLine(el, t("laneCardHead").replace("{m}", d.type).replace("{n}", d.n));
+        var g = laneGrindHint(d);
+        if (g.last) {
+          var line = t("laneUsually").replace("{g}", g.last);
+          if (g.um !== "") line += " (" + t("laneAbout").replace("{n}", Math.round(g.um)) + ")";
+          laneLine(el, line, true);
+        }
+        d.hist.forEach(function (h) {
+          var bits = [h.date];
+          if (h.grind) bits.push(h.grind);
+          if (h.resistance !== "") bits.push("R " + h.resistance);
+          if (h.rating !== "") bits.push(h.rating + "/10");
+          laneLine(el, "  " + bits.join("  "), true);
+        });
+        var nudge = laneNudge(d);
+        if (nudge) {
+          if (g.clicks !== "") nudge += " " + t("laneTry").replace("{g}", g.clicks);
+          laneLine(el, nudge);
+        } else if (!d.physics) {
+          laneLine(el, t("laneNoPhysics"), true);
+        }
+        if (d.base.source === "type") {
+          laneLine(
+            el,
+            t("laneTypeBase")
+              .replace("{m}", d.type)
+              .replace("{n}", Math.max(1, LANE_MIN - (d.base.n || 0))),
+            true,
+          );
+        }
         el.style.display = "";
       }
       function laneNote(reason, lane) {

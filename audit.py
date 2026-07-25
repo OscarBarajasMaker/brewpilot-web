@@ -32,7 +32,7 @@ import re, sys, json, os
 # data-dependent, so it is not a tell anyone can rely on. A green check that is
 # not checking is the exact failure this file exists to prevent, so the file had
 # better not be able to do it to itself. Print the version next to the count.
-AUDIT_VERSION = 'v12-2026-07-25'
+AUDIT_VERSION = 'v13-2026-07-25'
 
 HTML = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/render/index_v5.html'
 src = open(HTML, encoding='utf-8').read()
@@ -660,6 +660,57 @@ if m_ls3:
 if not re.search(r'INSIGHT_FNS = \[\s*insightsLane', JS):
     fail('lane', 'insightsLane is not wired into INSIGHT_FNS -> the lane store records and '
                  'nothing ever reads it')
+checks += 1
+
+# ============================ 23. PASS 4a: THE PRE-SHOT CARD
+# The card must be chosen by what the lane CONTAINS, never by the hardware
+# picker. M_GAG is a declared setting and a declaration can be wrong: Gaggiuino
+# can be selected while the ESP reported nothing, or a shot logged from a phone
+# with the machine off. Reading the flag would promise a physics read the lane
+# cannot deliver.
+m_rc = re.search(r'function renderLaneCard\(\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_rc:
+    fail('card', 'renderLaneCard is gone -> the lane store has no pre-shot surface')
+else:
+    b = m_rc.group(1)
+    if 'M_GAG' in b:
+        fail('card', 'renderLaneCard reads M_GAG -> the card would promise a flow read based on a '
+                     'hardware setting rather than on whether this lane actually has flow data')
+    if 'laneCardData(' not in b:
+        fail('card', 'renderLaneCard no longer builds its state through laneCardData')
+    checks += 2
+
+m_cd = re.search(r'function laneCardData\(coffee, type\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_cd:
+    fail('card', 'laneCardData is gone')
+else:
+    b = m_cd.group(1)
+    if 'physics' not in b or 'h.resistance' not in b:
+        fail('card', 'laneCardData no longer derives physics from the resistance actually present '
+                     'in this lane history')
+    checks += 1
+
+m_nu = re.search(r'function laneNudge\(d\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_nu:
+    fail('card', 'laneNudge is gone')
+elif not re.search(r'if \(!d\.physics', m_nu.group(1)):
+    fail('card', 'laneNudge no longer refuses to advise without flow data -> a grind direction '
+                 'derived from nothing would read as a measurement')
+checks += 1
+
+# Both fields gate the card, so either one changing last has to redraw it.
+for fn in ('updateCoffeeHint', 'renderLogForm'):
+    m = re.search(r'function ' + fn + r'\(\)\s*\{(.{0,400})', JS, re.S)
+    if not m or 'renderLaneCard()' not in m.group(1):
+        fail('card', '%s does not redraw the lane card -> the card goes stale whenever that field '
+                     'is the one that changed last' % fn)
+    checks += 1
+
+# Lane values are user text. A coffee name or grind setting can be anything.
+m_ln = re.search(r'function laneLine\(el, txt, dim\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_ln or 'textContent' not in m_ln.group(1) or 'innerHTML' in m_ln.group(1):
+    fail('card', 'laneLine no longer writes lane values as text -> a coffee name is user input and '
+                 'would become markup')
 checks += 1
 
 # ---------------------------------------------------------------- report

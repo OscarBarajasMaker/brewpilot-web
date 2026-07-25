@@ -10111,6 +10111,193 @@ FEATURES_JS = must_replace(
     '      var INSIGHT_FNS = [insightsLane, insightsCost, insightsWater, insightsTiming];',
     'P17b lane advice goes first in the insights panel')
 
+# ===================== PASS 4a: the pre-shot lane card =======================
+#
+# P18. i18n for the card, both dictionaries in one patch.
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '          laneNoTaste: "These are flow numbers only. They cannot tell you how it tasted.",',
+    '          laneNoTaste: "These are flow numbers only. They cannot tell you how it tasted.",\n'
+    '          laneCardHead: "This coffee, {m}: {n} logged",\n'
+    '          laneUsually: "Usually {g}",\n'
+    '          laneAbout: "about {n} um",\n'
+    '          laneHold: "Last one sat in range. Same setting.",\n'
+    '          laneGoCoarse: "Last one ran {n}% tight. Go coarser.",\n'
+    '          laneGoFine: "Last one ran {n}% loose. Go finer.",\n'
+    '          laneTry: "Try about {g}.",\n'
+    '          laneNoPhysics: "No flow data on this lane, so grind and rating only.",',
+    'P18a card strings, en')
+
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '          laneNoTaste: "Estos son solo n\u00fameros de flujo. No pueden decirte a qu\u00e9 supo.",',
+    '          laneNoTaste: "Estos son solo n\u00fameros de flujo. No pueden decirte a qu\u00e9 supo.",\n'
+    '          laneCardHead: "Este caf\u00e9, {m}: {n} registrados",\n'
+    '          laneUsually: "Normalmente {g}",\n'
+    '          laneAbout: "unos {n} um",\n'
+    '          laneHold: "El anterior qued\u00f3 en rango. Mismo ajuste.",\n'
+    '          laneGoCoarse: "El anterior sali\u00f3 {n}% apretado. Muele m\u00e1s grueso.",\n'
+    '          laneGoFine: "El anterior sali\u00f3 {n}% suelto. Muele m\u00e1s fino.",\n'
+    '          laneTry: "Prueba alrededor de {g}.",\n'
+    '          laneNoPhysics: "Sin datos de flujo en este carril, as\u00ed que solo molienda y calificaci\u00f3n.",',
+    'P18b card strings, es')
+
+# P19. The card. Everything here is chosen by what the lane CONTAINS, never by
+#      the hardware picker. M_GAG is a declared setting and a declaration can be
+#      wrong: Gaggiuino can be selected while the ESP reported nothing, or a shot
+#      can be logged from a phone with the machine off. The presence of a
+#      resistance value in this lane's own history is the only thing that can
+#      honestly promise a physics read.
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '      function laneNote(reason, lane) {',
+    '''      function laneHistParse(cell) {
+        var p = String(cell || "").split("|");
+        return { date: p[0] || "", grind: p[1] || "", resistance: p[2] || "", rating: p[3] || "" };
+      }
+      function laneCardData(coffee, type) {
+        /* Pure, so the card can be tested without a DOM. */
+        var ty = laneNormType(type);
+        if (!String(coffee || "").trim() || !ty) return null;
+        var l = laneGet(coffee, ty),
+          hist = [];
+        if (l) {
+          for (var i = 1; i <= LANE_HIST; i++) {
+            var c = String(l["h" + i] || "").trim();
+            if (c) hist.push(laneHistParse(c));
+          }
+        }
+        var physics = hist.some(function (h) {
+          return laneNum(h.resistance) !== "";
+        });
+        return {
+          type: ty,
+          lane: l,
+          base: laneBaseline(coffee, ty),
+          hist: hist,
+          physics: physics,
+          n: l ? laneNum(l.n_shots) || 0 : 0,
+        };
+      }
+      function laneGrindHint(d) {
+        /* The last setting actually used is a fact. The click figure is derived
+     from stored microns and only appears when a grinder is selected, because
+     a setting number means nothing without knowing which grinder it is on. */
+        var last = d.hist.length ? d.hist[0].grind : "";
+        var um = d.lane ? laneNum(d.lane.base_grind_um) : "";
+        var gid = typeof lastGrinder === "function" ? lastGrinder() : "";
+        var clicks = "";
+        if (um !== "" && gid && typeof umToClicks === "function") {
+          var c = umToClicks(um, gid);
+          if (c !== null && isFinite(c)) clicks = String(Math.round(c * 10) / 10);
+        }
+        return { last: last, um: um, clicks: clicks };
+      }
+      function laneNudge(d) {
+        /* Silent unless the lane carries flow data AND the last shot has a
+     reading. A nudge invented from grind alone would be a guess wearing the
+     clothes of a measurement. */
+        if (!d.physics || !d.base || !d.base.resistance) return "";
+        var h = d.hist.length ? d.hist[0] : null;
+        if (!h) return "";
+        var r = laneNum(h.resistance);
+        if (r === "") return "";
+        var dv = (r - d.base.resistance) / d.base.resistance;
+        if (Math.abs(dv) <= (d.base.band || 0.4)) return t("laneHold");
+        return t(dv > 0 ? "laneGoCoarse" : "laneGoFine").replace("{n}", Math.round(Math.abs(dv) * 100));
+      }
+      function laneLine(el, txt, dim) {
+        var d = document.createElement("div");
+        if (dim) d.style.color = "var(--dim)";
+        d.textContent = txt;
+        el.appendChild(d);
+      }
+      function renderLaneCard() {
+        var el = document.getElementById("laneCard");
+        if (!el) return;
+        var coffee = ((document.getElementById("coffee") || {}).value || "").trim();
+        var type = (document.getElementById("type") || {}).value || "";
+        var d = laneCardData(coffee, type);
+        if (!d) {
+          el.style.display = "none";
+          el.textContent = "";
+          return;
+        }
+        el.innerHTML = "";
+        if (d.n <= 0) {
+          /* Nothing of this coffee in this method yet. Say which figures are
+       standing in, or that none exist, rather than showing an empty card. */
+          if (d.base.source === "none") laneLine(el, t("laneNoBase").replace("{m}", d.type));
+          else
+            laneLine(
+              el,
+              t("laneTypeBase")
+                .replace("{m}", d.type)
+                .replace("{n}", Math.max(1, LANE_MIN - (d.base.n || 0))),
+            );
+          el.style.display = "";
+          return;
+        }
+        laneLine(el, t("laneCardHead").replace("{m}", d.type).replace("{n}", d.n));
+        var g = laneGrindHint(d);
+        if (g.last) {
+          var line = t("laneUsually").replace("{g}", g.last);
+          if (g.um !== "") line += " (" + t("laneAbout").replace("{n}", Math.round(g.um)) + ")";
+          laneLine(el, line, true);
+        }
+        d.hist.forEach(function (h) {
+          var bits = [h.date];
+          if (h.grind) bits.push(h.grind);
+          if (h.resistance !== "") bits.push("R " + h.resistance);
+          if (h.rating !== "") bits.push(h.rating + "/10");
+          laneLine(el, "  " + bits.join("  "), true);
+        });
+        var nudge = laneNudge(d);
+        if (nudge) {
+          if (g.clicks !== "") nudge += " " + t("laneTry").replace("{g}", g.clicks);
+          laneLine(el, nudge);
+        } else if (!d.physics) {
+          laneLine(el, t("laneNoPhysics"), true);
+        }
+        if (d.base.source === "type") {
+          laneLine(
+            el,
+            t("laneTypeBase")
+              .replace("{m}", d.type)
+              .replace("{n}", Math.max(1, LANE_MIN - (d.base.n || 0))),
+            true,
+          );
+        }
+        el.style.display = "";
+      }
+      function laneNote(reason, lane) {''',
+    'P19 the pre-shot lane card')
+
+# P20. Two triggers, because the card needs BOTH fields and either can move last.
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '''      function updateCoffeeHint() {
+        var el = document.getElementById("coffeeHint");
+        if (!el) return;''',
+    '''      function updateCoffeeHint() {
+        try {
+          renderLaneCard();
+        } catch (e) {}
+        var el = document.getElementById("coffeeHint");
+        if (!el) return;''',
+    'P20a coffee change redraws the card')
+
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '''      function renderLogForm() {
+        var m = logMethod();''',
+    '''      function renderLogForm() {
+        try {
+          renderLaneCard();
+        } catch (e) {}
+        var m = logMethod();''',
+    'P20b method change redraws the card')
+
 ASSEMBLED = (HEAD + CSS + SHELL_OPEN + APPBAR_H + WRAP_DURA + TABHOME_O
              + INSTALL_H + HERO_H
              + home + SEP_LOG + logtab + SEP_BEANS + beanstab
