@@ -1139,6 +1139,19 @@
         <div id="logMethodRow" class="logmoderow"></div>
         <div id="gagForm">
           <label id="logLabel">Log the last shot</label>
+          <div
+            id="bpShotBanner"
+            style="
+              display: none;
+              margin-bottom: 10px;
+              padding: 10px 12px;
+              border-radius: 12px;
+              border: 1px solid var(--hi-line);
+              background: var(--hi-bg);
+              font-size: 13px;
+              line-height: 1.35;
+            "
+          ></div>
           <div id="rotwrap" style="margin-bottom: 10px">
             <button
               id="samelast"
@@ -2227,11 +2240,24 @@
     </div>
     <script>
       async function refresh() {
+        /* M_INIT used to be set BEFORE the calls it guards, so anything that threw
+   in applyNoun() skipped applyHwLocks() and then permanently closed this block:
+   no later refresh() would retry it, and applyHwLocks() has no other boot-time
+   caller, only onclick handlers in Settings and the wizard. Measured on build
+   35d874: applyHwLocks() ran 0 times at boot, so the machine-control lock never
+   applied until a hardware chip was tapped. Each call is isolated and the flag
+   is set last, so one failure can no longer take the rest of boot with it. */
         if (!M_INIT) {
-          loadSetup();
+          try {
+            loadSetup();
+          } catch (e) {}
+          try {
+            applyNoun();
+          } catch (e) {}
+          try {
+            applyHwLocks();
+          } catch (e) {}
           M_INIT = true;
-          applyNoun();
-          applyHwLocks();
         }
         renderTier();
       }
@@ -2335,6 +2361,9 @@
           grindUm,
         ];
         try {
+          cols = bpApplyShot(cols);
+        } catch (e) {}
+        try {
           localPush(cols);
         } catch (e) {}
         var _mode = dataMode();
@@ -2394,6 +2423,9 @@
           var _el = document.getElementById(i);
           if (_el) _el.value = "";
         });
+        try {
+          bpClearShot();
+        } catch (e) {}
         GBASKET = "";
         GPREP = "";
         GPAPER = "";
@@ -4596,6 +4628,7 @@
         LANG = localStorage.getItem("lang") || "es";
       } catch (e) {}
       function t(k) {
+        if (typeof I18N === "undefined" || !I18N) return k;
         return (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k;
       }
       function applyLang() {
@@ -6429,6 +6462,34 @@
         }
         return txt;
       }
+      async function gEnsureTab(tab, cols) {
+        /* gEnsureHeader widens an existing tab. This one makes sure there IS one.
+     A missing range is a 400 from the Sheets API, not an empty result, so the
+     read has to be guarded by the create rather than the other way round. */
+        var meta = await gApi(
+          "https://sheets.googleapis.com/v4/spreadsheets/" +
+            GSHEET +
+            "?fields=sheets.properties.title",
+        );
+        var have = ((meta && meta.sheets) || []).some(function (s) {
+          return s.properties && s.properties.title === tab;
+        });
+        if (!have) {
+          await gApi("https://sheets.googleapis.com/v4/spreadsheets/" + GSHEET + ":batchUpdate", {
+            method: "POST",
+            body: JSON.stringify({ requests: [{ addSheet: { properties: { title: tab } } }] }),
+          });
+        }
+        var rows = [];
+        try {
+          rows = await gRead(tab);
+        } catch (e) {}
+        if (!rows.length || !rows[0] || !rows[0].length) {
+          await gAppend(tab, cols);
+          return true;
+        }
+        return gEnsureHeader(tab, cols);
+      }
       async function gEnsureHeader(tab, want) {
         /* Sheets created before a column was added still carry the old header, and
      both gInvList and gPatchRow key off that header - so a value for a missing
@@ -6459,6 +6520,9 @@
         if (dataMode() !== "google") return;
         var a = await gEnsureHeader(SHOT_TAB, COLNAMES);
         var b = await gEnsureHeader(INV_TAB, INV_COLNAMES);
+        try {
+          await gEnsureTab(LANE_TAB, LANE_COLNAMES);
+        } catch (e) {}
         if (a || b) {
           try {
             await iLoad();
@@ -9092,6 +9156,27 @@
 
       /* Column order must match LogSink.gs COLS exactly. If you add a column there,
    add it here in the same position. */
+      /* The eight scale-invariant metrics the ESP32 companion computes per shot,
+   plus the classifier's own read of the shot type and the firmware build that
+   produced them. APPENDED, never inserted: gEnsureHeader widens an existing
+   sheet by adding missing names at the end, so a name's position here has to
+   match its position there for every sheet that already carries rows.
+   shot_id, peak_bar and avg_flow_mls are deliberately NOT in this list. Those
+   columns have existed since the first schema and logshot only ever wrote them
+   blank, so the handoff fills them rather than shipping a second column that
+   means the same thing. */
+      var BP_METRIC_COLS = [
+        "resistance",
+        "adherence",
+        "undershoot",
+        "channel",
+        "retention_g",
+        "pi_press",
+        "temp_err",
+        "first_drip_s",
+        "shot_type_auto",
+        "fw_version",
+      ];
       var COLNAMES = [
         "shot_id",
         "timestamp",
@@ -9121,7 +9206,7 @@
         "agitation",
         "brew_water_g",
         "grind_um",
-      ];
+      ].concat(BP_METRIC_COLS);
       function colsToParams(cols) {
         var out = [];
         for (var i = 0; i < COLNAMES.length; i++) {
@@ -10413,7 +10498,34 @@
         GCLIENT = null,
         GNAME = "";
       var SHOT_TAB = "Shot Log",
-        INV_TAB = "Inventory";
+        INV_TAB = "Inventory",
+        LANE_TAB = "Lanes";
+      /* One row per (coffee, type). Traditional, soup and filter of the same bag
+   are three independent rows and are never averaged together: the styles run at
+   different pressures, so folding them into one baseline would read a style
+   switch as a grind collapse and advise a correction that is not needed.
+   h1..h5 are the rolling short history, newest first, one shot per cell as
+   date|grind_setting|resistance|rating. Five plain cells rather than one JSON
+   blob, so a lane can be read and corrected in the sheet by hand. */
+      var LANE_COLNAMES = [
+        "lane_id",
+        "coffee",
+        "type",
+        "updated",
+        "n_shots",
+        "base_resistance",
+        "base_adherence",
+        "base_channel",
+        "base_yield_g",
+        "base_grind_um",
+        "note",
+        "note_date",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+      ];
 
       function gConfigured() {
         return !!(typeof GOOGLE_CLIENT_ID !== "undefined" && GOOGLE_CLIENT_ID);
@@ -10565,7 +10677,11 @@
           method: "POST",
           body: JSON.stringify({
             properties: { title: "BrewPilot Log" },
-            sheets: [{ properties: { title: SHOT_TAB } }, { properties: { title: INV_TAB } }],
+            sheets: [
+              { properties: { title: SHOT_TAB } },
+              { properties: { title: INV_TAB } },
+              { properties: { title: LANE_TAB } },
+            ],
           }),
         });
         GSHEET = ss.spreadsheetId;
@@ -10590,6 +10706,14 @@
             ":append?valueInputOption=RAW",
           { method: "POST", body: JSON.stringify({ values: [INV_COLNAMES] }) },
         );
+        await gApi(
+          "https://sheets.googleapis.com/v4/spreadsheets/" +
+            GSHEET +
+            "/values/" +
+            encodeURIComponent(LANE_TAB + "!A1") +
+            ":append?valueInputOption=RAW",
+          { method: "POST", body: JSON.stringify({ values: [LANE_COLNAMES] }) },
+        );
         return GSHEET;
       }
 
@@ -10608,7 +10732,7 @@
           "https://sheets.googleapis.com/v4/spreadsheets/" +
             GSHEET +
             "/values/" +
-            encodeURIComponent(tab + "!A1:AC5000"),
+            encodeURIComponent(tab + "!A1:BZ5000"),
         );
         return d && d.values ? d.values : [];
       }
@@ -11294,7 +11418,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-23-2112-35d874";
+      var BUILD = "2026-07-25-0513-c14224";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -11705,6 +11829,161 @@
         } catch (e) {}
       };
 
+      /* ---- ESP32 shot handoff ----
+   The webapp is HTTPS on GitHub Pages and the companion is HTTP on a LAN IP.
+   An HTTPS page CANNOT fetch an HTTP LAN address: that is mixed content, the
+   browser blocks it outright, and no header on the ESP can lift it. It can only
+   be NAVIGATED to. So the device panel builds a link carrying the metrics in
+   the query string, and opening that link lands here. This is verified on the
+   iPhone; a background fetch is not a thing that can be made to work.
+
+   Contract with the firmware. Everything is optional except bp=1:
+     bp=1  marks the link          sid  shot id          fw  FW_VERSION
+     t     classifier type read    y    yield g          d   duration s
+     pk    peak bar                fl   avg flow ml/s    tc  temp C
+     rs    resistance              ad   adherence        us  undershoot
+     ch    channel                 rt   retention g      pi  preinfusion bar
+     te    temp error C            fd   first drip s
+
+   Nothing here trusts the link. Every numeric is parsed to a finite number or
+   dropped, and the type only takes effect if it is one the form actually has.
+   The row is still written by logshot behind bpCoffeeGate, so a handoff cannot
+   invent a coffee identity or start a lane on its own. */
+      var BPSHOT = null;
+      var BP_Q = {
+        rs: "resistance",
+        ad: "adherence",
+        us: "undershoot",
+        ch: "channel",
+        rt: "retention_g",
+        pi: "pi_press",
+        te: "temp_err",
+        fd: "first_drip_s",
+      };
+      function bpQNum(p, k) {
+        var v = p.get(k);
+        if (v === null || String(v).trim() === "") return "";
+        var n = parseFloat(v);
+        return isFinite(n) ? n : "";
+      }
+      function bpFill(id, v) {
+        if (v === "" || v === null || v === undefined) return;
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.value = String(v);
+        try {
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+        } catch (e) {}
+      }
+      function bpHandoff() {
+        var qs = String(location.search || "");
+        if (qs.indexOf("bp=1") < 0) return false;
+        var p;
+        try {
+          p = new URLSearchParams(qs);
+        } catch (e) {
+          return false;
+        }
+        var s = {
+          sid: String(p.get("sid") || "").trim(),
+          fw: String(p.get("fw") || "").trim(),
+          type: String(p.get("t") || "")
+            .trim()
+            .toLowerCase(),
+          yieldG: bpQNum(p, "y"),
+          durationS: bpQNum(p, "d"),
+          peakBar: bpQNum(p, "pk"),
+          avgFlow: bpQNum(p, "fl"),
+          tempC: bpQNum(p, "tc"),
+          m: {},
+        };
+        Object.keys(BP_Q).forEach(function (k) {
+          s.m[BP_Q[k]] = bpQNum(p, k);
+        });
+        BPSHOT = s;
+        /* Strip the query before anything else can read it again. A reload used to
+     be free; with a handoff sitting in the URL it would re-ingest the same shot
+     and there would be no sign of it except a duplicate row. */
+        try {
+          history.replaceState(null, "", location.pathname);
+        } catch (e) {}
+        try {
+          showTab("log");
+        } catch (e) {}
+        try {
+          setLogMode("after");
+        } catch (e) {}
+        /* Method BEFORE the fields: setLogMethod re-renders the form, so anything
+     filled before it would be wiped. The classifier reads shot SHAPE, not the
+     profile name - a shot named "Adaptive Light Roast Soup" ran at 6.5 bar and
+     was traditional espresso - so its read is the honest default here, and the
+     method chips still override it. */
+        if (["espresso", "soup", "filter"].indexOf(s.type) >= 0) {
+          try {
+            setLogMethod(s.type);
+          } catch (e) {}
+        }
+        bpFill("gyield", s.yieldG === "" ? "" : Math.round(s.yieldG * 10) / 10);
+        bpFill("gtime", s.durationS === "" ? "" : Math.round(s.durationS));
+        bpFill("gtemp", s.tempC === "" ? "" : Math.round(s.tempC * 10) / 10);
+        try {
+          gRatioApply();
+        } catch (e) {}
+        bpShotBanner();
+        return true;
+      }
+      function bpShotBanner() {
+        var el = document.getElementById("bpShotBanner");
+        if (!el) return;
+        if (!BPSHOT) {
+          el.style.display = "none";
+          el.textContent = "";
+          return;
+        }
+        var isEs = typeof LANG !== "undefined" && LANG === "es";
+        var bits = [];
+        if (BPSHOT.durationS !== "") bits.push(Math.round(BPSHOT.durationS) + "s");
+        if (BPSHOT.yieldG !== "") bits.push(Math.round(BPSHOT.yieldG) + "g");
+        if (BPSHOT.peakBar !== "") bits.push(BPSHOT.peakBar.toFixed(1) + " bar");
+        if (BPSHOT.m.resistance !== "") bits.push("R " + BPSHOT.m.resistance.toFixed(2));
+        var head = isEs ? "Datos del shot recibidos" : "Shot data received";
+        var tail = isEs
+          ? "Agrega cafe, dosis y calificacion, luego guarda."
+          : "Add coffee, dose and rating, then save.";
+        el.textContent =
+          head +
+          (BPSHOT.fw ? " (fw " + BPSHOT.fw + ")" : "") +
+          (bits.length ? ": " + bits.join(", ") : "") +
+          ". " +
+          tail;
+        el.style.display = "";
+      }
+      function bpApplyShot(cols) {
+        /* Fills the three columns the schema has always carried but logshot never
+     had a value for, then appends the metric tail in BP_METRIC_COLS order. The
+     tail is appended even with no handoff, as blanks, so every row is the same
+     width and a later append stays safe. */
+        var s = BPSHOT;
+        if (s) {
+          if (s.sid && !cols[0]) cols[0] = s.sid;
+          if (s.peakBar !== "") cols[12] = s.peakBar;
+          if (s.avgFlow !== "") cols[13] = s.avgFlow;
+        }
+        return cols.concat(
+          BP_METRIC_COLS.map(function (name) {
+            if (!s) return "";
+            if (name === "shot_type_auto") return s.type || "";
+            if (name === "fw_version") return s.fw || "";
+            var v = s.m[name];
+            return v === undefined || v === "" ? "" : v;
+          }),
+        );
+      }
+      function bpClearShot() {
+        BPSHOT = null;
+        bpShotBanner();
+      }
+
       /* bootstrap last: every definition exists by now */
       /* wizTemplateLink() and wizShots() removed with the Apps Script wizard: one was an
    empty stub left over from the /exec cut, the other lazy-loaded screenshots of a
@@ -11712,6 +11991,9 @@
       uiStart();
       try {
         pickerizeAll();
+      } catch (e) {}
+      try {
+        bpHandoff();
       } catch (e) {}
     </script>
   </body>
