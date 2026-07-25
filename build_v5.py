@@ -8948,9 +8948,29 @@ print('tab split: home %d, log %d, beans %d, grind %d, insights %d bytes'
 #     Silent, and it would have looked like the write failed.
 FEATURES_JS = must_replace(
     FEATURES_JS,
-    'tab + "!A1:AC5000"',
-    'tab + "!A1:BZ5000"',
-    'P1 widen gRead past the metric columns')
+    '''      async function gRead(tab) {
+        var d = await gApi(
+          "https://sheets.googleapis.com/v4/spreadsheets/" +
+            GSHEET +
+            "/values/" +
+            encodeURIComponent(tab + "!A1:AC5000"),
+        );''',
+    '''      async function gRead(tab) {
+        /* No column bound, on purpose. A fixed A1 window has to be wide enough
+     for the schema and narrow enough to fit inside the tab's actual grid, and
+     those two move in opposite directions. AC was too narrow once the metric
+     columns were appended. BZ was wider than the Inventory tab's grid, and the
+     Sheets API answers 400 rather than clamping, so EVERY read of that tab
+     failed: inventory, the identity gate and the header migration all went down
+     together. Naming the tab with no range returns everything in it and cannot
+     be out of bounds. */
+        var d = await gApi(
+          "https://sheets.googleapis.com/v4/spreadsheets/" +
+            GSHEET +
+            "/values/" +
+            encodeURIComponent(tab),
+        );''',
+    'P1 gRead asks for the whole tab, never a fixed column window')
 
 # P2. The metric tail. Appended to COLNAMES by concat rather than typed into the
 #     literal, so the list that defines the sheet header and the list bpApplyShot
