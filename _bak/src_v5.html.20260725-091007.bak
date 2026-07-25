@@ -1207,13 +1207,6 @@
             } else alert(t("gSaveFailed"));
           }
         }
-        /* After the row is saved, never before: a lane must not claim a shot the
-   sheet rejected. laneRecord re-checks inventory identity itself, so a shot that
-   reached here through logAction's catch path (which skips bpCoffeeGate) is
-   still filed only if the coffee is canonical. */
-        try {
-          await laneRecord(cols);
-        } catch (e) {}
         try {
           pushRotation(
             {
@@ -2408,42 +2401,15 @@
         }
       }
       function renderSheetStatus() {
-        /* "Connected" was the whole message, which is the one thing that was never
-   in doubt. It never said WHICH spreadsheet, so an auto-adopted stray file and
-   the real log looked identical on screen and the only way to tell them apart
-   was to open Drive. The name goes in as a text node, not innerHTML: it comes
-   from Drive and a file can be named anything at all. */
         let el = document.getElementById("sheetStatus");
         if (!el) return;
-        el.innerHTML = "";
-        let line = document.createElement("div");
-        if (dataMode() !== "google") {
-          line.innerHTML =
-            "<span style='color:var(--warn)'>Not connected - live advice works, but nothing is saved</span>";
-          el.appendChild(line);
-          return;
-        }
-        line.innerHTML =
-          "<span style='color:var(--hi-text)'>Connected - inventory and history are saving</span>";
-        el.appendChild(line);
-        let who = GNAME || (GSHEET ? "sheet " + String(GSHEET).slice(0, 10) : "");
-        if (!who) return;
-        let sub = document.createElement("div");
-        sub.style.cssText = "color:var(--dim);margin-top:2px";
-        sub.appendChild(document.createTextNode("Writing to "));
-        let url = gSheetUrl();
-        if (url) {
-          let a = document.createElement("a");
-          a.href = url;
-          a.target = "_blank";
-          a.rel = "noopener";
-          a.style.color = "var(--dim)";
-          a.textContent = who;
-          sub.appendChild(a);
+        if (dataMode() === "google") {
+          el.innerHTML =
+            "<span style='color:var(--hi-text)'>Connected - inventory and history are saving</span>";
         } else {
-          sub.appendChild(document.createTextNode(who));
+          el.innerHTML =
+            "<span style='color:var(--warn)'>Not connected - live advice works, but nothing is saved</span>";
         }
-        el.appendChild(sub);
       }
       async function renderRotModes() {
         let box = document.getElementById("rotmodechips");
