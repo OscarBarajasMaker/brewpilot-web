@@ -9183,12 +9183,27 @@ FEATURES_JS = must_replace(
       function bpHandoff() {
         var qs = String(location.search || "");
         if (qs.indexOf("bp=1") < 0) return false;
+        if (!bpIngest(qs)) return false;
+        /* Strip the query before anything else can read it again. A reload used to
+     be free; with a handoff sitting in the URL it would re-ingest the same shot
+     and there would be no sign of it except a duplicate row. Only the URL path
+     needs this; the poller never puts anything in the address bar. */
+        try {
+          history.replaceState(null, "", location.pathname);
+        } catch (e) {}
+        return true;
+      }
+      function bpIngest(qs) {
+        /* ONE parser, two callers: the tapped link and the ntfy poller. Two
+     parsers for one wire format is how they drift, and a drift here writes
+     wrong numbers into a lane baseline with nothing on screen to show it. */
         var p;
         try {
-          p = new URLSearchParams(qs);
+          p = new URLSearchParams(String(qs || "").replace(/^[^?]*\?/, ""));
         } catch (e) {
           return false;
         }
+        if (String(p.get("bp") || "") !== "1") return false;
         var s = {
           sid: String(p.get("sid") || "").trim(),
           fw: String(p.get("fw") || "").trim(),
@@ -9206,12 +9221,7 @@ FEATURES_JS = must_replace(
           s.m[BP_Q[k]] = bpQNum(p, k);
         });
         BPSHOT = s;
-        /* Strip the query before anything else can read it again. A reload used to
-     be free; with a handoff sitting in the URL it would re-ingest the same shot
-     and there would be no sign of it except a duplicate row. */
-        try {
-          history.replaceState(null, "", location.pathname);
-        } catch (e) {}
+        if (s.sid) bpMarkSeen(s.sid);
         try {
           showTab("log");
         } catch (e) {}
@@ -10297,6 +10307,267 @@ FEATURES_JS = must_replace(
         } catch (e) {}
         var m = logMethod();''',
     'P20b method change redraws the card')
+
+
+# ===================== PASS 5: pull the shot instead of being pushed ========
+#
+# P22. iOS will not open an https link in an installed PWA. No URL scheme, no
+#      universal link, no manifest field changes it: a tapped ntfy action always
+#      lands in the default browser, which is a DIFFERENT storage and a different
+#      Google session from the home-screen app. That is why a logged shot ended
+#      up under the wrong account.
+#
+#      So stop being pushed and start pulling. The firmware already publishes
+#      every shot to ntfy with the handoff URL in its Actions header, and ntfy's
+#      JSON poll returns that actions array verbatim. The app can read its own
+#      shots off the topic on launch and the PWA opens normally from the drawer.
+#      No firmware change at all.
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '      function bpShotBanner() {',
+    '''      function bpSeen() {
+        try {
+          var a = JSON.parse(localStorage.getItem("bpSeenShots") || "[]");
+          return a && a.length ? a : [];
+        } catch (e) {
+          return [];
+        }
+      }
+      function bpMarkSeen(sid) {
+        /* Dedupe by shot id. The poller asks for a window of history every time,
+     so without this every launch would re-offer the same shot, and accepting it
+     twice would double a lane baseline. Capped so the list cannot grow forever. */
+        var id = String(sid || "").trim();
+        if (!id) return;
+        var a = bpSeen();
+        if (a.indexOf(id) >= 0) return;
+        a.push(id);
+        if (a.length > 200) a = a.slice(a.length - 200);
+        try {
+          localStorage.setItem("bpSeenShots", JSON.stringify(a));
+        } catch (e) {}
+      }
+      function bpTopic() {
+        try {
+          return String(localStorage.getItem("ntfyTopic") || "").trim();
+        } catch (e) {
+          return "";
+        }
+      }
+      function bpUrlsFromNtfy(text) {
+        /* ntfy returns newline-delimited JSON, one message per line. A view
+     action carries the handoff URL the firmware built. Parsed per line and each
+     line guarded on its own: one malformed message must not discard the rest. */
+        var out = [];
+        String(text || "")
+          .split("\\n")
+          .forEach(function (line) {
+            var t = line.trim();
+            if (!t) return;
+            var o;
+            try {
+              o = JSON.parse(t);
+            } catch (e) {
+              return;
+            }
+            if (!o || o.event !== "message" || !o.actions) return;
+            o.actions.forEach(function (a) {
+              if (!a || !a.url) return;
+              if (String(a.url).indexOf("bp=1") < 0) return;
+              out.push({ url: String(a.url), time: Number(o.time) || 0 });
+            });
+          });
+        out.sort(function (a, b) {
+          return b.time - a.time;
+        });
+        return out;
+      }
+      function bpSidOf(url) {
+        try {
+          return String(new URLSearchParams(String(url).replace(/^[^?]*\\?/, "")).get("sid") || "").trim();
+        } catch (e) {
+          return "";
+        }
+      }
+      async function bpPollNtfy(hours) {
+        /* Returns the reason it did nothing, so a quiet failure can be told apart
+     from having nothing to fetch. Never throws: this runs at launch and must not
+     be able to take the app down with it. */
+        var topic = bpTopic();
+        if (!topic) return "no-topic";
+        if (BPSHOT) return "already-have-one";
+        var since = String(Math.max(1, Math.min(72, hours || 12))) + "h";
+        var txt = "";
+        try {
+          var r = await fetch(
+            "https://ntfy.sh/" + encodeURIComponent(topic) + "/json?poll=1&since=" + since,
+            { cache: "no-store" },
+          );
+          if (!r.ok) return "http-" + r.status;
+          txt = await r.text();
+        } catch (e) {
+          return "offline";
+        }
+        var cands = bpUrlsFromNtfy(txt);
+        if (!cands.length) return "none-found";
+        var seen = bpSeen();
+        for (var i = 0; i < cands.length; i++) {
+          var sid = bpSidOf(cands[i].url);
+          if (sid && seen.indexOf(sid) >= 0) continue;
+          /* bpIngest marks it seen itself, so a shot cannot be offered twice even
+       if the caller forgets. */
+          if (bpIngest(cands[i].url)) {
+            try {
+              showTab("log");
+            } catch (e) {}
+            try {
+              setLogMode("after");
+            } catch (e) {}
+            return "ingested";
+          }
+        }
+        return "all-seen";
+      }
+      function bpShotBanner() {''',
+    'P22 ntfy poller with dedupe')
+
+# P23. Google picks whichever account the browser considers current. On a phone
+#      with two signed-in accounts that is a coin toss, and a wrong pick writes to
+#      a different Drive. Remember which account connected and ask for it by name.
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '''              GCLIENT = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: GSCOPE,''',
+    '''              GCLIENT = google.accounts.oauth2.initTokenClient({
+                client_id: GOOGLE_CLIENT_ID,
+                scope: GSCOPE,
+                login_hint: gAccount(),''',
+    'P23a hint the account at client init')
+
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '            GCLIENT.requestAccessToken({ prompt: "" });',
+    '''            /* The hint is also passed per request, because the client is built once
+         and the remembered account can be learned after that. */
+            var _h = gAccount();
+            GCLIENT.requestAccessToken(_h ? { prompt: "", login_hint: _h } : { prompt: "" });''',
+    'P23b hint the account per request')
+
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '      function gConfigured() {',
+    '''      function gAccount() {
+        try {
+          return String(localStorage.getItem("gaccount") || "").trim();
+        } catch (e) {
+          return "";
+        }
+      }
+      async function gLearnAccount() {
+        /* Learned, not asked for. drive.file does not grant an email address, so
+     this reads the one Drive will admit to and quietly does nothing if it will
+     not. A missing hint costs an account chooser; a WRONG hint would be worse,
+     so it is only ever written from Drive's own answer. */
+        if (gAccount()) return gAccount();
+        try {
+          var d = await gApi("https://www.googleapis.com/drive/v3/about?fields=user(emailAddress)");
+          var e = d && d.user ? String(d.user.emailAddress || "").trim() : "";
+          if (!e) return "";
+          try {
+            localStorage.setItem("gaccount", e);
+          } catch (err) {}
+          try {
+            renderSheetStatus();
+          } catch (err) {}
+          return e;
+        } catch (err) {
+          return "";
+        }
+      }
+      function gConfigured() {''',
+    'P23c learn and remember the connected account')
+
+# P24. Boot order. The tapped link is the more explicit intent so it wins; the
+#      poller only runs when the URL had nothing, which is every normal launch
+#      from the phone drawer. Delayed so it cannot compete with the first paint.
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '      try {\n        bpHandoff();\n      } catch (e) {}',
+    '      try {\n        bpHandoff();\n      } catch (e) {}\n'
+    '      setTimeout(function () {\n'
+    '        try {\n          bpPollNtfy(12);\n        } catch (e) {}\n'
+    '      }, 900);',
+    'P24a poll at launch when the URL had nothing')
+
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '      uiStart();\n      try {\n        pickerizeAll();\n      } catch (e) {}',
+    '      uiStart();\n      try {\n        pickerizeAll();\n      } catch (e) {}\n'
+    '      try {\n        loadNtfyTopic();\n      } catch (e) {}',
+    'P24d populate the topic field at boot')
+
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '''                    GTOKEN = r.access_token;
+                    GTOKEN_EXP = Date.now() + (r.expires_in || 3600) * 1000;
+                    gSaveToken();''',
+    '''                    GTOKEN = r.access_token;
+                    GTOKEN_EXP = Date.now() + (r.expires_in || 3600) * 1000;
+                    gSaveToken();
+                    try {
+                      gLearnAccount();
+                    } catch (e) {}''',
+    'P24b learn the account once a token works')
+
+# P24c. The settings field needs a reader, a writer and a manual check, and the
+#       status line has to say which account as well as which sheet, since the
+#       whole point of the hint is that the wrong one is now possible to notice.
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '      function bpSeen() {',
+    '''      function loadNtfyTopic() {
+        var el = document.getElementById("ntfyTopic");
+        if (el) el.value = bpTopic();
+        renderNtfyStatus("");
+      }
+      function saveNtfyTopic() {
+        var el = document.getElementById("ntfyTopic");
+        if (!el) return;
+        /* Accept a pasted ntfy URL as well as a bare topic. Typing the whole
+     address is the obvious thing to do and silently storing it would make every
+     poll 404. */
+        var v = String(el.value || "").trim();
+        v = v.replace(/^https?:\\/\\/[^/]+\\//i, "").replace(/[/?].*$/, "");
+        el.value = v;
+        try {
+          localStorage.setItem("ntfyTopic", v);
+        } catch (e) {}
+        renderNtfyStatus(v ? "saved" : "");
+      }
+      function renderNtfyStatus(msg) {
+        var el = document.getElementById("ntfyStatus");
+        if (!el) return;
+        el.textContent = msg || "";
+      }
+      async function checkShotsNow() {
+        renderNtfyStatus("checking...");
+        var r = "error";
+        try {
+          r = await bpPollNtfy(48);
+        } catch (e) {}
+        var say = {
+          ingested: "shot loaded, see the Log tab",
+          "no-topic": "set your ntfy topic first",
+          "none-found": "no shots on that topic in the last 48h",
+          "all-seen": "nothing new, every shot there is already logged",
+          "already-have-one": "a shot is already loaded, save or clear it first",
+          offline: "could not reach ntfy",
+        };
+        renderNtfyStatus(say[r] || r);
+      }
+      function bpSeen() {''',
+    'P24c topic field, manual check and status')
 
 ASSEMBLED = (HEAD + CSS + SHELL_OPEN + APPBAR_H + WRAP_DURA + TABHOME_O
              + INSTALL_H + HERO_H

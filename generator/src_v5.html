@@ -1035,6 +1035,33 @@
           </div>
           <div class="fl">Google Sheet (enables inventory, history, trends)</div>
           <div id="sheetStatus" style="font-size: 12px; margin-bottom: 6px"></div>
+          <div class="fl" style="margin-top: 10px">ntfy topic (pulls shots from your machine)</div>
+          <input
+            id="ntfyTopic"
+            class="fin"
+            placeholder="oscar-gaggiuino-a7f3k9qz"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            style="width: 100%"
+            onchange="saveNtfyTopic()"
+          />
+          <div id="ntfyStatus" style="color: var(--dim); font-size: 12px; margin: 4px 2px"></div>
+          <button
+            onclick="checkShotsNow()"
+            style="
+              width: 100%;
+              padding: 10px;
+              margin-top: 6px;
+              border-radius: 10px;
+              border: 1px solid var(--line);
+              background: var(--panel);
+              color: var(--text);
+              font-size: 14px;
+            "
+          >
+            Check for shots now
+          </button>
           <input
             id="setWebhook"
             type="hidden"

@@ -32,7 +32,7 @@ import re, sys, json, os
 # data-dependent, so it is not a tell anyone can rely on. A green check that is
 # not checking is the exact failure this file exists to prevent, so the file had
 # better not be able to do it to itself. Print the version next to the count.
-AUDIT_VERSION = 'v14-2026-07-25'
+AUDIT_VERSION = 'v15-2026-07-25'
 
 HTML = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/render/index_v5.html'
 src = open(HTML, encoding='utf-8').read()
@@ -775,6 +775,65 @@ elif 'rows.length - 1' not in m_ls4.group(1):
     fail('rotation', 'lastShotByName no longer scans newest first -> an old shot overrides a '
                      'later correction')
 checks += 2
+
+# ============================ 25. PASS 5: PULL, NOT PUSH
+# iOS cannot open an https link in an installed PWA, so a tapped ntfy action
+# always lands in the default browser: different storage, different Google
+# session, and a shot logged under the wrong account. The poller is the only way
+# a shot reaches the app the user actually opens from the drawer.
+m_pn = re.search(r'async function bpPollNtfy\(hours\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_pn:
+    fail('poller', 'bpPollNtfy is gone -> the only path that reaches the installed PWA')
+else:
+    b = m_pn.group(1)
+    if 'bpIngest(' not in b:
+        fail('poller', 'bpPollNtfy does not use bpIngest -> a second parser for one wire format, '
+                       'which is how the two drift and write wrong numbers into a lane')
+    if 'BPSHOT' not in b:
+        fail('poller', 'bpPollNtfy no longer refuses while a shot is loaded -> it would clobber a '
+                       'form the user is part way through')
+    if 'bpSeen(' not in b:
+        fail('poller', 'bpPollNtfy no longer checks the seen list -> every launch re-offers the '
+                       'same shot and accepting twice doubles a lane baseline')
+    checks += 3
+
+# One parser, two callers. bpHandoff must delegate rather than parse again.
+m_bh = re.search(r'function bpHandoff\(\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_bh:
+    fail('poller', 'bpHandoff is gone')
+else:
+    b = m_bh.group(1)
+    if 'bpIngest(' not in b:
+        fail('poller', 'bpHandoff parses the query itself again instead of delegating to bpIngest')
+    if 'replaceState' not in b:
+        fail('poller', 'bpHandoff no longer strips the query -> a reload re-ingests the same shot '
+                       'and the only sign is a duplicate row')
+    checks += 2
+
+if not re.search(r'function bpMarkSeen\(sid\)', JS):
+    fail('poller', 'bpMarkSeen is gone -> nothing dedupes a shot across launches')
+checks += 1
+
+# The account hint. Google picks whichever account the browser considers current,
+# which on a phone with two signed in is a coin toss and writes to a stranger.
+# BOTH sites matter and neither is redundant: the client is built once, so a
+# hint learned afterwards can only be applied per request, and a fresh client
+# with no per-request hint would still need the config one.
+if not re.search(r'login_hint: gAccount\(\)', JS):
+    fail('poller', 'the account hint is gone from initTokenClient -> a returning user with two '
+                   'Google accounts signed in gets whichever the browser considers current')
+if not re.search(r'requestAccessToken\([^)]*login_hint', JS):
+    fail('poller', 'the account hint is gone from requestAccessToken -> the client is built once, '
+                   'so an account learned after that would never be asked for')
+checks += 2
+
+m_ga = re.search(r'async function gLearnAccount\(\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_ga:
+    fail('poller', 'gLearnAccount is gone')
+elif 'emailAddress' not in m_ga.group(1):
+    fail('poller', 'gLearnAccount no longer reads the account from Drive -> a hint written from '
+                   'anything else could be WRONG, which is worse than having none')
+checks += 1
 
 # ---------------------------------------------------------------- report
 print()
