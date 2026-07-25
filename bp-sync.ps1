@@ -26,7 +26,7 @@
 param(
   [string]$Message = '',
   [string]$Downloads = '',
-  [string]$FirmwareDir = '',
+  [string]$FirmwareDir = 'C:\Users\oscar\Downloads\espressocopilot',
   [int]$MaxAgeHours = 24,
   [switch]$DryRun,
   [switch]$Force
@@ -57,8 +57,11 @@ $ROUTES = @(
   @{ Name = 'adv2.js';               Dest = 'generator' },
   @{ Name = 'prep.py';               Dest = '.github' },
   @{ Name = 'verify_site.py';        Dest = '.github' },
-  @{ Name = 'panel.h';               Dest = 'FIRMWARE' },
-  @{ Name = 'panel_v5.h';            Dest = 'FIRMWARE' }
+  @{ Name = 'main.cpp';              Dest = 'FIRMWARE\src' },
+  @{ Name = 'scale.h';               Dest = 'FIRMWARE\src' },
+  @{ Name = 'panel.h';               Dest = 'FIRMWARE\src' },
+  @{ Name = 'panel_v5.h';            Dest = 'FIRMWARE\src' },
+  @{ Name = 'platformio.ini';        Dest = 'FIRMWARE' }
 )
 
 # ---------------------------------------------------------------------------
@@ -118,6 +121,7 @@ Write-Host ''
 
 $moved = @()
 $skipped = @()
+$repoTouched = $false
 $now = Get-Date
 
 foreach ($r in $ROUTES) {
@@ -130,18 +134,27 @@ foreach ($r in $ROUTES) {
     continue
   }
 
-  if ($r.Dest -eq 'FIRMWARE') {
+  if ($r.Dest -like 'FIRMWARE*') {
     if (-not $FirmwareDir) {
       $skipped += ('{0}  no -FirmwareDir given, left in Downloads' -f $r.Name)
       continue
     }
     if (-not (Test-Path -LiteralPath $FirmwareDir -PathType Container)) {
-      $skipped += ('{0}  FirmwareDir is not a folder' -f $r.Name)
+      $skipped += ('{0}  FirmwareDir is not a folder: {1}' -f $r.Name, $FirmwareDir)
       continue
     }
-    $destDir = $FirmwareDir
+    # A PlatformIO project has a platformio.ini. Without this check a wrong
+    # -FirmwareDir would quietly create a src\ folder somewhere harmless-looking
+    # and the flash would keep using the real, unchanged source.
+    if (-not (Test-Path -LiteralPath (Join-Path $FirmwareDir 'platformio.ini'))) {
+      $skipped += ('{0}  no platformio.ini in {1}, that is not the firmware project' -f $r.Name, $FirmwareDir)
+      continue
+    }
+    $sub = $r.Dest.Substring('FIRMWARE'.Length).TrimStart('\')
+    $destDir = if ($sub) { Join-Path $FirmwareDir $sub } else { $FirmwareDir }
   } else {
     $destDir = Join-Path $Root $r.Dest
+    $repoTouched = $true
   }
 
   $target = Join-Path $destDir $r.Name
@@ -167,7 +180,15 @@ foreach ($r in $ROUTES) {
     Copy-Item -LiteralPath $f.FullName -Destination $target -Force
     # Only now is it safe to take it out of Downloads.
     Remove-Item -LiteralPath $f.FullName -Force
-    $moved += ('{0,-22} {1,9} bytes  {2}' -f $r.Name, $f.Length, $hash.Substring(0, 16))
+    $extra = ''
+    if ($r.Name -eq 'main.cpp') {
+      # Surface FW_VERSION. /state reports it, so an unbumped version is the
+      # difference between knowing what is running and guessing.
+      $fw = Select-String -LiteralPath $target -Pattern 'define\s+FW_VERSION\s+"([^"]+)"' |
+            Select-Object -First 1
+      if ($fw) { $extra = '  FW_VERSION ' + $fw.Matches[0].Groups[1].Value }
+    }
+    $moved += ('{0,-22} {1,9} bytes  {2}{3}' -f $r.Name, $f.Length, $hash.Substring(0, 16), $extra)
   } catch {
     $skipped += ('{0}  failed: {1}' -f $r.Name, $_.Exception.Message)
   }
@@ -187,6 +208,17 @@ if ($skipped.Count -gt 0) {
 Write-Host ''
 
 if ($DryRun -or $moved.Count -eq 0) { exit 0 }
+
+if (-not $repoTouched) {
+  Write-Host '  firmware only, nothing in the repo changed. Not publishing.' -ForegroundColor Cyan
+  Write-Host ''
+  Write-Host '  Build and flash:' -ForegroundColor Cyan
+  Write-Host ("    cd '" + $FirmwareDir + "'")
+  Write-Host '    python -m platformio run'
+  Write-Host '    python -m platformio run --target upload'
+  Write-Host ''
+  exit 0
+}
 
 Push-Location -LiteralPath $Root
 try {

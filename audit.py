@@ -32,7 +32,7 @@ import re, sys, json, os
 # data-dependent, so it is not a tell anyone can rely on. A green check that is
 # not checking is the exact failure this file exists to prevent, so the file had
 # better not be able to do it to itself. Print the version next to the count.
-AUDIT_VERSION = 'v13-2026-07-25'
+AUDIT_VERSION = 'v14-2026-07-25'
 
 HTML = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/render/index_v5.html'
 src = open(HTML, encoding='utf-8').read()
@@ -711,6 +711,44 @@ m_ln = re.search(r'function laneLine\(el, txt, dim\)\s*\{(.*?)\n      \}', JS, r
 if not m_ln or 'textContent' not in m_ln.group(1) or 'innerHTML' in m_ln.group(1):
     fail('card', 'laneLine no longer writes lane values as text -> a coffee name is user input and '
                  'would become markup')
+checks += 1
+
+# ============================ 24. PASS 4b: THE ROTATION CHIP
+# Both manual add paths do ROT.push({ coffee: n }), so a rotation entry carries
+# ONLY a name until a shot is logged with it. Filling the form from the entry
+# alone left every other field blank. Inventory is the source of truth for what a
+# coffee IS, and copying those fields onto the entry instead would have gone
+# stale the moment the bag was corrected in the sheet.
+m_fe = re.search(r'function fillEntry\(e\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_fe:
+    fail('rotation', 'fillEntry is gone')
+else:
+    b = m_fe.group(1)
+    if 'invRowByName(' not in b:
+        fail('rotation', 'fillEntry no longer reads Inventory -> a chip added from the picker '
+                         'carries only a name and fills nothing else')
+    if re.search(r'getElementById\("(varietal|roast)"\)\.value\s*=', b):
+        fail('rotation', 'fillEntry assigns straight to the varietal or roast SELECT -> a value '
+                         'with no matching option is silently dropped')
+    checks += 2
+
+# A select ignores an assignment to a value it has no option for. Inventory can
+# hold a varietal that is not in the built-in list.
+m_sa = re.search(r'function setSelAny\(id, val\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_sa:
+    fail('rotation', 'setSelAny is gone')
+elif 'createElement("option")' not in m_sa.group(1):
+    fail('rotation', 'setSelAny no longer appends an unknown value as an option -> a varietal '
+                     'outside the built-in list vanishes with no error')
+checks += 1
+
+m_ir = re.search(r'function invRowByName\(name\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_ir:
+    fail('rotation', 'invRowByName is gone')
+elif not (re.search(r'var k = bpNorm\(name\)', m_ir.group(1))
+          and re.search(r'bpNorm\(rows\[i\]\.coffee\)', m_ir.group(1))):
+    fail('rotation', 'invRowByName does not normalise BOTH sides of the comparison -> casing or '
+                     'punctuation splits one bag into two identities')
 checks += 1
 
 # ---------------------------------------------------------------- report

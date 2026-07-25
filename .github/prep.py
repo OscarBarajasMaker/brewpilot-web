@@ -37,7 +37,7 @@ import sys
 # Raise this in the SAME commit that raises AUDIT_VERSION. publish.ps1 stages by
 # .gitignore now, so the two files move together and cannot drift apart the way
 # they did under the old allowlist.
-MIN_AUDIT = 'v13-2026-07-25'
+MIN_AUDIT = 'v14-2026-07-25'
 
 def audit_rank(v):
     """(major, date) from a version like v13-2026-07-25. Sorts by number first,

@@ -2554,17 +2554,82 @@
         renderChips();
         showDialin(ROT.find((x) => x.coffee == entry.coffee));
       }
+      function setSelAny(id, val) {
+        /* setSel needs an "_other" partner input. roast, varietal and fregion have
+     none, and a <select> silently ignores an assignment to a value it has no
+     option for. Your own inventory can hold a varietal that is not in the
+     built-in list, so append it rather than drop it on the floor. */
+        var el = document.getElementById(id);
+        if (!el) return;
+        var v = String(val === undefined || val === null ? "" : val).trim();
+        if (!v) {
+          el.value = "";
+          return;
+        }
+        if (String(el.tagName).toUpperCase() !== "SELECT") {
+          el.value = v;
+          return;
+        }
+        for (var i = 0; i < el.options.length; i++) {
+          if (el.options[i].value === v || el.options[i].text === v) {
+            el.value = el.options[i].value;
+            return;
+          }
+        }
+        var o = document.createElement("option");
+        o.value = v;
+        o.textContent = v;
+        el.appendChild(o);
+        el.value = v;
+      }
+      function invRowByName(name) {
+        /* Inventory is the source of truth for what a coffee IS. Matched through
+     bpNorm so casing and punctuation cannot split one bag into two. An open bag
+     wins over a finished one, but a finished bag still beats an empty form. */
+        var k = bpNorm(name);
+        if (!k) return null;
+        var rows = typeof IINV !== "undefined" && IINV ? IINV : [];
+        var i,
+          fallback = null;
+        for (i = 0; i < rows.length; i++) {
+          if (bpNorm(rows[i].coffee) !== k) continue;
+          if (String(rows[i].status || "") !== "Finished") return rows[i];
+          if (!fallback) fallback = rows[i];
+        }
+        return fallback;
+      }
       function fillEntry(e) {
+        /* A rotation entry added from the picker carries only a name, so filling
+     from the entry alone left every field blank. Inventory first, the entry as
+     fallback, because a chip built from a logged shot does carry these. */
+        var inv = invRowByName(e.coffee) || {};
+        var pick = function (k) {
+          var v = inv[k];
+          if (v === undefined || v === null || String(v).trim() === "") v = e[k];
+          return v === undefined || v === null ? "" : v;
+        };
+        /* Method BEFORE the fields. setLogMethod re-renders the form, so anything
+     filled ahead of it is wiped. Same ordering trap as the ESP handoff. */
+        if (e.type && typeof setLogMethod === "function") {
+          try {
+            setLogMethod(e.type);
+          } catch (err) {}
+        }
         document.getElementById("coffee").value = e.coffee || "";
-        setSel("roaster", "roaster_other", e.roaster);
-        setSel("process", "process_other", e.process);
-        document.getElementById("varietal").value = e.varietal || "";
-        document.getElementById("roast").value = e.roast || "";
-        document.getElementById("type").value = e.type || "";
+        setSel("roaster", "roaster_other", pick("roaster"));
+        setSel("process", "process_other", pick("process"));
+        setSelAny("varietal", pick("varietal"));
+        setSelAny("roast", pick("roast"));
+        setSelAny("fregion", pick("region"));
+        var ty = document.getElementById("type");
+        if (ty && e.type) ty.value = e.type;
         document.getElementById("dose").value = e.dose || "";
         if (e.grinder) {
           localStorage.setItem("grinder", e.grinder);
         }
+        try {
+          updateCoffeeHint();
+        } catch (err) {}
         showDialin(e);
       }
       function showDialin(e) {
@@ -11991,7 +12056,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-25-1637-d120d1";
+      var BUILD = "2026-07-25-1747-0f03fa";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
