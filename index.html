@@ -10728,11 +10728,19 @@
         );
       }
       async function gRead(tab) {
+        /* No column bound, on purpose. A fixed A1 window has to be wide enough
+     for the schema and narrow enough to fit inside the tab's actual grid, and
+     those two move in opposite directions. AC was too narrow once the metric
+     columns were appended. BZ was wider than the Inventory tab's grid, and the
+     Sheets API answers 400 rather than clamping, so EVERY read of that tab
+     failed: inventory, the identity gate and the header migration all went down
+     together. Naming the tab with no range returns everything in it and cannot
+     be out of bounds. */
         var d = await gApi(
           "https://sheets.googleapis.com/v4/spreadsheets/" +
             GSHEET +
             "/values/" +
-            encodeURIComponent(tab + "!A1:BZ5000"),
+            encodeURIComponent(tab),
         );
         return d && d.values ? d.values : [];
       }
@@ -11418,7 +11426,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-25-0513-c14224";
+      var BUILD = "2026-07-25-0618-ab9f4c";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
