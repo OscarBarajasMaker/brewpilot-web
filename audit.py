@@ -32,7 +32,7 @@ import re, sys, json, os
 # data-dependent, so it is not a tell anyone can rely on. A green check that is
 # not checking is the exact failure this file exists to prevent, so the file had
 # better not be able to do it to itself. Print the version next to the count.
-AUDIT_VERSION = 'v11-2026-07-25'
+AUDIT_VERSION = 'v12-2026-07-25'
 
 HTML = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/render/index_v5.html'
 src = open(HTML, encoding='utf-8').read()
@@ -601,6 +601,65 @@ if b'\r' in open(HTML, 'rb').read():
     fail('newline', 'the built file contains %d carriage returns -> this was written in text '
                     'mode on Windows. The build stamp will still match a Linux build while the '
                     'bytes do not. Rebuild with a generator that pins newline=%s' % (n, "''"))
+checks += 1
+
+# ============================ 22. PASS 3: PENDING WRITES AND THE ADVICE SURFACE
+# A lane write can fail on quota, a permission change or being offline. The cache
+# still advances, so without a pending mark the next reconcile overwrites it from
+# the sheet and the shot vanishes from the baseline with nothing on screen.
+m_lr3 = re.search(r'async function laneRecord\(cols\)\s*\{(.*?)\n      \}', JS, re.S)
+if m_lr3 and not re.search(r'_pending\s*=\s*1', m_lr3.group(1)):
+    fail('lane', 'laneRecord no longer marks a failed sheet write as pending -> the cache claims '
+                 'the shot was filed and the next reconcile silently drops it')
+checks += 1
+
+m_ll3 = re.search(r'async function gLaneList\(\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_ll3:
+    fail('lane', 'gLaneList is gone')
+else:
+    b = m_ll3.group(1)
+    if '_pending' not in b:
+        fail('lane', 'gLaneList overwrites the cache without checking for pending lanes -> a lane '
+                     'ahead of the sheet loses exactly the shots it is ahead by')
+    if 'gLaneFlush(' not in b:
+        fail('lane', 'gLaneList no longer retries pending writes before reading')
+    checks += 2
+
+# Flow numbers cannot reach taste without TDS. Every comparison carries the
+# caveat, or the tool starts making a claim it cannot support.
+m_la = re.search(r'function laneAdvise\(coffee, type, shot\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_la:
+    fail('lane', 'laneAdvise is gone')
+else:
+    b = m_la.group(1)
+    if 'laneNoTaste' not in b:
+        fail('lane', 'laneAdvise no longer carries the taste caveat -> it implies flow numbers '
+                     'describe flavour, which they cannot without TDS')
+    if '"none"' not in b:
+        fail('lane', 'laneAdvise no longer handles a missing baseline separately -> filter shots '
+                     'get compared against a number that does not exist')
+    checks += 2
+
+# The filing outcome must reach the screen. laneRecord runs after the row is
+# saved, where nobody would look, so a silent decline reads as success.
+m_ls3 = re.search(r'async function logshot\(\)\s*\{', JS)
+if m_ls3:
+    i = m_ls3.end() - 1
+    d = 0; j = i
+    while j < len(JS):
+        if JS[j] == '{': d += 1
+        elif JS[j] == '}':
+            d -= 1
+            if d == 0: break
+        j += 1
+    if 'laneNote(' not in JS[i:j+1]:
+        fail('lane', 'logshot discards the laneRecord result -> a coffee that never starts a lane '
+                     'looks exactly like one that did')
+    checks += 1
+
+if not re.search(r'INSIGHT_FNS = \[\s*insightsLane', JS):
+    fail('lane', 'insightsLane is not wired into INSIGHT_FNS -> the lane store records and '
+                 'nothing ever reads it')
 checks += 1
 
 # ---------------------------------------------------------------- report

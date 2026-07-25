@@ -9899,6 +9899,218 @@ FEATURES_JS = must_replace(
         } catch (e) {}''',
     'P14 reconcile the lane cache on sheet read')
 
+# ===================== PASS 3: close the two gaps, then read the lanes =======
+#
+# P15. i18n. Both dictionaries in one patch so they cannot drift apart, which is
+#      the failure audit check 3b exists to catch.
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '          insNothingYet: "Nothing stands out in your data yet. That is a real answer, not a bug.",',
+    '          insNothingYet: "Nothing stands out in your data yet. That is a real answer, not a bug.",\n'
+    '          laneFiled: "Lane updated. {n} shots on this coffee and method.",\n'
+    '          laneNotInv: "Not filed to a lane. This coffee is not in your inventory, so it is advised by method only.",\n'
+    '          lanePending: "Saved here, but the lane did not reach the sheet. It will sync on the next connection.",\n'
+    '          laneNoBase: "No {m} baseline yet. Nothing to compare this against, and guessing one would be worse than saying so.",\n'
+    '          laneTypeBase: "Using the general {m} figures. {n} more shots on this coffee before it has its own.",\n'
+    '          laneRHigh: "Resistance ran {n}% above this lane. The puck is tighter than usual: grind coarser, or check the dose.",\n'
+    '          laneRLow: "Resistance ran {n}% below this lane. The puck is looser than usual: grind finer.",\n'
+    '          laneChan: "Channelling above this lane\\u2019s norm. That is distribution and puck prep, not grind.",\n'
+    '          laneNoTaste: "These are flow numbers only. They cannot tell you how it tasted.",',
+    'P15a lane strings, en')
+
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '          insNothingYet:\n            "Todav\u00eda no destaca nada en tus datos. Eso es una respuesta real, no un error.",',
+    '          insNothingYet:\n            "Todav\u00eda no destaca nada en tus datos. Eso es una respuesta real, no un error.",\n'
+    '          laneFiled: "Carril actualizado. {n} shots de este caf\u00e9 y m\u00e9todo.",\n'
+    '          laneNotInv: "No se archiv\u00f3 en un carril. Este caf\u00e9 no est\u00e1 en tu inventario, as\u00ed que se aconseja solo por m\u00e9todo.",\n'
+    '          lanePending: "Guardado aqu\u00ed, pero el carril no lleg\u00f3 a la hoja. Se sincronizar\u00e1 en la pr\u00f3xima conexi\u00f3n.",\n'
+    '          laneNoBase: "A\u00fan no hay referencia de {m}. Nada con qu\u00e9 comparar, e inventar una ser\u00eda peor que decirlo.",\n'
+    '          laneTypeBase: "Usando las cifras generales de {m}. Faltan {n} shots de este caf\u00e9 para tener las suyas.",\n'
+    '          laneRHigh: "La resistencia sali\u00f3 {n}% por encima de este carril. El pastel est\u00e1 m\u00e1s apretado: muele m\u00e1s grueso, o revisa la dosis.",\n'
+    '          laneRLow: "La resistencia sali\u00f3 {n}% por debajo de este carril. El pastel est\u00e1 m\u00e1s suelto: muele m\u00e1s fino.",\n'
+    '          laneChan: "Canalizaci\u00f3n por encima de lo normal en este carril. Eso es distribuci\u00f3n y preparaci\u00f3n, no molienda.",\n'
+    '          laneNoTaste: "Estos son solo n\u00fameros de flujo. No pueden decirte a qu\u00e9 supo.",',
+    'P15b lane strings, es')
+
+# P16. A sheet write can fail on quota, a permission change, or simply being
+#      offline. gLaneUpsert returned false and laneRecord swallowed it, so the
+#      cache advanced n_shots and the NEXT reconcile overwrote it from the sheet.
+#      The shot disappeared from the baseline with nothing on screen and nothing
+#      in the log. This is the gap the fake-API tests could not have found.
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '''      async function gLaneList() {
+        /* Reconciliation. The sheet is the truth and this replaces the cache
+     wholesale, so a lane corrected by hand in the sheet wins over whatever the
+     browser was carrying. Any failure leaves the cache exactly as it was. */
+        if (dataMode() !== "google") return laneCache();
+        var rows = [];
+        try {
+          rows = await gRead(LANE_TAB);
+        } catch (e) {
+          return laneCache();
+        }''',
+    '''      async function gLaneFlush() {
+        /* Retry every lane whose write never landed, before reading the sheet.
+     A lane still marked pending after this is genuinely ahead of the sheet. */
+        var map = laneCache(),
+          ids = Object.keys(map),
+          any = false;
+        for (var i = 0; i < ids.length; i++) {
+          var l = map[ids[i]];
+          if (!l || !l._pending) continue;
+          try {
+            if (await gLaneUpsert(l)) {
+              delete l._pending;
+              any = true;
+            }
+          } catch (e) {}
+        }
+        if (any) laneCacheWrite(map);
+        return map;
+      }
+      async function gLaneList() {
+        /* Reconciliation. The sheet is the truth and this replaces the cache
+     wholesale, so a lane corrected by hand in the sheet wins over whatever the
+     browser was carrying. Any failure leaves the cache exactly as it was. */
+        if (dataMode() !== "google") return laneCache();
+        var cached = await gLaneFlush();
+        var rows = [];
+        try {
+          rows = await gRead(LANE_TAB);
+        } catch (e) {
+          return cached;
+        }''',
+    'P16a flush pending lane writes before reconciling')
+
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '''          map[id] = o;
+        }
+        laneCacheWrite(map);
+        return map;
+      }''',
+    '''          map[id] = o;
+        }
+        /* A lane whose write never landed is AHEAD of the sheet. Taking the sheet
+     copy would silently drop exactly the shots it is ahead by, which is the
+     failure this whole pending mechanism exists to prevent. */
+        Object.keys(cached).forEach(function (k) {
+          if (cached[k] && cached[k]._pending) map[k] = cached[k];
+        });
+        laneCacheWrite(map);
+        return map;
+      }''',
+    'P16b a pending lane survives reconciliation')
+
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '''        try {
+          await gLaneUpsert(lane);
+        } catch (e) {
+          return "filed-local-only";
+        }
+        return "filed";''',
+    '''        var ok = false;
+        try {
+          ok = await gLaneUpsert(lane);
+        } catch (e) {
+          ok = false;
+        }
+        if (dataMode() === "google" && !ok) {
+          lane._pending = 1;
+          map[id] = lane;
+          laneCacheWrite(map);
+          return "pending";
+        }
+        if (lane._pending) {
+          delete lane._pending;
+          map[id] = lane;
+          laneCacheWrite(map);
+        }
+        return "filed";''',
+    'P16c laneRecord marks a failed write pending instead of swallowing it')
+
+# P17. The filing outcome was returned and thrown away. laneRecord runs after the
+#      row is already saved, where nobody would think to look, so a coffee that
+#      never starts a lane looked identical to one that did.
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '      function bpApplyShot(cols) {',
+    '''      function laneNote(reason, lane) {
+        /* Reuses the handoff banner. A shot that did not file into a lane is the
+     case worth saying out loud: silence there reads as success. */
+        var el = document.getElementById("bpShotBanner");
+        if (!el) return;
+        var msg = "";
+        if (reason === "filed") msg = t("laneFiled").replace("{n}", lane && lane.n_shots ? lane.n_shots : 1);
+        else if (reason === "not-in-inventory") msg = t("laneNotInv");
+        else if (reason === "pending") msg = t("lanePending");
+        if (!msg) return;
+        el.textContent = msg;
+        el.style.display = "";
+      }
+      function laneAdvise(coffee, type, shot) {
+        /* Descriptive first, one nudge second, and never a taste claim. Flow
+     numbers cannot reach taste without TDS, and pretending otherwise is how a
+     tool stops being trusted. */
+        var out = [],
+          b = laneBaseline(coffee, type);
+        if (b.source === "none") {
+          out.push(t("laneNoBase").replace("{m}", b.type || "filter"));
+          return out;
+        }
+        if (b.source === "type") {
+          out.push(
+            t("laneTypeBase")
+              .replace("{m}", b.type)
+              .replace("{n}", Math.max(1, LANE_MIN - (b.n || 0))),
+          );
+        }
+        var r = shot ? laneNum(shot.resistance) : "";
+        if (r !== "" && b.resistance) {
+          var d = (r - b.resistance) / b.resistance;
+          if (Math.abs(d) > (b.band || 0.4)) {
+            out.push(t(d > 0 ? "laneRHigh" : "laneRLow").replace("{n}", Math.round(Math.abs(d) * 100)));
+          }
+        }
+        var ch = shot ? laneNum(shot.channel) : "";
+        if (ch !== "" && b.channel !== "" && ch > b.channel + 0.15) out.push(t("laneChan"));
+        if (out.length) out.push(t("laneNoTaste"));
+        return out;
+      }
+      function insightsLane() {
+        /* The most recent shot, read against its own lane. Insights are computed
+     from IROWS, so this needs no new plumbing. */
+        var out = [];
+        if (!IROWS || !IROWS.length) return out;
+        var last = null;
+        for (var i = IROWS.length - 1; i >= 0; i--) {
+          if (IROWS[i] && String(IROWS[i].coffee || "").trim()) {
+            last = IROWS[i];
+            break;
+          }
+        }
+        if (!last) return out;
+        try {
+          return laneAdvise(last.coffee, last.type, {
+            resistance: last.resistance,
+            channel: last.channel,
+          });
+        } catch (e) {
+          return out;
+        }
+      }
+      function bpApplyShot(cols) {''',
+    'P17 laneNote, laneAdvise and the insights reader')
+
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '      var INSIGHT_FNS = [insightsCost, insightsWater, insightsTiming];',
+    '      var INSIGHT_FNS = [insightsLane, insightsCost, insightsWater, insightsTiming];',
+    'P17b lane advice goes first in the insights panel')
+
 ASSEMBLED = (HEAD + CSS + SHELL_OPEN + APPBAR_H + WRAP_DURA + TABHOME_O
              + INSTALL_H + HERO_H
              + home + SEP_LOG + logtab + SEP_BEANS + beanstab

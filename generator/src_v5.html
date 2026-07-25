@@ -1212,7 +1212,9 @@
    reached here through logAction's catch path (which skips bpCoffeeGate) is
    still filed only if the coffee is canonical. */
         try {
-          await laneRecord(cols);
+          var _lr = await laneRecord(cols),
+            _lsh = laneShotFromCols(cols);
+          laneNote(_lr, laneGet(_lsh.coffee, _lsh.type));
         } catch (e) {}
         try {
           pushRotation(

@@ -2389,7 +2389,9 @@
    reached here through logAction's catch path (which skips bpCoffeeGate) is
    still filed only if the coffee is canonical. */
         try {
-          await laneRecord(cols);
+          var _lr = await laneRecord(cols),
+            _lsh = laneShotFromCols(cols);
+          laneNote(_lr, laneGet(_lsh.coffee, _lsh.type));
         } catch (e) {}
         try {
           pushRotation(
@@ -4218,6 +4220,22 @@
             "The browser may clear them when space runs low, and clearing browsing data erases them. {n} brews at stake. Install to the home screen, or save them to Google Drive.",
           insNeedMore: "Only {n} brews logged. Insights need about 6 to say anything honest.",
           insNothingYet: "Nothing stands out in your data yet. That is a real answer, not a bug.",
+          laneFiled: "Lane updated. {n} shots on this coffee and method.",
+          laneNotInv:
+            "Not filed to a lane. This coffee is not in your inventory, so it is advised by method only.",
+          lanePending:
+            "Saved here, but the lane did not reach the sheet. It will sync on the next connection.",
+          laneNoBase:
+            "No {m} baseline yet. Nothing to compare this against, and guessing one would be worse than saying so.",
+          laneTypeBase:
+            "Using the general {m} figures. {n} more shots on this coffee before it has its own.",
+          laneRHigh:
+            "Resistance ran {n}% above this lane. The puck is tighter than usual: grind coarser, or check the dose.",
+          laneRLow:
+            "Resistance ran {n}% below this lane. The puck is looser than usual: grind finer.",
+          laneChan:
+            "Channelling above this lane\u2019s norm. That is distribution and puck prep, not grind.",
+          laneNoTaste: "These are flow numbers only. They cannot tell you how it tasted.",
           insSpend: "You spent {v} on coffee in {m}",
           insSpendAvg: "That averages {v} a month",
           insPerCup: "A cup costs you {v} on average",
@@ -4484,6 +4502,22 @@
             "Solo {n} cafés registrados. El análisis necesita unos 6 para decir algo honesto.",
           insNothingYet:
             "Todavía no destaca nada en tus datos. Eso es una respuesta real, no un error.",
+          laneFiled: "Carril actualizado. {n} shots de este café y método.",
+          laneNotInv:
+            "No se archivó en un carril. Este café no está en tu inventario, así que se aconseja solo por método.",
+          lanePending:
+            "Guardado aquí, pero el carril no llegó a la hoja. Se sincronizará en la próxima conexión.",
+          laneNoBase:
+            "Aún no hay referencia de {m}. Nada con qué comparar, e inventar una sería peor que decirlo.",
+          laneTypeBase:
+            "Usando las cifras generales de {m}. Faltan {n} shots de este café para tener las suyas.",
+          laneRHigh:
+            "La resistencia salió {n}% por encima de este carril. El pastel está más apretado: muele más grueso, o revisa la dosis.",
+          laneRLow:
+            "La resistencia salió {n}% por debajo de este carril. El pastel está más suelto: muele más fino.",
+          laneChan:
+            "Canalización por encima de lo normal en este carril. Eso es distribución y preparación, no molienda.",
+          laneNoTaste: "Estos son solo números de flujo. No pueden decirte a qué supo.",
           invBagSize: "Tamaño de bolsa",
           invPrice: "Precio por bolsa",
           invFreezeDate: "Fecha de congelado (o puesta al vacío)",
@@ -10268,7 +10302,7 @@
         return out;
       }
 
-      var INSIGHT_FNS = [insightsCost, insightsWater, insightsTiming];
+      var INSIGHT_FNS = [insightsLane, insightsCost, insightsWater, insightsTiming];
       function computeInsights() {
         var all = [];
         INSIGHT_FNS.forEach(function (fn) {
@@ -10814,16 +10848,36 @@
         }
         return o;
       }
+      async function gLaneFlush() {
+        /* Retry every lane whose write never landed, before reading the sheet.
+     A lane still marked pending after this is genuinely ahead of the sheet. */
+        var map = laneCache(),
+          ids = Object.keys(map),
+          any = false;
+        for (var i = 0; i < ids.length; i++) {
+          var l = map[ids[i]];
+          if (!l || !l._pending) continue;
+          try {
+            if (await gLaneUpsert(l)) {
+              delete l._pending;
+              any = true;
+            }
+          } catch (e) {}
+        }
+        if (any) laneCacheWrite(map);
+        return map;
+      }
       async function gLaneList() {
         /* Reconciliation. The sheet is the truth and this replaces the cache
      wholesale, so a lane corrected by hand in the sheet wins over whatever the
      browser was carrying. Any failure leaves the cache exactly as it was. */
         if (dataMode() !== "google") return laneCache();
+        var cached = await gLaneFlush();
         var rows = [];
         try {
           rows = await gRead(LANE_TAB);
         } catch (e) {
-          return laneCache();
+          return cached;
         }
         if (!rows.length || !rows[0] || !rows[0].length) return laneCache();
         var head = rows[0],
@@ -10834,6 +10888,12 @@
           if (!id) continue;
           map[id] = o;
         }
+        /* A lane whose write never landed is AHEAD of the sheet. Taking the sheet
+     copy would silently drop exactly the shots it is ahead by, which is the
+     failure this whole pending mechanism exists to prevent. */
+        Object.keys(cached).forEach(function (k) {
+          if (cached[k] && cached[k]._pending) map[k] = cached[k];
+        });
         laneCacheWrite(map);
         return map;
       }
@@ -10900,10 +10960,22 @@
         laneApply(lane, shot);
         map[id] = lane;
         laneCacheWrite(map);
+        var ok = false;
         try {
-          await gLaneUpsert(lane);
+          ok = await gLaneUpsert(lane);
         } catch (e) {
-          return "filed-local-only";
+          ok = false;
+        }
+        if (dataMode() === "google" && !ok) {
+          lane._pending = 1;
+          map[id] = lane;
+          laneCacheWrite(map);
+          return "pending";
+        }
+        if (lane._pending) {
+          delete lane._pending;
+          map[id] = lane;
+          laneCacheWrite(map);
         }
         return "filed";
       }
@@ -11884,7 +11956,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-25-0717-df4820";
+      var BUILD = "2026-07-25-1613-5ad5b0";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -12423,6 +12495,73 @@
           ". " +
           tail;
         el.style.display = "";
+      }
+      function laneNote(reason, lane) {
+        /* Reuses the handoff banner. A shot that did not file into a lane is the
+     case worth saying out loud: silence there reads as success. */
+        var el = document.getElementById("bpShotBanner");
+        if (!el) return;
+        var msg = "";
+        if (reason === "filed")
+          msg = t("laneFiled").replace("{n}", lane && lane.n_shots ? lane.n_shots : 1);
+        else if (reason === "not-in-inventory") msg = t("laneNotInv");
+        else if (reason === "pending") msg = t("lanePending");
+        if (!msg) return;
+        el.textContent = msg;
+        el.style.display = "";
+      }
+      function laneAdvise(coffee, type, shot) {
+        /* Descriptive first, one nudge second, and never a taste claim. Flow
+     numbers cannot reach taste without TDS, and pretending otherwise is how a
+     tool stops being trusted. */
+        var out = [],
+          b = laneBaseline(coffee, type);
+        if (b.source === "none") {
+          out.push(t("laneNoBase").replace("{m}", b.type || "filter"));
+          return out;
+        }
+        if (b.source === "type") {
+          out.push(
+            t("laneTypeBase")
+              .replace("{m}", b.type)
+              .replace("{n}", Math.max(1, LANE_MIN - (b.n || 0))),
+          );
+        }
+        var r = shot ? laneNum(shot.resistance) : "";
+        if (r !== "" && b.resistance) {
+          var d = (r - b.resistance) / b.resistance;
+          if (Math.abs(d) > (b.band || 0.4)) {
+            out.push(
+              t(d > 0 ? "laneRHigh" : "laneRLow").replace("{n}", Math.round(Math.abs(d) * 100)),
+            );
+          }
+        }
+        var ch = shot ? laneNum(shot.channel) : "";
+        if (ch !== "" && b.channel !== "" && ch > b.channel + 0.15) out.push(t("laneChan"));
+        if (out.length) out.push(t("laneNoTaste"));
+        return out;
+      }
+      function insightsLane() {
+        /* The most recent shot, read against its own lane. Insights are computed
+     from IROWS, so this needs no new plumbing. */
+        var out = [];
+        if (!IROWS || !IROWS.length) return out;
+        var last = null;
+        for (var i = IROWS.length - 1; i >= 0; i--) {
+          if (IROWS[i] && String(IROWS[i].coffee || "").trim()) {
+            last = IROWS[i];
+            break;
+          }
+        }
+        if (!last) return out;
+        try {
+          return laneAdvise(last.coffee, last.type, {
+            resistance: last.resistance,
+            channel: last.channel,
+          });
+        } catch (e) {
+          return out;
+        }
       }
       function bpApplyShot(cols) {
         /* Fills the three columns the schema has always carried but logshot never
