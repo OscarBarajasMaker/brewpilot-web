@@ -32,7 +32,7 @@ import re, sys, json, os
 # data-dependent, so it is not a tell anyone can rely on. A green check that is
 # not checking is the exact failure this file exists to prevent, so the file had
 # better not be able to do it to itself. Print the version next to the count.
-AUDIT_VERSION = 'v15-2026-07-25'
+AUDIT_VERSION = 'v16-2026-07-25'
 
 HTML = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/render/index_v5.html'
 src = open(HTML, encoding='utf-8').read()
@@ -866,6 +866,46 @@ else:
 if not re.search(r'localStorage\.removeItem\("bpLanes"\)', JS):
     fail('poller', 'forgetting an account leaves the lane cache behind -> history from one Drive '
                    'is carried into another')
+checks += 1
+
+# ============================ 26. THE DEVICE PANEL LINK
+# The old block was a permanent literal "loading..." above buttons that
+# lockSection() had set pointer-events:none on, wired to a cmd() stub that only
+# raised an alert. It could never have worked: an https page cannot fetch a LAN
+# http address, and a LAN IP cannot hold a certificate. Real-time control lives
+# on the device's own panel, which is on the machine's network.
+if 'id="state">loading' in BODY:
+    fail('device', 'the permanent loading... stub is back -> nothing ever writes to that element')
+if re.search(r'onclick="cmd\(', BODY):
+    fail('device', 'the dead cmd() buttons are back -> they only ever raised an alert')
+checks += 2
+
+m_hw = re.search(r'function applyHwLocks\(\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_hw:
+    fail('device', 'applyHwLocks is gone')
+elif re.search(r'(?<!un)lockSection\("machineOnly"', m_hw.group(1)):
+    fail('device', 'applyHwLocks locks the machine block again -> pointer-events:none makes the '
+                   'device link unclickable, which is the original complaint')
+checks += 1
+
+m_dp = re.search(r'function renderDevPanel\(\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_dp:
+    fail('device', 'renderDevPanel is gone -> nothing builds the link to the device')
+else:
+    b = m_dp.group(1)
+    if 'devUrl()' not in b:
+        fail('device', 'renderDevPanel no longer builds its href from devUrl')
+    if 'removeAttribute("href")' not in b:
+        fail('device', 'renderDevPanel leaves a live href with no address configured -> a link '
+                       'that goes nowhere reads as a broken app rather than an unset setting')
+    checks += 2
+
+m_du = re.search(r'function devUrl\(\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_du:
+    fail('device', 'devUrl is gone')
+elif not re.search(r'\^https\?', m_du.group(1)):
+    fail('device', 'devUrl no longer detects an address that already has a scheme -> http:// gets '
+                   'prefixed twice and the link is dead')
 checks += 1
 
 # ---------------------------------------------------------------- report

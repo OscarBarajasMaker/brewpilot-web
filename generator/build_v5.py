@@ -10504,8 +10504,9 @@ FEATURES_JS = must_replace(
     FEATURES_JS,
     '      uiStart();\n      try {\n        pickerizeAll();\n      } catch (e) {}',
     '      uiStart();\n      try {\n        pickerizeAll();\n      } catch (e) {}\n'
-    '      try {\n        loadNtfyTopic();\n      } catch (e) {}',
-    'P24d populate the topic field at boot')
+    '      try {\n        loadNtfyTopic();\n      } catch (e) {}\n'
+    '      try {\n        loadDevHost();\n      } catch (e) {}',
+    'P24d populate the topic and device fields at boot')
 
 FEATURES_JS = must_replace(
     FEATURES_JS,
@@ -10526,7 +10527,30 @@ FEATURES_JS = must_replace(
 FEATURES_JS = must_replace(
     FEATURES_JS,
     '      function bpSeen() {',
-    '''      function loadNtfyTopic() {
+    '''      function loadDevHost() {
+        var el = document.getElementById("devHost");
+        if (el) el.value = devHost();
+        try {
+          renderDevPanel();
+        } catch (e) {}
+      }
+      function saveDevHost() {
+        var el = document.getElementById("devHost");
+        if (!el) return;
+        /* Accept an address with or without a scheme and with or without a
+     trailing path. Storing http://brewpilot.local/ and then prefixing http://
+     again is the obvious way to produce a dead link. */
+        var v = String(el.value || "").trim();
+        v = v.replace(/^https?:\\/\\//i, "").replace(/[/?].*$/, "");
+        el.value = v;
+        try {
+          localStorage.setItem("devHost", v);
+        } catch (e) {}
+        try {
+          renderDevPanel();
+        } catch (e) {}
+      }
+      function loadNtfyTopic() {
         var el = document.getElementById("ntfyTopic");
         if (el) el.value = bpTopic();
         renderNtfyStatus("");

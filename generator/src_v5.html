@@ -41,11 +41,27 @@
           "
         ></div>
         <div id="machineOnly">
-          <div id="state">loading...</div>
-          <div class="row">
-            <button class="warm" onclick="cmd('warm')">Warm up</button
-            ><button class="off" onclick="cmd('off')">Off</button>
-          </div>
+          <a
+            id="devPanelLink"
+            target="_blank"
+            rel="noopener"
+            style="
+              display: block;
+              text-align: center;
+              padding: 13px;
+              border-radius: 12px;
+              border: 1px solid var(--hi-line);
+              background: var(--hi-bg);
+              color: var(--hi-text);
+              text-decoration: none;
+              font-weight: 600;
+            "
+            >Open machine control</a
+          >
+          <div
+            id="devPanelHint"
+            style="color: var(--dim); font-size: 12px; margin-top: 6px; text-align: center"
+          ></div>
         </div>
           <label id="logLabel">Log the last shot</label>
           <div
@@ -1035,6 +1051,22 @@
           </div>
           <div class="fl">Google Sheet (enables inventory, history, trends)</div>
           <div id="sheetStatus" style="font-size: 12px; margin-bottom: 6px"></div>
+          <div class="fl" style="margin-top: 10px">BrewPilot device address</div>
+          <input
+            id="devHost"
+            class="fin"
+            placeholder="brewpilot.local"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            style="width: 100%"
+            onchange="saveDevHost()"
+          />
+          <div style="color: var(--dim); font-size: 12px; margin: 4px 2px">
+            Puts an Open machine control button on Home. Real time control lives on the device
+            itself, which is on the same network as the machine. Try brewpilot.local, or the IP if
+            that does not resolve.
+          </div>
           <div class="fl" style="margin-top: 10px">ntfy topic (pulls shots from your machine)</div>
           <input
             id="ntfyTopic"
@@ -1140,8 +1172,44 @@
         }
         renderTier();
       }
-      async function cmd(c) {
-        alert("Machine control needs the BrewPilot device + a Gaggiuino.");
+      function devHost() {
+        try {
+          return String(localStorage.getItem("devHost") || "").trim();
+        } catch (e) {
+          return "";
+        }
+      }
+      function devUrl() {
+        /* The device is plain http on a LAN address and always will be: a LAN IP
+     cannot hold a real certificate. An https page may NAVIGATE to http, it just
+     cannot fetch it, so a link works where the old buttons never could. */
+        var h = devHost();
+        if (!h) return "";
+        if (/^https?:\/\//i.test(h)) return h;
+        return "http://" + h.replace(/^\/+/, "").replace(/\/+$/, "") + "/";
+      }
+      function renderDevPanel() {
+        var a = document.getElementById("devPanelLink"),
+          hint = document.getElementById("devPanelHint"),
+          box = document.getElementById("machineOnly");
+        if (!a || !hint || !box) return;
+        var u = devUrl();
+        /* Shown when an address is CONFIGURED, not when the hardware picker says
+     Gaggiuino. The picker is a claim; an address is a fact, and the copilot is
+     worth reaching whether or not a Gaggiuino is attached. */
+        if (!u) {
+          box.style.display = M_GAG ? "block" : "none";
+          a.removeAttribute("href");
+          a.style.opacity = "0.45";
+          a.textContent = "Machine control";
+          hint.textContent = "Add your device address in Settings to enable this.";
+          return;
+        }
+        box.style.display = "block";
+        a.href = u;
+        a.style.opacity = "1";
+        a.textContent = "Open machine control";
+        hint.textContent = u.replace(/^https?:\/\//i, "").replace(/\/$/, "") + " - same WiFi only";
       }
       function otherToggle(sel, inp) {
         document.getElementById(inp).style.display =
@@ -2547,15 +2615,17 @@
         if (t) t.remove();
       }
       function applyHwLocks() {
-        var mo = document.getElementById("machineOnly");
-        if (mo) {
-          if (M_GAG) {
-            mo.style.display = "block";
-            lockSection("machineOnly", "Machine control is available on the BrewPilot device");
-          } else {
-            mo.style.display = "none";
-          }
-        }
+        /* This used to lockSection() the block, which sets pointer-events:none and
+     45% opacity, so the buttons were deliberately unclickable and sat above a
+     literal "loading..." that nothing ever replaced. They are gone: real-time
+     control lives on the device's own panel, which is on the same network as the
+     machine and has no mixed-content problem to solve. */
+        try {
+          unlockSection("machineOnly");
+        } catch (e) {}
+        try {
+          renderDevPanel();
+        } catch (e) {}
       }
       function renderSheetStatus() {
         /* "Connected" was the whole message, which is the one thing that was never
