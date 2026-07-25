@@ -32,7 +32,7 @@ import re, sys, json, os
 # data-dependent, so it is not a tell anyone can rely on. A green check that is
 # not checking is the exact failure this file exists to prevent, so the file had
 # better not be able to do it to itself. Print the version next to the count.
-AUDIT_VERSION = 'v7-2026-07-25'
+AUDIT_VERSION = 'v10-2026-07-25'
 
 HTML = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/render/index_v5.html'
 src = open(HTML, encoding='utf-8').read()
@@ -383,23 +383,212 @@ if m_ls:
                        'the old width and every metric column is dropped')
     checks += 1
 
-# The Sheets read range is a fixed A1 range. It was pinned at AC, which is 29
-# columns, against a 28 column schema. Nothing errors when a row runs past it:
-# the API just returns fewer columns, and gEnsureHeader, gPatchRow and gInvList
-# all key off rows[0], so they would silently read a truncated header.
-m_rng = re.search(r'!A1:([A-Z]+)\d+', JS)
-m_cols = re.search(r'var COLNAMES = \[(.*?)\]\.concat', JS, re.S)
-m_met = re.search(r'var BP_METRIC_COLS = \[(.*?)\]', JS, re.S)
-if m_rng and m_cols and m_met:
-    width = 0
-    for ch in m_rng.group(1):
-        width = width * 26 + (ord(ch) - 64)
-    need = len(re.findall(r'"', m_cols.group(1))) // 2 + len(re.findall(r'"', m_met.group(1))) // 2
-    if width < need:
-        fail('schema', 'the Sheets read range covers %d columns but the shot schema needs %d '
-                       '-> the header is read truncated and writes past it are dropped'
-                       % (width, need))
+# gRead must not pin a column bound at all. Too narrow and it returns a
+# truncated header while gEnsureHeader, gPatchRow and gInvList all key off
+# rows[0], so writes land under names that were never read. Too wide and the
+# Sheets API answers 400 instead of clamping, which is what shipped: every read
+# of the Inventory tab failed at once and took inventory, the coffee identity
+# gate and the header migration with it. Both failure modes come from the same
+# decision, so the invariant is that the decision is not made.
+m_gr = re.search(r'function gRead\(tab\)\s*\{.*?\n      \}', JS, re.S)
+if not m_gr:
+    fail('schema', 'gRead is gone or reshaped, so the read range cannot be verified')
+elif re.search(r'tab\s*\+\s*"!', m_gr.group(0)):
+    fail('schema', 'gRead pins an A1 column range. Too narrow silently truncates the header, '
+                   'too wide is a 400 on every read of a narrower tab. Ask for the tab by name.')
+checks += 1
+
+# ============================ 18. ONBOARDING DOES NOT EAT THE HANDOFF
+# Both features move the visible tab on a timer, and onboarding fires second, so
+# it silently won: a device that had never completed setup received the shot,
+# filled the form, then jumped to settings and left the metrics on a tab nobody
+# was looking at. Real, and invisible unless you happen to test on a fresh
+# browser profile. The guard has to stay in front of that redirect.
+m_ob = re.search(r'localStorage\.getItem\("onboarded"\)(.*?)openPanel\("setPanel"', JS, re.S)
+if not m_ob:
+    fail('handoff', 'the onboarding redirect is gone or reshaped, so its handoff guard cannot be verified')
+elif 'BPSHOT' not in m_ob.group(1):
+    fail('handoff', 'the onboarding redirect is not guarded on BPSHOT -> a handoff arriving on a '
+                    'device that never finished setup gets pulled off the log form and the shot '
+                    'metrics are stranded on a tab the person is not looking at')
+checks += 1
+
+# ============================ 19. ADOPTION IS BY SCHEMA, NOT BY NAME
+# gListLogs matches any spreadsheet whose NAME CONTAINS BrewPilot. That is a
+# search filter, not an identity test: a stray file in a signed-in account was
+# adopted silently and every row went into it. The zero-rows branch of gAutoLink
+# adopts a candidate outright with no further test, which is the branch it came
+# in through, so the filter has to sit in front of the scoring, not inside it.
+m_al = re.search(r'async function gAutoLink\(\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_al:
+    fail('adoption', 'gAutoLink is gone or reshaped, so its schema filter cannot be verified')
+else:
+    if 'gRealLogs(' not in m_al.group(1):
+        fail('adoption', 'gAutoLink does not filter through gRealLogs -> a spreadsheet is adopted '
+                         'on a name substring alone and every row goes into a file this app '
+                         'never created')
+    if re.search(r'gAdopt\(\s*files\[', m_al.group(1)):
+        fail('adoption', 'gAutoLink still adopts straight from the unfiltered files list')
+    checks += 2
+
+m_hs = re.search(r'async function gHasSchema\(id\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_hs:
+    fail('adoption', 'gHasSchema is gone -> nothing tests that an adopted file is actually a log')
+else:
+    b = m_hs.group(1)
+    if 'SHOT_TAB' not in b or 'INV_TAB' not in b:
+        fail('adoption', 'gHasSchema no longer requires BOTH the Shot Log and Inventory tabs -> '
+                         'an export or someone else\'s tool passes as ours')
     checks += 1
+
+# Every gAdopt call has to pass the name it already has. gAdopt(id) alone leaves
+# GNAME pointing at the PREVIOUS sheet, so the status line names the wrong file
+# with full confidence, which is worse than naming none.
+bad_adopt = [c for c in re.findall(r'gAdopt\(([^)]*)\)', JS) if ',' not in c and 'name' not in c]
+if bad_adopt:
+    fail('adoption', 'gAdopt called without a name at %d call site(s) -> the status line keeps the '
+                     'previous sheet name against the new sheet data' % len(bad_adopt))
+checks += 1
+
+# Something on screen must say WHICH spreadsheet is being written to.
+m_ss = re.search(r'function renderSheetStatus\(\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_ss:
+    fail('adoption', 'renderSheetStatus is gone, so the sheet identity line cannot be verified')
+elif 'GNAME' not in m_ss.group(1):
+    fail('adoption', 'renderSheetStatus does not mention GNAME -> nothing on screen says which '
+                     'spreadsheet is being written to and a stray looks like the real one')
+checks += 1
+
+if '<meta name="mobile-web-app-capable"' not in BODY:
+    fail('meta', 'the unprefixed mobile-web-app-capable meta is gone -> only Safari reads the '
+                 'apple- prefixed one')
+checks += 1
+
+# ============================ 20. THE LANE STORE
+# A lane is one row per (coffee, type). Every invariant here exists because the
+# alternative is a baseline that silently means something other than it says.
+
+# The type is part of the identity. A lane keyed on the coffee alone collects
+# espresso, soup and filter into one baseline the first time it is written, and
+# nothing about the resulting number looks wrong.
+m_li = re.search(r'function laneId\(coffee, type\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_li:
+    fail('lane', 'laneId is gone, so the lane key cannot be verified')
+else:
+    b = m_li.group(1)
+    if 'laneNormType' not in b:
+        fail('lane', 'laneId does not normalise the type -> Espresso and espresso become two lanes')
+    if not re.search(r'if \(!c \|\| !t\) return ""', b):
+        fail('lane', 'laneId returns an id without a type -> all three styles collapse into one '
+                     'baseline and a style switch reads as a grind collapse')
+    checks += 2
+
+# Filing must require canonical inventory identity, and must re-check it rather
+# than trust a flag: logAction has a catch path that calls logshot() without
+# ever running bpCoffeeGate.
+m_lr = re.search(r'async function laneRecord\(cols\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_lr:
+    fail('lane', 'laneRecord is gone -> no shot is ever filed into a lane')
+else:
+    if 'laneEligible(' not in m_lr.group(1):
+        fail('lane', 'laneRecord does not gate on laneEligible -> a single dose or an unplaced '
+                     'name starts a lane, and one bag becomes two thin histories')
+    checks += 1
+
+m_le = re.search(r'function laneEligible\(coffee\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_le:
+    fail('lane', 'laneEligible is gone, so the lane gate cannot be verified')
+else:
+    b = m_le.group(1)
+    if 'bpInInventory' not in b:
+        fail('lane', 'laneEligible no longer requires inventory identity')
+    if 'bpIsSingle' not in b:
+        fail('lane', 'laneEligible no longer excludes single doses -> a one-off dose starts a '
+                     'lane that can never gain a second shot')
+    checks += 2
+
+# A shot that never reaches laneRecord is a shot the lane store never sees, and
+# the only symptom is a baseline that stops moving.
+m_ls2 = re.search(r'async function logshot\(\)\s*\{', JS)
+if m_ls2:
+    i = m_ls2.end() - 1
+    d = 0; j = i
+    while j < len(JS):
+        if JS[j] == '{': d += 1
+        elif JS[j] == '}':
+            d -= 1
+            if d == 0: break
+        j += 1
+    if 'laneRecord(' not in JS[i:j+1]:
+        fail('lane', 'logshot() never calls laneRecord -> rows reach the sheet and no lane is '
+                     'ever updated')
+    checks += 1
+
+# Filing a shot must not be able to erase a note typed into the sheet by hand.
+m_lu = re.search(r'async function gLaneUpsert\(lane\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_lu:
+    fail('lane', 'gLaneUpsert is gone, so the note-preserving patch cannot be verified')
+else:
+    b = m_lu.group(1)
+    if 'gPatchRow(' not in b:
+        fail('lane', 'gLaneUpsert no longer patches named columns -> the row is rebuilt and every '
+                     'column it does not know about is lost')
+    if 'note_date' not in b:
+        fail('lane', 'gLaneUpsert no longer excludes note and note_date from the patch -> filing a '
+                     'shot wipes a note written by hand in the sheet')
+    checks += 2
+
+# The history cell is pipe-delimited. A grind setting typed as 3|4 would split
+# the cell and shift every field after it.
+m_hc = re.search(r'function laneCellSafe\(v\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_hc or not re.search(r'replace\(/\[[^\]]*\|', m_hc.group(1)):
+    fail('lane', 'laneCellSafe no longer strips the pipe separator -> a value containing a pipe '
+                 'splits the history cell and every field after it shifts')
+checks += 1
+
+# Five, newest first. A drifting window length changes what every baseline means.
+if not re.search(r'var LANE_HIST = 5', JS):
+    fail('lane', 'LANE_HIST is not 5 -> the rolling history length no longer matches the h1..h5 '
+                 'columns the schema provides')
+if 'hist.unshift(' not in JS:
+    fail('lane', 'the history is no longer written newest first')
+checks += 2
+
+# Filter has no measured baseline. Inventing one is worse than saying so.
+m_sd = re.search(r'var LANE_SEED = \{(.*?)\n      \};', JS, re.S)
+if not m_sd:
+    fail('lane', 'LANE_SEED is gone, so the baselines cannot be verified')
+else:
+    b = m_sd.group(1)
+    if not re.search(r'filter:\s*null', b):
+        fail('lane', 'LANE_SEED.filter is no longer null -> a filter baseline was invented and '
+                     'there are no measured filter shots behind it')
+    if 'espresso' not in b or 'soup' not in b:
+        fail('lane', 'LANE_SEED lost a measured type')
+    checks += 2
+
+# laneBaseline has to say where its numbers came from, or the population figure
+# gets mistaken for this bag's own.
+m_lb = re.search(r'function laneBaseline\(coffee, type\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_lb:
+    fail('lane', 'laneBaseline is gone')
+else:
+    b = m_lb.group(1)
+    for tag in ('"lane"', '"type"', '"none"'):
+        if tag not in b:
+            fail('lane', 'laneBaseline no longer reports source %s -> a caller cannot tell this '
+                         'bag\'s own baseline from the population figure' % tag)
+    checks += 3
+
+# The shot row is read by column NAME. An index written here is correct until a
+# column moves and then silently wrong.
+m_sf = re.search(r'function laneShotFromCols\(cols\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_sf:
+    fail('lane', 'laneShotFromCols is gone')
+elif 'COLNAMES.indexOf(' not in m_sf.group(1):
+    fail('lane', 'laneShotFromCols reads the row by literal index instead of by COLNAMES name -> '
+                 'appending a column silently shifts every metric it reads')
+checks += 1
 
 # ---------------------------------------------------------------- report
 print()
