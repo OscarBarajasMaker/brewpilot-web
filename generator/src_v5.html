@@ -1,0 +1,2904 @@
+<body>
+        <div id="homeExtra"></div>
+        <div
+          id="welcome"
+          style="
+            display: none;
+            margin-bottom: 14px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--sel-line);
+            background: var(--sel-bg);
+          "
+        >
+          <div
+            style="color: var(--sel-text); font-weight: 600; font-size: 14px; margin-bottom: 6px"
+          >
+            Welcome to the BrewPilot beta
+          </div>
+          <div style="color: var(--dim); font-size: 12px; line-height: 1.5; margin-bottom: 8px">
+            This webapp gives you the full logging, rotation and insights experience. To save your
+            data, connect your own free Google Sheet (2 min). Your data stays in your account.
+          </div>
+          <button class="grn" style="width: 100%" onclick="goConnectSheet()">
+            Connect my sheet
+          </button>
+          <div style="color: var(--dim); font-size: 11px; margin-top: 6px">
+            No sheet yet? You can still explore - dial-in advice works offline.
+          </div>
+        </div>
+        <h1>BrewPilot</h1>
+        <div class="sub">your coffee companion</div>
+        <div
+          id="planBanner"
+          style="
+            display: none;
+            margin-bottom: 12px;
+            padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--hi-line);
+            background: var(--hi-bg);
+          "
+        ></div>
+        <div id="machineOnly">
+          <div id="state">loading...</div>
+          <div class="row">
+            <button class="warm" onclick="cmd('warm')">Warm up</button
+            ><button class="off" onclick="cmd('off')">Off</button>
+          </div>
+        </div>
+          <label id="logLabel">Log the last shot</label>
+          <div
+            id="bpShotBanner"
+            style="
+              display: none;
+              margin-bottom: 10px;
+              padding: 10px 12px;
+              border-radius: 12px;
+              border: 1px solid var(--hi-line);
+              background: var(--hi-bg);
+              font-size: 13px;
+              line-height: 1.35;
+            "
+          ></div>
+          <div id="rotwrap" style="margin-bottom: 10px">
+            <button
+              id="samelast"
+              onclick="fillSame()"
+              style="
+                width: 100%;
+                padding: 12px;
+                font-size: 15px;
+                margin-bottom: 8px;
+                border-radius: 12px;
+                border: 1px solid var(--hi-line);
+                background: var(--hi-bg);
+                color: var(--hi-text);
+                font-weight: 600;
+              "
+            >
+              Same coffee as last shot
+            </button>
+            <div style="color: var(--dim); font-size: 12px; margin: 4px 2px">
+              Current rotation (tap to fill):
+            </div>
+            <div id="chips" style="display: flex; flex-wrap: wrap; gap: 6px"></div>
+            <div
+              id="dialin"
+              style="
+                display: none;
+                margin-top: 10px;
+                padding: 12px;
+                border-radius: 12px;
+                border: 1px solid var(--rec-line);
+                background: var(--rec-bg);
+                font-size: 14px;
+                line-height: 1.5;
+              "
+            ></div>
+            <button
+              id="finbtn"
+              onclick="finishBag()"
+              style="
+                display: none;
+                width: 100%;
+                margin-top: 8px;
+                padding: 11px;
+                font-size: 14px;
+                border-radius: 12px;
+                border: 1px solid var(--danger-line);
+                background: var(--danger-bg);
+                color: var(--danger-text);
+              "
+            >
+              Finished this bag - suggest next
+            </button>
+          </div>
+          <div class="fl mmethod" data-mfilter="1">Brewer</div>
+          <div
+            id="brewerchips"
+            class="mmethod"
+            data-mfilter="1"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+          ></div>
+          <div id="soupRatioWrap" class="mmethod" data-msoup="1">
+            <div class="fl">Soup ratio (sets grind start)</div>
+            <div
+              id="soupRatioChips"
+              style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+            ></div>
+          </div>
+          <div id="grLabel" class="fl">Grinder (tap to switch, converts setting)</div>
+          <div
+            id="grchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+          ></div>
+          <div class="fl">Grind setting used</div>
+          <div
+            id="gchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"
+          ></div>
+          <input
+            id="gset"
+            type="number"
+            step="0.1"
+            inputmode="decimal"
+            placeholder="grind # / um"
+            class="fin"
+            style="width: 100%"
+          />
+          <div id="planBox" class="planbox" style="display: none"></div>
+          <div class="fl" style="margin-top: 8px">Coffee</div>
+          <input
+            id="coffee"
+            list="coffeeList"
+            oninput="updateCoffeeHint()"
+            placeholder="e.g. Panama Gesha"
+            class="fin"
+            style="width: 100%"
+          /><datalist id="coffeeList"></datalist>
+          <div id="coffeeHint" class="csfac" style="margin-top: 3px; font-size: 12px"></div>
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Roaster</div>
+              <select id="roaster" class="fin" onchange="otherToggle('roaster', 'roaster_other')">
+                <option value="">roaster...</option>
+                <optgroup label="Specialty">
+                  <option>September</option>
+                  <option>Sey</option>
+                  <option>Luna</option>
+                  <option>Hydrangea</option>
+                  <option>Coffee with Dongze</option>
+                  <option>DAK</option>
+                  <option>XLIII</option>
+                  <option>Big Sur</option>
+                  <option>Native</option>
+                  <option>The Picky Chemist</option>
+                  <option>Special Guests</option>
+                  <option>Ilse</option>
+                  <option>Habito</option>
+                  <option>La Cabra</option>
+                </optgroup>
+                <optgroup label="Europe">
+                  <option>Tim Wendelboe</option>
+                  <option>Coffee Collective</option>
+                  <option>April</option>
+                  <option>Manhattan</option>
+                  <option>Friedhats</option>
+                  <option>Nomad</option>
+                  <option>Gardelli</option>
+                  <option>The Barn</option>
+                  <option>Five Elephant</option>
+                  <option>Round Hill</option>
+                  <option>Square Mile</option>
+                  <option>Assembly</option>
+                  <option>Cartwheel</option>
+                  <option>Koppi</option>
+                  <option>Drop Coffee</option>
+                  <option>Morgon</option>
+                  <option>Prolog</option>
+                  <option>Dune</option>
+                  <option>Bonanza</option>
+                  <option>Hola Coffee</option>
+                  <option>Plot</option>
+                </optgroup>
+                <optgroup label="North America">
+                  <option>Onyx</option>
+                  <option>Prodigal</option>
+                  <option>Black & White</option>
+                  <option>Passenger</option>
+                  <option>Hatch</option>
+                  <option>George Howell</option>
+                  <option>Intelligentsia</option>
+                  <option>Datura</option>
+                  <option>Apollon's Gold</option>
+                  <option>Moonwake</option>
+                  <option>Aviary</option>
+                  <option>Shoebox</option>
+                  <option>Glitch</option>
+                  <option>Substance</option>
+                  <option>Thankfully</option>
+                  <option>Sweet Bloom</option>
+                  <option>Vibrant</option>
+                  <option>Rogue Wave</option>
+                  <option>Subtext</option>
+                  <option>Regalia</option>
+                  <option>Camber</option>
+                  <option>Methodical</option>
+                </optgroup>
+                <optgroup label="Asia / Pacific">
+                  <option>ONA</option>
+                  <option>Standout</option>
+                  <option>Fortitude</option>
+                  <option>Proud Mary</option>
+                  <option>Market Lane</option>
+                  <option>Single O</option>
+                  <option>% Arabica</option>
+                </optgroup>
+                <optgroup label="Other"><option value="Other">Other</option></optgroup></select
+              ><input
+                id="roaster_other"
+                placeholder="type roaster name"
+                class="fin"
+                style="display: none"
+              />
+            </div>
+            <div class="fcell">
+              <div class="fl">Roast</div>
+              <select id="roast" class="fin">
+                <option value="">roast level...</option>
+                <option>Ultra Light</option>
+                <option>Extra Light</option>
+                <option>Light</option>
+                <option>Light Medium</option>
+                <option>Medium</option>
+                <option>Medium Dark</option>
+                <option>Dark</option>
+              </select>
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Varietal</div>
+              <select id="varietal" class="fin">
+                <option value="">varietal...</option>
+                <optgroup label="Ethiopian / Landrace">
+                  <option>Heirloom</option>
+                  <option>Kurume</option>
+                  <option>Welicho</option>
+                  <option>Wolisho</option>
+                  <option>Gesha</option>
+                  <option>Wush Wush</option>
+                  <option>74110</option>
+                  <option>74158</option>
+                </optgroup>
+                <optgroup label="Rare / Exotic">
+                  <option>Eugenioides</option>
+                  <option>Sudan Rume</option>
+                  <option>Chiroso</option>
+                  <option>Ombligon</option>
+                  <option>Mokka</option>
+                  <option>Pacamara</option>
+                  <option>Maracaturra</option>
+                </optgroup>
+                <optgroup label="Bourbon family">
+                  <option>Bourbon</option>
+                  <option>Red Bourbon</option>
+                  <option>Yellow Bourbon</option>
+                  <option>Pink Bourbon</option>
+                  <option>Caturra</option>
+                  <option>Catuai</option>
+                  <option>Pacas</option>
+                  <option>Villa Sarchi</option>
+                  <option>Laurina</option>
+                </optgroup>
+                <optgroup label="Typica family">
+                  <option>Typica</option>
+                  <option>Mundo Novo</option>
+                  <option>Maragogipe</option>
+                  <option>Kona</option>
+                  <option>Blue Mountain</option>
+                  <option>Java</option>
+                  <option>Sidra</option>
+                </optgroup>
+                <optgroup label="Kenyan / SL">
+                  <option>SL28</option>
+                  <option>SL34</option>
+                  <option>SL14</option>
+                  <option>Ruiru 11</option>
+                  <option>Batian</option>
+                  <option>K7</option>
+                </optgroup>
+                <optgroup label="Hybrids / Large-bean">
+                  <option>Castillo</option>
+                  <option>Colombia</option>
+                  <option>Catimor</option>
+                  <option>Sarchimor</option>
+                  <option>Marsellesa</option>
+                  <option>Centroamericano</option>
+                </optgroup>
+                <optgroup label="Other">
+                  <option>Blend</option>
+                  <option value="Other">Other</option>
+                  <option>Unknown</option>
+                </optgroup>
+              </select>
+            </div>
+            <div class="fcell">
+              <div class="fl">Process</div>
+              <select id="process" class="fin" onchange="otherToggle('process', 'process_other')">
+                <option value="">process...</option>
+                <optgroup label="Classic">
+                  <option>Washed</option>
+                  <option>Natural</option>
+                  <option>Honey</option>
+                  <option>White Honey</option>
+                  <option>Yellow Honey</option>
+                  <option>Red Honey</option>
+                  <option>Black Honey</option>
+                  <option>Pulped Natural</option>
+                </optgroup>
+                <optgroup label="Fermentation">
+                  <option>Anaerobic</option>
+                  <option>Anaerobic Natural</option>
+                  <option>Anaerobic Washed</option>
+                  <option>Anoxic</option>
+                  <option>Lactic</option>
+                  <option>Yeast Inoculated</option>
+                  <option>Extended Fermentation</option>
+                  <option>Co-Fermented</option>
+                </optgroup>
+                <optgroup label="Experimental">
+                  <option>Carbonic Maceration</option>
+                  <option>Thermal Shock</option>
+                  <option>Frozen / Cryo</option>
+                  <option>Double Anaerobic</option>
+                  <option>Washed Anaerobic</option>
+                </optgroup>
+                <optgroup label="Co-Ferment (fruit)">
+                  <option>Co-Ferment (generic)</option>
+                  <option>Lychee Co-Ferment</option>
+                  <option>Strawberry Co-Ferment</option>
+                  <option>Blueberry Co-Ferment</option>
+                  <option>Raspberry Co-Ferment</option>
+                  <option>Passionfruit Co-Ferment</option>
+                  <option>Grape Co-Ferment</option>
+                  <option>Peach Co-Ferment</option>
+                  <option>Mango Co-Ferment</option>
+                  <option>Pineapple Co-Ferment</option>
+                  <option>Banana Co-Ferment</option>
+                  <option>Melon Co-Ferment</option>
+                  <option>Cherry Co-Ferment</option>
+                  <option>Citrus Co-Ferment</option>
+                  <option>Apple Co-Ferment</option>
+                </optgroup>
+                <optgroup label="Co-Ferment (other)">
+                  <option>Hops Co-Ferment</option>
+                  <option>Cinnamon Co-Ferment</option>
+                  <option>Vanilla Co-Ferment</option>
+                  <option>Ginger Co-Ferment</option>
+                  <option>Mint Co-Ferment</option>
+                  <option>Chili Co-Ferment</option>
+                  <option>Rose / Floral Co-Ferment</option>
+                  <option>Wine Yeast Co-Ferment</option>
+                  <option>Champagne Yeast Co-Ferment</option>
+                </optgroup>
+                <optgroup label="Infused">
+                  <option>Infused (post-process)</option>
+                  <option>Bourbon Barrel Aged</option>
+                  <option>Whiskey Barrel Aged</option>
+                  <option>Rum Barrel Aged</option>
+                </optgroup>
+                <optgroup label="Other"><option value="Other">Other</option></optgroup></select
+              ><input
+                id="process_other"
+                placeholder="type process"
+                class="fin"
+                style="display: none"
+              />
+            </div>
+          </div>
+          <div class="frow">
+            <label class="fl" data-i18n="fRegion">Region</label
+            ><input
+              id="fregion"
+              list="ghOriginList"
+              class="fin"
+              data-i18n-ph="fRegionPh"
+              placeholder="Rwanda, Huye"
+            />
+          </div>
+          <input id="type" type="hidden" value="" />
+          <div class="fl" style="margin-top: 8px">Dose (g)</div>
+          <input
+            id="dose"
+            type="number"
+            step="0.1"
+            inputmode="decimal"
+            placeholder="dose g"
+            oninput="gRatioApply()"
+            class="fin"
+            style="width: 100%"
+          />
+          <div class="frow" style="margin-top: 8px">
+            <div class="fcell">
+              <div class="fl" data-i18n="gRatioLbl">Ratio (1: dose)</div>
+              <div style="display: flex; align-items: center; gap: 6px">
+                <span style="color: var(--dim); font-size: 17px; font-weight: 600">1:</span
+                ><input
+                  id="gratioIn"
+                  type="number"
+                  step="0.5"
+                  inputmode="decimal"
+                  placeholder="16"
+                  class="fin"
+                  oninput="gRatioApply()"
+                />
+              </div>
+            </div>
+            <div class="fcell"></div>
+          </div>
+          <div class="frow" style="margin-top: 8px">
+            <div class="fcell">
+              <div class="fl">
+                <span class="mmethod" data-mgag="1">Yield (g)</span
+                ><span class="mmethod" data-mfilter="1">Water (g)</span>
+              </div>
+              <input
+                id="gyield"
+                type="number"
+                step="0.1"
+                inputmode="decimal"
+                class="fin"
+                oninput="gRatioLive()"
+              />
+            </div>
+            <div class="fcell">
+              <div class="fl">Time (m:ss or s)</div>
+              <input
+                id="gtime"
+                inputmode="numeric"
+                placeholder="2:28 or 148"
+                class="fin"
+                oninput="gtimeFmt()"
+              />
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Preinfusion / bloom (s)</div>
+              <input id="gbloom" type="number" inputmode="numeric" class="fin" />
+            </div>
+            <div class="fcell">
+              <div class="fl">Temp (C)</div>
+              <input id="gtemp" type="number" step="0.5" inputmode="decimal" class="fin" />
+            </div>
+          </div>
+          <div
+            id="ftempchips"
+            class="mmethod"
+            data-mfilter="1"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"
+          ></div>
+          <div id="gratioLive" class="csS" style="margin: -2px 0 8px 2px"></div>
+          <div class="fl">Water</div>
+          <div
+            id="gwaterchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"
+          ></div>
+          <div class="fl">How did it taste?</div>
+          <div
+            id="gtastechips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+          ></div>
+          <div
+            id="frechips"
+            class="mmethod"
+            data-mfilter="1"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+          ></div>
+          <div
+            class="mmethod"
+            data-mgag="1"
+            onclick="
+              var x = document.getElementById('gadv');
+              x.style.display = x.style.display == 'none' ? 'block' : 'none';
+            "
+            style="color: var(--dim); font-size: 12px; cursor: pointer; margin-bottom: 6px"
+          >
+            + basket / prep / paper (optional)
+          </div>
+          <div id="gadv" class="mmethod" data-mgag="1" style="display: none">
+            <div class="fl">Basket</div>
+            <div
+              id="gbasketchips"
+              style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+            ></div>
+            <div class="fl">Prep</div>
+            <div
+              id="gprepchips"
+              style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+            ></div>
+            <div class="fl">Paper in basket</div>
+            <div
+              id="gpaperchips"
+              style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+            ></div>
+          </div>
+          <div
+            class="mmethod"
+            data-mfilter="1"
+            onclick="
+              var x = document.getElementById('fadv');
+              x.style.display = x.style.display == 'none' ? 'block' : 'none';
+            "
+            style="color: var(--dim); font-size: 12px; cursor: pointer; margin-bottom: 6px"
+          >
+            + paper / agitation (optional)
+          </div>
+          <div id="fadv" class="mmethod" data-mfilter="1" style="display: none">
+            <div class="fl">Filter paper</div>
+            <div
+              id="fpaperchips"
+              style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+            ></div>
+            <div class="fl">Agitation</div>
+            <div
+              id="fagitchips"
+              style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+            ></div>
+          </div>
+          <div class="fl" style="margin-top: 2px">Rating (1-10)</div>
+          <input
+            id="r"
+            type="number"
+            min="1"
+            max="10"
+            inputmode="numeric"
+            class="fin"
+            style="display: none"
+          />
+          <div id="rateChips" class="ratechips"></div>
+          <div id="rateWord" class="ratewordlbl">Tap to rate</div>
+          <div style="display: flex; gap: 8px; margin-top: 8px">
+            <button id="saveBtn" class="grn" style="flex: 1" onclick="logAction()">
+              Save to log
+            </button>
+          </div>
+          <div style="margin-top: 8px">
+            <button
+              data-i18n="editLastBtn"
+              onclick="editLastShotOpen()"
+              style="
+                width: 100%;
+                padding: 9px;
+                border-radius: 10px;
+                border: 1px solid var(--line);
+                background: var(--panel);
+                color: var(--dim);
+                font-size: 12px;
+                cursor: pointer;
+              "
+            >
+              Edit last entry
+            </button>
+          </div>
+        <div
+          onclick="toggleInv()"
+          style="
+            margin-top: 14px;
+            padding: 12px;
+            text-align: center;
+            border: 1px dashed var(--line2);
+            border-radius: 12px;
+            color: var(--sel-text);
+            font-size: 14px;
+            cursor: pointer;
+          "
+        >
+          Coffee inventory &amp; rotation
+        </div>
+        <div
+          id="invPanel"
+          style="
+            display: none;
+            margin-top: 10px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel2);
+          "
+        >
+          <div class="fl">Rotation style</div>
+          <div
+            id="rotmodechips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+          ></div>
+          <div
+            id="rotpick"
+            style="
+              background: var(--rec-bg);
+              border: 1px solid var(--rec-line);
+              border-radius: 10px;
+              padding: 10px;
+              font-size: 12px;
+              color: var(--rec-text);
+              margin-bottom: 10px;
+              display: none;
+            "
+          ></div>
+          <div class="fl">Freeze coffee</div>
+          <input id="invcoffee" placeholder="coffee name" class="fin" style="width: 100%" />
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Roaster</div>
+              <select
+                id="invroaster"
+                class="fin"
+                onchange="otherToggle('invroaster', 'invroaster_other')"
+              ></select
+              ><input
+                id="invroaster_other"
+                placeholder="type roaster name"
+                class="fin"
+                style="display: none"
+              />
+            </div>
+            <div class="fcell">
+              <div class="fl">Roast date</div>
+              <input id="invrdate" type="date" class="fin" />
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl">Roast</div>
+              <select id="invroast" class="fin"></select>
+            </div>
+            <div class="fcell">
+              <div class="fl">Process</div>
+              <select
+                id="invprocess"
+                class="fin"
+                onchange="otherToggle('invprocess', 'invprocess_other')"
+              ></select
+              ><input
+                id="invprocess_other"
+                placeholder="type process"
+                class="fin"
+                style="display: none"
+              />
+            </div>
+          </div>
+          <div class="fl">Portion size</div>
+          <div
+            id="invsizechips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+          ></div>
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl" data-i18n="invBagSize">Bag size</div>
+              <div id="invsizefree" style="margin-top: 6px">
+                <input
+                  id="invsizeg"
+                  type="number"
+                  step="0.1"
+                  inputmode="decimal"
+                  class="fin"
+                  placeholder="o escribe g (52.5)"
+                  oninput="invSizeFree()"
+                  style="width: 100%"
+                />
+              </div>
+              <div id="invbagchips" style="display: flex; flex-wrap: wrap; gap: 6px"></div>
+            </div>
+            <div class="fcell">
+              <div class="fl" data-i18n="invPrice">Price per bag</div>
+              <div style="display: flex; gap: 6px">
+                <select id="invccy" style="flex: 0 0 88px" onchange="invCcySet(this.value)"></select
+                ><input
+                  id="invprice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  inputmode="decimal"
+                  class="fin"
+                  style="flex: 1"
+                  oninput="invPerG()"
+                />
+              </div>
+            </div>
+          </div>
+          <div id="invPerGOut" class="csS" style="margin: -2px 0 8px 2px"></div>
+          <div class="frow" style="align-items: flex-end">
+            <div class="fcell">
+              <div class="fl">How many</div>
+              <input id="invqty" type="number" value="1" min="1" class="fin" />
+            </div>
+            <div class="fcell">
+              <div class="fl" data-i18n="invFreezeDate">Freeze date</div>
+              <input id="invfreeze_date" type="date" class="fin" />
+            </div>
+          </div>
+          <div class="frow">
+            <div class="fcell">
+              <div class="fl" data-i18n="invVarietal">Varietal</div>
+              <input id="invvarietal" list="ghVarList" class="fin" />
+            </div>
+            <div class="fcell">
+              <div class="fl" data-i18n="invRegion">Origin</div>
+              <input id="invregion" list="ghOriginList" class="fin" />
+            </div>
+            <div class="fcell fullrow">
+              <button class="grn" style="width: 100%" onclick="freezeCoffee()">Freeze it</button
+              ><button
+                class="off"
+                data-i18n="restBtn"
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  color: var(--pressure);
+                  border: 1px solid var(--pressure);
+                "
+                onclick="
+                  window.REST_MODE = true;
+                  freezeCoffee();
+                "
+              >
+                Rest it (out to degas)</button
+              ><button
+                class="off"
+                data-i18n="scoreBtn"
+                style="
+                  width: 100%;
+                  margin-top: 8px;
+                  color: var(--sel-text);
+                  border: 1px solid var(--sel-line);
+                "
+                onclick="quickScoreOpen()"
+              >
+                Just score this bag
+              </button>
+            </div>
+          </div>
+          <div class="fl" style="margin-top: 8px">Your inventory</div>
+          <div id="invList"><div class="mut" style="text-align: left">loading...</div></div>
+        </div>
+        <div class="tool" id="convTool">
+          <div class="toolhd" data-i18n="grindConverter">Grinder converter</div>
+          <div class="convrow">
+            <div class="convcell">
+              <div class="fl" data-i18n="from">From</div>
+              <select id="convFrom" class="fin" onchange="convCompute()"></select>
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="to">To</div>
+              <select id="convTo" class="fin" onchange="convCompute()"></select>
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="setting">Setting</div>
+              <input
+                id="convVal"
+                type="number"
+                step="0.1"
+                inputmode="decimal"
+                class="fin"
+                oninput="convCompute()"
+              />
+            </div>
+          </div>
+          <div class="convout" id="convOut"></div>
+          <div class="mut" style="text-align: left" data-i18n="convHint">
+            Same burr gap, on each grinder's dial.
+          </div>
+        </div>
+        <div class="tool" id="grindTool">
+          <div class="toolhd" data-i18n="grindHelper">Grind helper</div>
+          <div class="convrow">
+            <div class="convcell">
+              <div class="fl" data-i18n="ghMethod">Method</div>
+              <select id="ghMethod" class="fin" onchange="grindHelperRender()">
+                <option value="espresso">Espresso</option>
+                <option value="soup" selected>Soup</option>
+                <option value="filter">Filter</option>
+              </select>
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="ghGrinder">Grinder</div>
+              <select id="ghGrinder" class="fin" onchange="grindHelperRender()"></select>
+            </div>
+          </div>
+          <div class="convrow">
+            <div class="convcell" id="ghBrewerCell" style="display: none">
+              <div class="fl" data-i18n="ghBrewer">Brewer</div>
+              <select id="ghBrewer" class="fin" onchange="grindHelperRender()"></select>
+            </div>
+            <div class="convcell" id="ghRatioCell">
+              <div class="fl" data-i18n="ghRatio">Ratio</div>
+              <select id="ghRatio" class="fin" onchange="grindHelperRender()">
+                <option selected>1:3-4</option>
+                <option>1:5-8</option>
+                <option>1:10</option>
+              </select>
+            </div>
+          </div>
+          <div class="convrow">
+            <div class="convcell">
+              <div class="fl" data-i18n="ghRoast">Roast</div>
+              <select id="ghRoast" class="fin" onchange="grindHelperRender()"></select>
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="ghProcess">Process</div>
+              <select id="ghProcess" class="fin" onchange="grindHelperRender()"></select>
+            </div>
+          </div>
+          <div class="convrow">
+            <div class="convcell">
+              <div class="fl" data-i18n="ghOrigin">Origin</div>
+              <input
+                id="ghOrigin"
+                list="ghOriginList"
+                class="fin"
+                oninput="grindHelperRender()"
+                placeholder="Ethiopia"
+              />
+            </div>
+            <div class="convcell">
+              <div class="fl" data-i18n="ghVarietal">Varietal</div>
+              <input
+                id="ghVarietal"
+                list="ghVarList"
+                class="fin"
+                oninput="grindHelperRender()"
+                placeholder="Gesha"
+              />
+            </div>
+          </div>
+          <datalist id="ghOriginList">
+            <option>Ethiopia</option>
+            <option>Kenya</option>
+            <option>Colombia</option>
+            <option>Guatemala</option>
+            <option>Costa Rica</option>
+            <option>Panama</option>
+            <option>Honduras</option>
+            <option>El Salvador</option>
+            <option>Nicaragua</option>
+            <option>Brazil</option>
+            <option>Peru</option>
+            <option>Bolivia</option>
+            <option>Ecuador</option>
+            <option>Mexico</option>
+            <option>Rwanda</option>
+            <option>Burundi</option>
+            <option>Tanzania</option>
+            <option>DR Congo</option>
+            <option>Yemen</option>
+            <option>Indonesia</option>
+            <option>India</option></datalist
+          ><datalist id="ghVarList">
+            <option>Gesha</option>
+            <option>SL28</option>
+            <option>SL34</option>
+            <option>Bourbon</option>
+            <option>Pink Bourbon</option>
+            <option>Caturra</option>
+            <option>Catuai</option>
+            <option>Typica</option>
+            <option>Heirloom</option>
+            <option>Pacamara</option>
+            <option>Pacas</option>
+            <option>Villa Sarchi</option>
+            <option>Castillo</option>
+            <option>Colombia</option>
+            <option>Ruiru 11</option>
+            <option>Batian</option>
+            <option>Sudan Rume</option>
+            <option>Wush Wush</option>
+            <option>Chiroso</option>
+            <option>Java</option>
+            <option>Maragogipe</option>
+            <option>Mundo Novo</option>
+          </datalist>
+          <div class="convout" id="ghOut"></div>
+          <div class="mut" style="text-align: left" data-i18n="ghHint">
+            Roast and process do the work; origin and varietal only nudge by density.
+          </div>
+        </div>
+        <div class="fl" data-i18n="role">Role</div>
+        <div class="rolerow" id="rolechips"></div>
+        <button
+          class="grn"
+          style="width: 100%; margin: 6px 0 12px"
+          onclick="document.getElementById('wizMask').classList.add('on')"
+          data-i18n="setupSheet"
+        >
+          Set up your Google Sheet
+        </button>
+        <div
+          onclick="toggleInsights()"
+          style="
+            margin-top: 10px;
+            padding: 12px;
+            text-align: center;
+            border: 1px dashed var(--line2);
+            border-radius: 12px;
+            color: var(--sel-text);
+            font-size: 14px;
+            cursor: pointer;
+          "
+        >
+          Insights
+        </div>
+        <div
+          id="insPanel"
+          style="
+            display: none;
+            margin-top: 10px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel2);
+          "
+        >
+          <div class="fl">How often should insights arrive?</div>
+          <div
+            id="insfreqchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+          ></div>
+          <div style="display: flex; gap: 8px; margin-bottom: 10px">
+            <button
+              class="off"
+              style="flex: 1; color: var(--sel-text); border: 1px solid var(--sel-line)"
+              onclick="runInsights()"
+            >
+              Refresh now
+            </button>
+          </div>
+          <div
+            id="insText"
+            style="white-space: pre-wrap; font-size: 12px; line-height: 1.5; color: var(--text)"
+          ></div>
+          <div id="insAt" class="mut" style="text-align: left; margin-top: 8px"></div>
+        </div>
+        <div
+          id="tierCard"
+          style="
+            margin-top: 10px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel2);
+          "
+        ></div>
+        <div
+          onclick="toggleSettings()"
+          style="
+            margin-top: 10px;
+            padding: 10px;
+            text-align: center;
+            color: var(--dim);
+            font-size: 13px;
+            cursor: pointer;
+          "
+        >
+          Settings
+        </div>
+        <div
+          id="setPanel"
+          style="
+            display: none;
+            margin-top: 6px;
+            padding: 14px;
+            border-radius: 12px;
+            border: 1px solid var(--line);
+            background: var(--panel2);
+          "
+        >
+          <div class="fl">What do you brew?</div>
+          <div
+            id="wamethods"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+          ></div>
+          <div class="fl">What hardware do you have?</div>
+          <div id="wahw" style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"></div>
+          <div id="wakeyrow" style="display: none; margin-bottom: 10px">
+            <input
+              id="waDeviceKey"
+              placeholder="device key (from your BrewPilot)"
+              style="
+                width: 100%;
+                padding: 11px;
+                font-size: 13px;
+                border-radius: 10px;
+                border: 1px solid var(--line);
+                background: var(--panel);
+                color: var(--text);
+                margin-bottom: 4px;
+              "
+            />
+            <div style="color: var(--dim); font-size: 11px">
+              Beta: unlocking is on the honor system - device-key validation comes later.
+            </div>
+          </div>
+          <div class="fl">Google Sheet (enables inventory, history, trends)</div>
+          <div id="sheetStatus" style="font-size: 12px; margin-bottom: 6px"></div>
+          <input
+            id="setWebhook"
+            type="hidden"
+            placeholder="gone"
+            style="
+              width: 100%;
+              padding: 11px;
+              font-size: 14px;
+              border-radius: 10px;
+              border: 1px solid var(--line);
+              background: var(--panel);
+              color: var(--text);
+              margin-bottom: 6px;
+            "
+          />
+          <div class="fl" style="margin-top: 2px">Already have a BrewPilot Log?</div>
+          <input
+            id="relinkSheet"
+            placeholder="paste its Google Sheets link"
+            class="fin"
+            style="width: 100%"
+          /><button
+            class="off"
+            style="
+              width: 100%;
+              margin-bottom: 12px;
+              color: var(--sel-text);
+              border: 1px solid var(--sel-line);
+            "
+            onclick="gRelinkSheet()"
+          >
+            Reconnect to existing sheet
+          </button>
+          <div class="fl">Which grinders do you own? (shown when logging)</div>
+          <div
+            id="mygrinderchips"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px"
+          ></div>
+          <div class="fl">New-bean cold start (per brewer, on your grinder)</div>
+          <div id="coldstartbox" class="mut" style="text-align: left; line-height: 1.6"></div>
+        </div><script>
+      async function refresh() {
+        /* M_INIT used to be set BEFORE the calls it guards, so anything that threw
+   in applyNoun() skipped applyHwLocks() and then permanently closed this block:
+   no later refresh() would retry it, and applyHwLocks() has no other boot-time
+   caller, only onclick handlers in Settings and the wizard. Measured on build
+   35d874: applyHwLocks() ran 0 times at boot, so the machine-control lock never
+   applied until a hardware chip was tapped. Each call is isolated and the flag
+   is set last, so one failure can no longer take the rest of boot with it. */
+        if (!M_INIT) {
+          try {
+            loadSetup();
+          } catch (e) {}
+          try {
+            applyNoun();
+          } catch (e) {}
+          try {
+            applyHwLocks();
+          } catch (e) {}
+          M_INIT = true;
+        }
+        renderTier();
+      }
+      async function cmd(c) {
+        alert("Machine control needs the BrewPilot device + a Gaggiuino.");
+      }
+      function otherToggle(sel, inp) {
+        document.getElementById(inp).style.display =
+          document.getElementById(sel).value == "Other" ? "block" : "none";
+      }
+      document.getElementById("roaster").addEventListener("change", function () {
+        otherToggle("roaster", "roaster_other");
+      });
+      document.getElementById("process").addEventListener("change", function () {
+        otherToggle("process", "process_other");
+      });
+      function pick(sel, inp) {
+        let v = document.getElementById(sel).value;
+        if (v == "Other") {
+          let o = document.getElementById(inp).value.trim();
+          return o || "";
+        }
+        return v;
+      }
+      async function logshot() {
+        var g = function (id) {
+          var e = document.getElementById(id);
+          return e ? e.value.trim() : "";
+        };
+        var c = g("coffee"),
+          rst = rememberOther("roaster", "roaster_other", "roaster"),
+          v = g("varietal"),
+          pr = rememberOther("process", "process_other", "process"),
+          ro = g("roast");
+        var typ = (document.getElementById("type") || {}).value || "";
+        var d = g("dose"),
+          r = g("r");
+        if (!c) {
+          alert("Coffee name?");
+          return;
+        }
+        if (r) {
+          var rn = parseInt(r);
+          if (rn < 1 || rn > 10) {
+            alert("Rating 1-10");
+            return;
+          }
+        }
+        var gs = g("gset");
+        var grn = lastGrinder();
+        var gsetN = parseFloat(gs);
+        if (!isNaN(gsetN) && grn) {
+          localStorage.setItem("gset_" + grn, gsetN);
+        }
+        var isFil = typ === "filter";
+        var out = g("gyield");
+        var tm = toSecs(g("gtime"));
+        var tp = g("gtemp");
+        var bl = g("gbloom");
+        var ratio = d && out ? (parseFloat(out) / parseFloat(d)).toFixed(2) : "";
+        var brewer = isFil ? FBREWER || "" : "";
+        var basket = isFil ? "" : GBASKET || "";
+        var prep = isFil ? "" : GPREP || "";
+        var agit = isFil ? FAGIT || "double bloom + WDT" : "";
+        var paper = isFil ? FPAPER || "" : GPAPER || "";
+        var yieldCol = isFil ? "" : out || "";
+        var waterCol = isFil ? out || "" : "";
+        var grindUm = "";
+        try {
+          if (grn && !isNaN(gsetN) && typeof GRINDERS === "object" && GRINDERS[grn])
+            grindUm = Math.round(clicksToUm(gsetN, grn));
+        } catch (e) {}
+        var cols = [
+          "",
+          "",
+          c,
+          rst,
+          v,
+          pr,
+          ro,
+          typ || "",
+          d,
+          yieldCol,
+          ratio,
+          tm || "",
+          "",
+          "",
+          tp || "",
+          r || "",
+          brewer,
+          gs || "",
+          GWATER || "",
+          prep,
+          paper,
+          GTASTE || "",
+          bl || "",
+          "",
+          basket,
+          agit,
+          waterCol,
+          grindUm,
+        ];
+        try {
+          cols = bpApplyShot(cols);
+        } catch (e) {}
+        try {
+          localPush(cols);
+        } catch (e) {}
+        var _mode = dataMode();
+        if (_mode === "google") {
+          try {
+            await gAppend(SHOT_TAB, cols);
+          } catch (e) {
+            if (String(e.message).indexOf("needs-gesture") >= 0) {
+              var _ok = await gAuth(true);
+              if (_ok) {
+                try {
+                  await gAppend(SHOT_TAB, cols);
+                } catch (e2) {
+                  alert(t("gSaveFailed"));
+                }
+              } else alert(t("gSaveFailed"));
+            } else alert(t("gSaveFailed"));
+          }
+        }
+        /* After the row is saved, never before: a lane must not claim a shot the
+   sheet rejected. laneRecord re-checks inventory identity itself, so a shot that
+   reached here through logAction's catch path (which skips bpCoffeeGate) is
+   still filed only if the coffee is canonical. */
+        try {
+          await laneRecord(cols);
+        } catch (e) {}
+        try {
+          pushRotation(
+            {
+              coffee: c,
+              roaster: rst,
+              varietal: v,
+              process: pr,
+              roast: ro,
+              type: typ,
+              dose: d,
+              grinder: grn,
+              gset: isNaN(gsetN) ? null : gsetN,
+              water: GWATER || "",
+              taste: GTASTE || "",
+              brewer: brewer,
+            },
+            {
+              yieldG: out ? parseFloat(out) : undefined,
+              ratio: ratio ? parseFloat(ratio) : undefined,
+              durationS: tm ? parseFloat(tm) : undefined,
+            },
+            r,
+          );
+        } catch (e) {}
+        [
+          "coffee",
+          "varietal",
+          "dose",
+          "r",
+          "gset",
+          "roaster_other",
+          "process_other",
+          "gyield",
+          "gtime",
+          "gtemp",
+          "gbloom",
+        ].forEach(function (i) {
+          var _el = document.getElementById(i);
+          if (_el) _el.value = "";
+        });
+        try {
+          bpClearShot();
+        } catch (e) {}
+        GBASKET = "";
+        GPREP = "";
+        GPAPER = "";
+        GTASTE = "";
+        GWATER = "";
+        FBREWER = "";
+        FAGIT = "";
+        FPAPER = "";
+        FTASTE = "";
+        FWATER = "";
+        try {
+          renderGWater();
+        } catch (e) {}
+        try {
+          renderGTaste();
+        } catch (e) {}
+        try {
+          gRatioLive();
+        } catch (e) {}
+        try {
+          renderRateChips();
+        } catch (e) {}
+        ["roast", "roaster", "process", "varietal"].forEach(function (i) {
+          var _el = document.getElementById(i);
+          if (_el) _el.value = "";
+        });
+        if (getPlan()) clearPlan();
+        alert("Logged to your sheet");
+      }
+      let ROT = [];
+      function saveRot() {
+        try {
+          localStorage.setItem("rotation", JSON.stringify(ROT));
+        } catch (e) {}
+        0;
+      }
+      async function loadRot() {
+        let local = [];
+        try {
+          local = JSON.parse(localStorage.getItem("rotation") || "[]");
+        } catch (e) {}
+        if (local && local.length) {
+          ROT = local;
+        }
+        renderChips();
+      }
+      function pushRotation(entry, ls, rating) {
+        if (!entry.coffee) return;
+        let existing = ROT.find((x) => x.coffee == entry.coffee);
+        let rec = null;
+        if (ls && (ls.peakBar !== undefined || ls.ratio !== undefined)) {
+          rec = {
+            peak: ls.peakBar,
+            yield: ls.yieldG,
+            ratio: ls.ratio,
+            dur: ls.durationS,
+            dose: entry.dose,
+            rating: rating ? parseInt(rating) : null,
+            type: entry.type,
+            gset: entry.gset,
+            grinder: entry.grinder,
+          };
+        }
+        if (existing) {
+          if (
+            rec &&
+            rec.rating &&
+            (!existing.best ||
+              !existing.best.rating ||
+              rec.rating >= existing.best.rating ||
+              existing.best.type != entry.type)
+          ) {
+            existing.best = rec;
+          }
+          existing.last = rec || existing.last;
+          if (rec && rec.gset != null && rec.peak != null) {
+            existing.hist = (existing.hist || [])
+              .concat([{ gset: rec.gset, peak: rec.peak }])
+              .slice(-12);
+          }
+          Object.assign(existing, {
+            roaster: entry.roaster,
+            varietal: entry.varietal,
+            process: entry.process,
+            roast: entry.roast,
+            type: entry.type,
+            dose: entry.dose,
+            grinder: entry.grinder,
+          });
+        } else {
+          entry.best = rec && rec.rating ? rec : null;
+          entry.last = rec;
+          entry.hist =
+            rec && rec.gset != null && rec.peak != null ? [{ gset: rec.gset, peak: rec.peak }] : [];
+          ROT.unshift(entry);
+        }
+        learnFrom(ROT.find((x) => x.coffee == entry.coffee));
+        ROT = ROT.filter((x, i) => ROT.findIndex((y) => y.coffee == x.coffee) == i);
+        let pins = ROT.filter((x) => x.pin),
+          rest = ROT.filter((x) => !x.pin).slice(0, 8);
+        ROT = pins.concat(rest);
+        saveRot();
+        renderChips();
+        showDialin(ROT.find((x) => x.coffee == entry.coffee));
+      }
+      function fillEntry(e) {
+        document.getElementById("coffee").value = e.coffee || "";
+        setSel("roaster", "roaster_other", e.roaster);
+        setSel("process", "process_other", e.process);
+        document.getElementById("varietal").value = e.varietal || "";
+        document.getElementById("roast").value = e.roast || "";
+        document.getElementById("type").value = e.type || "";
+        document.getElementById("dose").value = e.dose || "";
+        if (e.grinder) {
+          localStorage.setItem("grinder", e.grinder);
+        }
+        showDialin(e);
+      }
+      function showDialin(e) {
+        let box = document.getElementById("dialin");
+        if (!e || (!e.best && !e.last)) {
+          box.style.display = "none";
+          return;
+        }
+        let b = e.best,
+          l = e.last,
+          h = "";
+        if (b && b.rating) {
+          h += "<b>Best so far</b> (rated " + b.rating + "): ";
+          h += fmtRecipe(b) + "<br>";
+        }
+        if (b && l && b.peak !== undefined && l.peak !== undefined) {
+          let adj = dialAdvice(b, l, e);
+          if (adj) h += "<span style='color:var(--rec-text)'>Next: " + adj + "</span>";
+        } else if (!b) {
+          h += "<span style='color:var(--dim)'>rate a few to lock a target recipe</span>";
+        } else if (b) {
+          h += "<span style='color:var(--hi-text)'>re-buy? start here: " + fmtRecipe(b) + "</span>";
+        }
+        box.innerHTML = h;
+        box.style.display = "block";
+        let fb = document.getElementById("finbtn");
+        if (fb) {
+          fb.style.display = "block";
+          fb.dataset.coffee = e.coffee;
+        }
+        renderGsetChips(e);
+        renderGrinderChips(e);
+      }
+      function setGset(v) {
+        document.getElementById("gset").value = v;
+      }
+      function renderGsetChips(e) {
+        let box = document.getElementById("gchips");
+        if (!box) return;
+        box.innerHTML = "";
+        let grn = lastGrinder();
+        let isM = grn == "Motto80";
+        let lastG = null;
+        if (e) {
+          if (e.last && e.last.gset != null) lastG = e.last.gset;
+          else if (e.hist && e.hist.length) lastG = e.hist[e.hist.length - 1].gset;
+        }
+        if (lastG == null && grn) {
+          let s = localStorage.getItem("gset_" + grn);
+          if (s != null && s !== "") lastG = parseFloat(s);
+        }
+        let bestG = e && e.best && e.best.gset != null ? e.best.gset : null;
+        function chip(label, val, hi) {
+          let c = document.createElement("div");
+          c.textContent = label;
+          c.onclick = () => setGset(val);
+          c.className = "chip" + (hi ? " hi" : "");
+          return c;
+        }
+        if (bestG != null) box.appendChild(chip("best: " + bestG + (isM ? "um" : ""), bestG, true));
+        if (lastG != null)
+          box.appendChild(chip("same: " + lastG + (isM ? "um" : ""), lastG, false));
+        if (lastG != null) {
+          let steps = isM ? [-20, -10, 10, 20] : [-3, -2, -1, 1, 2, 3];
+          steps.forEach((d) => {
+            let v = Math.round((lastG + d) * 10) / 10;
+            box.appendChild(chip((d > 0 ? "+" : "") + d + (isM ? "um" : " clk"), v, false));
+          });
+        }
+        if (lastG == null && bestG == null) {
+          let hint = document.createElement("span");
+          hint.textContent = "type your grind # (or um for Motto80) once, then chips appear";
+          hint.style.cssText = "color:var(--dim);font-size:12px";
+          box.appendChild(hint);
+        }
+      }
+      /* convertGrind lives in the build layer (effUm + offset), removed the stale raw-um copy */ function ownedGrinders() {
+        try {
+          let s = localStorage.getItem("myGrinders");
+          if (s) {
+            let a = JSON.parse(s);
+            if (a && a.length) return a;
+          }
+        } catch (e) {}
+        return ["K7", "A2", "QAir", "ZP6", "ZP6s", "Motto80"];
+      }
+      function renderGrinderChips(e) {
+        let box = document.getElementById("grchips");
+        if (!box) return;
+        box.innerHTML = "";
+        let cur = lastGrinder();
+        ownedGrinders().forEach((id) => {
+          let g = GRINDERS[id];
+          if (!g) return;
+          let c = document.createElement("div");
+          c.textContent = g.n;
+          let on = id == cur;
+          c.className = "chip" + (on ? " on" : "");
+          c.onclick = () => selectGrinder(id, e);
+          box.appendChild(c);
+        });
+      }
+      function selectGrinder(id, e) {
+        let old = lastGrinder();
+        let cur = parseFloat(document.getElementById("gset").value);
+        localStorage.setItem("grinder", id);
+        let src = !isNaN(cur) ? cur : e && e.last && e.last.gset != null ? e.last.gset : null;
+        if (src != null && old && old != id) {
+          let conv = convertGrind(src, old, id);
+          if (conv != null) {
+            document.getElementById("gset").value = conv;
+          }
+        }
+        renderGrinderChips(e);
+        renderGsetChips(e);
+      }
+      async function finishBag() {
+        let fb = document.getElementById("finbtn");
+        let name = fb.dataset.coffee;
+        if (!name) return;
+        if (!confirm('Mark "' + name + '" finished and get a rotation suggestion?')) return;
+        ROT = ROT.filter((x) => x.coffee != name);
+        saveRot();
+        renderChips();
+        document.getElementById("dialin").style.display = "none";
+        fb.style.display = "none";
+        try {
+          if (dataMode() === "google") await gInvAction("finished", name, "");
+        } catch (e) {}
+        alert("Marked finished.");
+      }
+      let BOIL_C = 94;
+      let M_ESP = true,
+        M_SOUP = true,
+        M_FIL = true,
+        M_GAG = true;
+      let M_SCALE = false;
+      let M_INIT = false;
+      let M_HW = "none";
+      let BETA_OPEN = true;
+      function gate(feature) {
+        if (BETA_OPEN) return true;
+        return false;
+      }
+      function renderTier() {
+        var el = document.getElementById("tierCard");
+        if (!el) return;
+        var tier = M_GAG ? 2 : M_SCALE ? 1 : 0;
+        var names = ["Manual", "BLE scale", "Gaggiuino"];
+        var cur =
+          "<div style='color:var(--hi-text);font-size:13px;font-weight:600'>Your setup: Tier " +
+          tier +
+          " - " +
+          names[tier] +
+          "</div>";
+        var body = "";
+        if (tier == 0) {
+          body =
+            "<div style='color:var(--dim);font-size:12px;margin:4px 0 8px'>You type dose, yield, time - and get history, trends and rotation. You do the logging.</div>" +
+            "<div style='color:var(--sel-text);font-size:12px;font-weight:600'>Add a BLE scale -></div>" +
+            "<div style='color:var(--dim);font-size:12px'>flow curve + yield captured live (no typing), flow-vs-rating insights a webapp can't compute.</div>";
+        } else if (tier == 1) {
+          body =
+            "<div style='color:var(--dim);font-size:12px;margin:4px 0 8px'>Your scale captures weight, yield and live flow - no typing. You get flow-rate and drawdown insights.</div>" +
+            "<div style='color:var(--sel-text);font-size:12px;font-weight:600'>Add a Gaggiuino -></div>" +
+            "<div style='color:var(--dim);font-size:12px'>every shot auto-logs pressure + flow + temp, and the device coaches you mid-pull.</div>";
+        } else {
+          body =
+            "<div style='color:var(--dim);font-size:12px;margin:4px 0 8px'>Every shot auto-logs with full pressure, flow and temp - zero effort - and the device times warm-up, watches readiness and coaches live. You're at the top of the ladder.</div>";
+        }
+        var tagline =
+          "<div style='color:var(--dim);font-size:11px;margin-top:8px;font-style:italic'>The more the device sees, the less you do - and the better it coaches.</div>";
+        el.innerHTML = cur + body + tagline;
+      }
+      function NOUN() {
+        return !M_ESP && !M_SOUP && M_FIL ? "brew" : "shot";
+      }
+      function NOUNCAP() {
+        let n = NOUN();
+        return n.charAt(0).toUpperCase() + n.slice(1);
+      }
+      function applyNoun() {
+        let n = NOUN();
+        let ll = document.getElementById("logLabel");
+        if (ll) ll.textContent = "Log the last " + n;
+        let mo = document.getElementById("machineOnly");
+        if (mo) mo.style.display = M_GAG ? "block" : "none";
+        renderChips();
+      }
+      let FBREWER = "";
+      let FWATER = "";
+      let FTASTE = "";
+      let FPAPER = "";
+      let FAGIT = "";
+      let GWATER = "";
+      let GTASTE = "";
+      function renderGWater() {
+        var b = document.getElementById("gwaterchips");
+        if (!b) return;
+        b.innerHTML = "";
+        WATER_LIST.forEach((w) => {
+          var c = document.createElement("div");
+          c.textContent = w;
+          var on = w == GWATER;
+          c.className = "chip sm" + (on ? " on" : "");
+          c.onclick = function () {
+            GWATER = GWATER == w ? "" : w;
+            renderGWater();
+          };
+          b.appendChild(c);
+        });
+      }
+      function renderGTaste() {
+        var b = document.getElementById("gtastechips");
+        if (!b) return;
+        b.innerHTML = "";
+        [
+          ["sour", "sour/green"],
+          ["bright", "bright/juicy"],
+          ["sweet", "sweet/round"],
+          ["bitter", "bitter/dry"],
+        ].forEach(function (p) {
+          var c = document.createElement("div");
+          c.textContent = p[1];
+          var on = p[0] == GTASTE;
+          c.className = "chip sm" + (on ? " hi on" : "");
+          c.onclick = function () {
+            GTASTE = GTASTE == p[0] ? "" : p[0];
+            renderGTaste();
+          };
+          b.appendChild(c);
+        });
+      }
+      function chipRow(boxId, items, cur, setter, reRender) {
+        let box = document.getElementById(boxId);
+        if (!box) return;
+        box.innerHTML = "";
+        items.forEach((it) => {
+          let c = document.createElement("div");
+          c.textContent = it;
+          let on = it == cur;
+          c.className = "chip" + (on ? " on" : "");
+          c.onclick = () => {
+            setter(it);
+            reRender();
+          };
+          box.appendChild(c);
+        });
+      }
+      function renderFilterExtras() {
+        chipRow(
+          "fwaterchips",
+          WATER_LIST,
+          FWATER,
+          (v) => {
+            FWATER = v;
+          },
+          renderFilterExtras,
+        );
+        chipRow(
+          "ftastechips",
+          ["sour", "bright", "sweet", "bitter"],
+          FTASTE,
+          (v) => {
+            FTASTE = v;
+          },
+          renderFilterExtras,
+        );
+        chipRow(
+          "fpaperchips",
+          ["Sibarist", "CAFEC Abaca", "Hario tabbed", "Orea", "other"],
+          FPAPER,
+          (v) => {
+            FPAPER = v;
+          },
+          renderFilterExtras,
+        );
+        chipRow(
+          "fagitchips",
+          ["double bloom + WDT", "WDT", "melodrip", "swirl", "gentle pour", "none"],
+          FAGIT || "double bloom + WDT",
+          (v) => {
+            FAGIT = v;
+          },
+          renderFilterExtras,
+        );
+      }
+      function renderBrewerChips() {
+        let box = document.getElementById("brewerchips");
+        if (!box) return;
+        box.innerHTML = "";
+        ["V60", "V60 Switch", "V60 Neo", "Orea", "Origami", "Other"].forEach((b) => {
+          let c = document.createElement("div");
+          c.textContent = b;
+          let on = b == FBREWER;
+          c.className = "chip" + (on ? " on" : "");
+          c.onclick = () => {
+            FBREWER = b;
+            renderBrewerChips();
+            try {
+              csInline();
+            } catch (e) {}
+            try {
+              renderColdStart();
+            } catch (e) {}
+          };
+          box.appendChild(c);
+        });
+      }
+      function renderTempChips() {
+        var box = document.getElementById("ftempchips");
+        if (!box) return;
+        box.innerHTML = "";
+        var roast = (document.getElementById("roast") || {}).value || "Light";
+        var b = Math.round(BOIL_C);
+        var OFF = {
+          "Extra Light": [1, 2, 3],
+          Light: [2, 3, 4],
+          "Light Medium": [3, 4, 5],
+          Medium: [4, 6, 8],
+          "Medium Dark": [6, 8, 10],
+          Dark: [8, 10, 12],
+        };
+        var offs = OFF[roast] || [2, 3, 4];
+        var labels = ["hot", "mid", "cool"];
+        offs.forEach(function (o, i) {
+          var tt = b - o;
+          var c = document.createElement("div");
+          c.textContent = tt + " (" + labels[i] + ")";
+          c.onclick = function () {
+            var e = document.getElementById("gtemp");
+            if (e) e.value = tt;
+          };
+          c.style.cssText =
+            "padding:8px 12px;border-radius:18px;font-size:13px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--text)";
+          box.appendChild(c);
+        });
+        var d = document.createElement("div");
+        d.textContent = b - 2 + " (near boil)";
+        d.onclick = function () {
+          var e = document.getElementById("gtemp");
+          if (e) e.value = b - 2;
+        };
+        d.style.cssText =
+          "padding:8px 12px;border-radius:18px;font-size:13px;cursor:pointer;border:1px solid var(--hi-line);background:var(--hi-bg);color:var(--hi-text)";
+        box.appendChild(d);
+        var gt = document.getElementById("gtemp");
+        if (gt && !gt.value) gt.value = b - 2;
+      }
+      document.addEventListener("change", function (e) {
+        if (e.target && e.target.id == "froast") renderTempChips();
+      });
+      function toSecs(t) {
+        if (!t) return "";
+        t = String(t).trim();
+        if (t.indexOf(":") > 0) {
+          let p = t.split(":");
+          return parseInt(p[0]) * 60 + parseInt(p[1]) || "";
+        }
+        return parseFloat(t) || "";
+      }
+      async function logFilter() {
+        return logshot();
+      }
+      function fmtRecipe(r) {
+        let p = [];
+        if (r.dose) p.push(r.dose + "g");
+        if (r.yield) p.push("->" + Math.round(r.yield) + "g");
+        if (r.ratio) p.push("1:" + r.ratio.toFixed(1));
+        if (r.peak) p.push(r.peak.toFixed(1) + "bar");
+        if (r.dur) p.push(Math.round(r.dur) + "s");
+        return p.join(", ");
+      }
+      let GRINDERS = {
+        K7: { n: "K7", um: 15, burr: "conical", k: 0.48, min: 220, max: 860, dialPer: 10 },
+        A2: { n: "A2", um: 18, burr: "conical" },
+        QAir: { n: "Q-Air", um: 25, burr: "conical", k: 0.45, measured: true },
+        ZP6: { n: "ZP6", um: 33, burr: "conical", k: 0.64, dialPer: 10, min: 240, max: 1050 },
+        ZP6s: {
+          n: "ZP6 Special",
+          um: 22,
+          burr: "conical",
+          k: 0.64,
+          measured: true,
+          dialPer: 10,
+          min: 240,
+          max: 1050,
+        },
+        KUltra: { n: "K-Ultra", um: 20, burr: "conical", k: 0.38, measured: true, dialPer: 10 },
+        JUltra: { n: "J-Ultra", um: 8, burr: "conical", k: 0.31, measured: true, dialPer: 3 },
+        JMax: { n: "J-Max", um: 8.8, burr: "conical", k: 0.3, measured: true, dialPer: 3 },
+        JXPro: { n: "JX-Pro", um: 12.5, burr: "conical", k: 0.37, measured: true, dialPer: 4 },
+        K6: { n: "K6", um: 16, burr: "conical", k: 0.53, measured: true, dialPer: 10 },
+        Comandante: { n: "Comandante", um: 30, burr: "conical" },
+        Ode2: { n: "Ode 2", um: 13, burr: "flat" },
+        Encore: { n: "Encore", um: 38, burr: "conical" },
+        Sculptor078S: { n: "Sculptor 078S", um: 25, burr: "flat", off: 235, min: 235, max: 1235 },
+        Sculptor078: {
+          n: "Sculptor 078 (filter)",
+          um: 25,
+          burr: "flat",
+          off: 370,
+          min: 370,
+          max: 1270,
+          esp: false,
+        },
+        TimemoreS3: {
+          n: "Timemore S3",
+          um: 15,
+          burr: "conical",
+          k: 0.57,
+          measured: true,
+          off: 0,
+          min: 15,
+          max: 1200,
+        },
+        FemobookA4Z: { n: "Femobook A4Z", um: 8, burr: "conical", k: 0.53, measured: true },
+        ZernoZ1: { n: "Zerno Z1", um: 22, burr: "flat" },
+        ZernoZ2: { n: "Zerno Z2", um: 22, burr: "flat" },
+        LagomP80: { n: "Lagom P80", um: 10, burr: "flat" },
+        MignonSpecialita: { n: "Mignon Specialita", um: 24, burr: "flat" },
+        MignonSilenzio: { n: "Mignon Silenzio", um: 24, burr: "flat" },
+        MignonZero: { n: "Mignon Zero", um: 24, burr: "flat" },
+        MignonClassico: { n: "Mignon Classico", um: 24, burr: "flat" },
+        MignonOro: { n: "Mignon Oro", um: 24, burr: "flat" },
+        MignonXL: { n: "Mignon XL", um: 24, burr: "flat" },
+        Motto80: { n: "Motto80", um: 0, burr: "flat" },
+      };
+      GRINDERS.ZP6.dialPer = 10;
+      GRINDERS.KUltra.dialPer = 10;
+      function dialTxt(gid, clicks) {
+        var g = GRINDERS[gid];
+        if (!g || !g.dialPer || !isFinite(clicks)) return null;
+        var c = Math.round(clicks),
+          n = Math.floor(c / g.dialPer),
+          tk = c % g.dialPer;
+        return n + "." + tk;
+      }
+      var INVN = null;
+      var K_CONICAL_DEFAULT = 0.5;
+      function effUm(g) {
+        if (!g || g.um === 0) return 0;
+        if (g.burr !== "conical") return g.um;
+        return g.um * (typeof g.k === "number" ? g.k : K_CONICAL_DEFAULT);
+      }
+      let PRIOR_UMBAR = { espresso: 22, soup: 45, filter: 110 };
+      let SENS = {};
+      function loadSens() {
+        try {
+          SENS = JSON.parse(localStorage.getItem("sens") || "{}");
+        } catch (e) {
+          SENS = {};
+        }
+      }
+      function saveSens() {
+        try {
+          localStorage.setItem("sens", JSON.stringify(SENS));
+        } catch (e) {}
+        0;
+      }
+      function lastGrinder() {
+        return localStorage.getItem("grinder") || "";
+      }
+      function umBar(method) {
+        let m = method || "soup";
+        let s = SENS[m];
+        return s && s.n > 0 ? s.um : PRIOR_UMBAR[m] || PRIOR_UMBAR.soup;
+      }
+      function beanUmBar(e) {
+        if (!e || !e.hist || e.hist.length < 2) return null;
+        let g = GRINDERS[e.grinder];
+        if (!g) return null;
+        let h = e.hist,
+          n = h.length,
+          sx = 0,
+          sy = 0,
+          sxx = 0,
+          sxy = 0;
+        for (let i = 0; i < n; i++) {
+          let x = h[i].gset,
+            y = h[i].peak;
+          sx += x;
+          sy += y;
+          sxx += x * x;
+          sxy += x * y;
+        }
+        let den = n * sxx - sx * sx;
+        if (Math.abs(den) < 1e-6) return null;
+        let slope = (n * sxy - sx * sy) / den;
+        if (Math.abs(slope) < 1e-4) return null;
+        let umPerUnit = g.um > 0 ? g.um : 1;
+        let umbar = Math.abs(umPerUnit / slope);
+        if (umbar < 5 || umbar > 400) return null;
+        return umbar;
+      }
+      function learnFrom(e) {
+        if (!e) return;
+        let bu = beanUmBar(e);
+        if (bu == null) return;
+        let m = e.type || "soup";
+        let s = SENS[m] || { um: PRIOR_UMBAR[m] || 45, n: 0 };
+        if (s.n > 0 && (bu > s.um * 3 || bu < s.um / 3)) {
+          saveSens();
+          return;
+        }
+        let a = Math.min(0.35, 0.15 + 0.05 * e.hist.length);
+        s.um = s.n > 0 ? (1 - a) * s.um + a * bu : bu;
+        s.n = Math.min(s.n + 1, 50);
+        SENS[m] = s;
+        saveSens();
+      }
+      function tempCap() {
+        return BOIL_C || 94;
+      }
+      let ROAST_OFF = {
+        "Extra Light": 1,
+        Light: 2,
+        "Light Medium": 3,
+        Medium: 5,
+        "Medium Dark": 7,
+        Dark: 9,
+      };
+      function idealTemp(roast) {
+        let b = tempCap();
+        let o = ROAST_OFF[roast];
+        if (o == null) o = 3;
+        let t = b - o;
+        let lo = b - 12,
+          hi = b - 1;
+        return Math.max(lo, Math.min(hi, Math.round(t)));
+      }
+      function atCeiling(roast) {
+        return idealTemp(roast) >= Math.round(tempCap()) - 2;
+      }
+      let RATIO_BAND = { espresso: [2.0, 2.5], soup: [3.0, 4.5], filter: [14, 16] };
+      function ratioInBand(method, r) {
+        let b = RATIO_BAND[method];
+        if (!b || !r) return null;
+        return r < b[0] ? "tight" : r > b[1] ? "loose" : "in";
+      }
+      function tasteDir(tag) {
+        if (!tag) return null;
+        if (tag == "sour") return "under";
+        if (tag == "bitter") return "over";
+        return "target";
+      }
+      function tasteAdvice(tag, method, roast, prep) {
+        let dir = tasteDir(tag);
+        if (!dir || dir == "target") return "";
+        let a = [];
+        if (dir == "under") {
+          a.push("grind finer");
+          if (method == "filter" || method == "soup") a.push("tighten ratio a touch");
+          if (method == "filter") a.push("add agitation (WDT / gentle pour)");
+          if (!atCeiling(roast)) a.push("or raise temp ~1C");
+          else
+            a.push(
+              "(already at your " +
+                Math.round(tempCap()) +
+                "C ceiling - use grind/agitation, not heat)",
+            );
+        } else {
+          a.push("grind coarser");
+          if (method == "filter" || method == "soup") a.push("loosen ratio a touch");
+          a.push("ease agitation");
+          if (!atCeiling(roast)) a.push("or drop temp ~1C");
+        }
+        return a.join(", ");
+      }
+      let WATERS = {
+        Bright: {
+          acid: 2,
+          body: 0,
+          note: "Mg-forward, low alkalinity: acidity, juiciness, clarity",
+        },
+        "Sweet & Body": { acid: -1, body: 2, note: "Ca-forward: roundness, body, sweetness" },
+        Light: { acid: 1, body: -1, note: "gentle load: delicate, tea-like clarity" },
+        Snap: { acid: 2, body: 0, note: "crisp, snappy acidity, high definition" },
+        SILK: { acid: -1, body: 1, note: "soft, silky, rounded texture" },
+        Aquacode: { acid: 0, body: 0, note: "balanced ~60ppm all-rounder" },
+        TWW: { acid: 0, body: 0, note: "balanced ~60ppm all-rounder" },
+        tap: { acid: 0, body: 0, note: "variable - alkalinity may mute acidity" },
+      };
+      let WATER_LIST = [
+        "Bright",
+        "Sweet & Body",
+        "Light",
+        "Snap",
+        "SILK",
+        "Aquacode",
+        "TWW",
+        "tap",
+      ];
+      function waterNudge(tag, curWater) {
+        if (tag == "bitter")
+          return "water: a rounder water (Sweet & Body / SILK) softens harshness";
+        if (tag == "sour") return "";
+        return "";
+      }
+      function waterForGoal(goal) {
+        if (goal == "bright") return "Bright (or Light) to lift acidity/clarity";
+        if (goal == "sweet") return "Sweet & Body for roundness + sweetness";
+        return "";
+      }
+      let RECIPES = {
+        "Tetsu 4:6": {
+          brewer: "V60",
+          ratio: 15,
+          grind: "coarse",
+          pours: "5 equal pulses (40% then 60%), 45s apart, ~3:30",
+        },
+        "Hoffmann V60": {
+          brewer: "V60",
+          ratio: 16.7,
+          grind: "medium-fine",
+          pours: "bloom 2x + swirl, to 60% by 1:15, to 100% by 1:45, swirl",
+        },
+        "Double bloom": {
+          brewer: "V60",
+          ratio: 15.5,
+          grind: "medium-fine",
+          pours: "bloom 2-3x, wait 40s, 2nd bloom 2x + swirl, then pours to target",
+        },
+        "Switch hybrid": {
+          brewer: "V60 Switch",
+          ratio: 16,
+          grind: "medium",
+          pours: "closed bloom 3x 40s, open to 160g, to full by ~1:30, close+drain 2:10",
+        },
+        "Orea low-bypass": {
+          brewer: "Orea",
+          ratio: 15.5,
+          grind: "finer",
+          pours: "bloom 2x, gentle pulses to target, minimal agitation",
+        },
+        "Single / melodrip": {
+          brewer: "V60",
+          ratio: 16,
+          grind: "medium-fine",
+          pours: "bloom 2x, one slow continuous pour, minimal agitation",
+        },
+        "Rao clarity": {
+          brewer: "V60",
+          ratio: 16.7,
+          grind: "medium-fine",
+          pours: "bloom 2-3x + spin, slow spiral to target, swirl at end",
+        },
+        "Hedrick hi-ext": {
+          brewer: "V60",
+          ratio: 15,
+          grind: "fine",
+          pours: "bloom, pulse pours WITH WDT between, hot (to your cap), longer contact",
+        },
+      };
+      function renderRecipeChips() {
+        let box = document.getElementById("frechips");
+        if (!box) return;
+        box.innerHTML = "";
+        Object.keys(RECIPES).forEach((name) => {
+          let c = document.createElement("div");
+          c.textContent = name;
+          c.className = "chip sm rec";
+          c.onclick = () => applyRecipe(name);
+          box.appendChild(c);
+        });
+      }
+      function gv(id) {
+        var e = document.getElementById(id);
+        return e ? e.value : "";
+      }
+      function startBrew(kind) {
+        var typ = (document.getElementById("type") || {}).value || "";
+        var gv = function (id) {
+          var e = document.getElementById(id);
+          return e ? e.value : "";
+        };
+        var p = {
+          kind: typ === "filter" ? "filter" : "gaggia",
+          t: Date.now(),
+          coffee: gv("coffee"),
+          roaster: gv("roaster"),
+          roast: gv("roast"),
+          type: typ,
+          dose: gv("dose"),
+          grind: gv("gset"),
+          grinder: lastGrinder(),
+          water: gv("gyield"),
+          wtr: GWATER,
+          brewer: FBREWER,
+        };
+        if (!p.coffee) {
+          alert("Add at least the coffee name to start a brew");
+          return;
+        }
+        localStorage.setItem("brewPlan", JSON.stringify(p));
+        renderPlanBanner();
+        alert("Brew planned. Come back and tap Finish when it is done.");
+      }
+      function getPlan() {
+        try {
+          var s = localStorage.getItem("brewPlan");
+          return s ? JSON.parse(s) : null;
+        } catch (e) {
+          return null;
+        }
+      }
+      function clearPlan() {
+        localStorage.removeItem("brewPlan");
+        renderPlanBanner();
+      }
+      function planAgo(t) {
+        var m = Math.round((Date.now() - t) / 60000);
+        return m < 1 ? "just now" : m < 60 ? m + " min ago" : Math.round(m / 60) + "h ago";
+      }
+      function renderPlanBanner() {
+        var b = document.getElementById("planBanner");
+        if (!b) return;
+        var p = getPlan();
+        if (!p) {
+          b.style.display = "none";
+          return;
+        }
+        b.style.display = "block";
+        if (p.detected) {
+          var det = [
+            p.detYield ? "yield " + Math.round(p.detYield) + "g" : "",
+            p.detRatio ? "1:" + p.detRatio.toFixed(1) : "",
+            p.detDur ? p.detDur.toFixed(0) + "s" : "",
+            p.detPeak ? p.detPeak.toFixed(1) + " bar" : "",
+          ]
+            .filter(Boolean)
+            .join(", ");
+          b.innerHTML =
+            "<div style='color:var(--hi-text);font-size:13px;font-weight:600'>Shot detected: " +
+            (p.coffee || "") +
+            "</div>" +
+            "<div style='color:var(--dim);font-size:12px;margin:3px 0 8px'>machine captured " +
+            det +
+            " - just add taste + rating</div>" +
+            "<div style='display:flex;gap:8px'><button class='grn' style='flex:2' onclick='finishBrew()'>Add taste + rating</button>" +
+            "<button class='off' style='flex:1;color:var(--danger-text);border:1px solid var(--danger-line)' onclick='discardBrew()'>Discard</button></div>";
+          return;
+        }
+        var sub = [
+          p.dose ? p.dose + "g" : "",
+          p.water ? "-> " + p.water + "g" : "",
+          p.brewer || "",
+          p.grind ? "grind " + p.grind : "",
+        ]
+          .filter(Boolean)
+          .join(", ");
+        b.innerHTML =
+          "<div style='color:var(--hi-text);font-size:13px;font-weight:600'>Brew in progress: " +
+          (p.coffee || "") +
+          "</div>" +
+          "<div style='color:var(--dim);font-size:12px;margin:3px 0 8px'>planned " +
+          planAgo(p.t) +
+          (sub ? " - " + sub : "") +
+          (p.kind == "gaggia" ? " - pull it on the machine" : "") +
+          "</div>" +
+          "<div style='display:flex;gap:8px'>" +
+          "<button class='grn' style='flex:2' onclick='finishBrew()'>Finish this brew</button>" +
+          "<button class='off' style='flex:1;color:var(--danger-text);border:1px solid var(--danger-line)' onclick='discardBrew()'>Discard</button></div>";
+      }
+      function discardBrew() {
+        if (confirm("Discard the planned brew?")) clearPlan();
+      }
+      function finishBrew() {
+        var p = getPlan();
+        if (!p) return;
+        var set = function (id, val) {
+          var e = document.getElementById(id);
+          if (e && val) e.value = val;
+        };
+        set("coffee", p.coffee);
+        set("roaster", p.roaster);
+        set("roast", p.roast);
+        if (p.type) {
+          var ty = document.getElementById("type");
+          if (ty) ty.value = p.type;
+          try {
+            setLogMethod(p.type);
+          } catch (e) {}
+        }
+        set("dose", p.dose);
+        set("gset", p.grind);
+        set("gyield", p.water);
+        GWATER = p.wtr || "";
+        FBREWER = p.brewer || "";
+        try {
+          renderGWater();
+        } catch (e) {}
+        try {
+          renderBrewerChips();
+        } catch (e) {}
+        var ll = document.getElementById("logLabel");
+        if (ll) ll.scrollIntoView({ behavior: "smooth" });
+        alert("Plan loaded. Add the outcome, then Save to log.");
+      }
+      function applyRecipe(name) {
+        var r = RECIPES[name];
+        if (!r) return;
+        FBREWER = r.brewer;
+        renderBrewerChips();
+        var dose = parseFloat((document.getElementById("dose") || {}).value) || 15;
+        var wy = document.getElementById("gyield");
+        if (wy) wy.value = Math.round(dose * r.ratio);
+        var note = document.createElement("div");
+        note.style.cssText =
+          "width:100%;margin-top:6px;font-size:11px;color:var(--dim);line-height:1.5";
+        note.textContent = name + ": " + r.grind + " grind, 1:" + r.ratio + ". " + r.pours;
+        renderRecipeChips();
+        var fr = document.getElementById("frechips");
+        if (fr) fr.appendChild(note);
+      }
+      let BREWER_UM = {
+        Espresso: 340,
+        "Soup 1:3-4": 500,
+        "Soup 1:5-8": 560,
+        "Soup 1:10": 620,
+        V60: 700,
+        "V60 Switch": 730,
+        "V60 Neo": 720,
+        Orea: 630,
+        Origami: 750,
+        "OXO soup": 800,
+        Chemex: 900,
+        Kalita: 780,
+        AeroPress: 600,
+        Other: 750,
+      };
+      function coldStart(brewerName, grinderId) {
+        let um = BREWER_UM[brewerName] || 750;
+        let g = GRINDERS[grinderId];
+        if (!g) return um + "um";
+        if (g.um == 0) return um + "um (absolute)";
+        let clicks = Math.round(um / g.um);
+        return "~" + clicks + " clicks";
+      }
+      function renderColdStart() {
+        let box = document.getElementById("coldstartbox");
+        if (!box) return;
+        let gid = lastGrinder() || ownedGrinders()[0];
+        let g = GRINDERS[gid];
+        let gn = g ? g.n : gid;
+        let rows = ["V60", "Orea", "Origami", "V60 Switch", "Chemex"].map(
+          (b) => b + ": " + coldStart(b, gid),
+        );
+        box.innerHTML = "on " + gn + " (light roast, dial by taste after):<br>" + rows.join("<br>");
+      }
+      let INVSIZE = "whole bag";
+      let ROTMODE = localStorage.getItem("rotMode") || "balanced";
+      let INSFREQ = "daily";
+      function toggleInsights() {
+        var p = document.getElementById("insPanel");
+        var show = p.style.display == "none";
+        p.style.display = show ? "block" : "none";
+        if (show) {
+          renderFreqChips();
+          loadInsights();
+        }
+      }
+      function renderFreqChips() {
+        var box = document.getElementById("insfreqchips");
+        if (!box) return;
+        box.innerHTML = "";
+        [
+          ["daily", "Daily"],
+          ["every3", "Every 3 days"],
+          ["weekly", "Weekly"],
+          ["off", "Off"],
+        ].forEach(function (m) {
+          var c = document.createElement("div");
+          c.textContent = m[1];
+          var on = m[0] == INSFREQ;
+          c.className = "chip" + (on ? " on" : "");
+          c.onclick = function () {
+            INSFREQ = m[0];
+            renderFreqChips();
+          };
+          box.appendChild(c);
+        });
+      }
+      async function loadInsights() {
+        var a = document.getElementById("insAt");
+        if (a) a.textContent = "";
+        return renderClientInsights();
+      }
+      async function runInsights() {
+        return loadInsights();
+      }
+      function toggleInv() {
+        let p = document.getElementById("invPanel");
+        let show = p.style.display == "none";
+        p.style.display = show ? "block" : "none";
+        if (show) {
+          renderRotModes();
+          renderInvSizes();
+          loadInventory();
+        }
+      }
+      function toggleSettings() {
+        let p = document.getElementById("setPanel");
+        let show = p.style.display == "none";
+        p.style.display = show ? "block" : "none";
+        if (show) {
+          renderWaMethods();
+          renderWaHw();
+          document.getElementById("wakeyrow").style.display =
+            M_HW && M_HW != "none" ? "block" : "none";
+          renderMyGrinders();
+          renderColdStart();
+          renderSheetStatus();
+        }
+      }
+      function loadSetup() {
+        var m = localStorage.getItem("waMethods");
+        if (m) {
+          try {
+            var a = JSON.parse(m);
+            M_ESP = !!a.esp;
+            M_SOUP = !!a.soup;
+            M_FIL = a.fil !== false;
+          } catch (e) {
+            M_ESP = false;
+            M_SOUP = false;
+            M_FIL = true;
+          }
+        } else {
+          M_ESP = false;
+          M_SOUP = false;
+          M_FIL = true;
+        }
+        var h = localStorage.getItem("waHw") || "none";
+        M_HW = h;
+        M_SCALE = h == "scale";
+        M_GAG = h == "gaggiuino";
+      }
+      function saveSetup() {
+        localStorage.setItem("waMethods", JSON.stringify({ esp: M_ESP, soup: M_SOUP, fil: M_FIL }));
+        localStorage.setItem("waHw", M_HW || "none");
+      }
+      function renderWaMethods() {
+        var box = document.getElementById("wamethods");
+        if (!box) return;
+        box.innerHTML = "";
+        [
+          ["esp", "Espresso"],
+          ["soup", "Soup"],
+          ["fil", "Filter"],
+        ].forEach(function (m) {
+          var on = m[0] == "esp" ? M_ESP : m[0] == "soup" ? M_SOUP : M_FIL;
+          var c = document.createElement("div");
+          c.textContent = m[1];
+          c.className = "chip" + (on ? " on" : "");
+          c.onclick = function () {
+            if (m[0] == "esp") M_ESP = !M_ESP;
+            else if (m[0] == "soup") M_SOUP = !M_SOUP;
+            else M_FIL = !M_FIL;
+            if (!M_ESP && !M_SOUP && !M_FIL) M_FIL = true;
+            saveSetup();
+            renderWaMethods();
+            applyNoun();
+            applyHwLocks();
+            renderTier();
+          };
+          box.appendChild(c);
+        });
+      }
+      function renderWaHw() {
+        var box = document.getElementById("wahw");
+        if (!box) return;
+        box.innerHTML = "";
+        [
+          ["none", "No device yet"],
+          ["device", "BrewPilot device"],
+          ["scale", "+ BLE scale"],
+          ["gaggiuino", "+ Gaggiuino"],
+        ].forEach(function (h) {
+          var on = M_HW == h[0];
+          var c = document.createElement("div");
+          c.textContent = h[1];
+          c.className = "chip" + (on ? " hi on" : "");
+          c.onclick = function () {
+            if (h[0] == "scale" || h[0] == "gaggiuino" || h[0] == "device") {
+              try {
+                hwModal(h[0]);
+              } catch (e) {}
+            }
+            M_HW = h[0];
+            M_SCALE = h[0] == "scale";
+            M_GAG = h[0] == "gaggiuino";
+            saveSetup();
+            renderWaHw();
+            document.getElementById("wakeyrow").style.display = h[0] == "none" ? "none" : "block";
+            applyNoun();
+            applyHwLocks();
+            renderTier();
+          };
+          box.appendChild(c);
+        });
+      }
+      function lockSection(id, label) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.opacity = "0.45";
+        el.style.pointerEvents = "none";
+        if (!el.querySelector(".hwlock")) {
+          var t = document.createElement("div");
+          t.className = "hwlock";
+          t.style.cssText = "color:var(--warn);font-size:11px;margin-top:6px";
+          t.textContent = label;
+          el.appendChild(t);
+        }
+      }
+      function unlockSection(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.style.opacity = "1";
+        el.style.pointerEvents = "auto";
+        var t = el.querySelector(".hwlock");
+        if (t) t.remove();
+      }
+      function applyHwLocks() {
+        var mo = document.getElementById("machineOnly");
+        if (mo) {
+          if (M_GAG) {
+            mo.style.display = "block";
+            lockSection("machineOnly", "Machine control is available on the BrewPilot device");
+          } else {
+            mo.style.display = "none";
+          }
+        }
+      }
+      function renderSheetStatus() {
+        /* "Connected" was the whole message, which is the one thing that was never
+   in doubt. It never said WHICH spreadsheet, so an auto-adopted stray file and
+   the real log looked identical on screen and the only way to tell them apart
+   was to open Drive. The name goes in as a text node, not innerHTML: it comes
+   from Drive and a file can be named anything at all. */
+        let el = document.getElementById("sheetStatus");
+        if (!el) return;
+        el.innerHTML = "";
+        let line = document.createElement("div");
+        if (dataMode() !== "google") {
+          line.innerHTML =
+            "<span style='color:var(--warn)'>Not connected - live advice works, but nothing is saved</span>";
+          el.appendChild(line);
+          return;
+        }
+        line.innerHTML =
+          "<span style='color:var(--hi-text)'>Connected - inventory and history are saving</span>";
+        el.appendChild(line);
+        let who = GNAME || (GSHEET ? "sheet " + String(GSHEET).slice(0, 10) : "");
+        if (!who) return;
+        let sub = document.createElement("div");
+        sub.style.cssText = "color:var(--dim);margin-top:2px";
+        sub.appendChild(document.createTextNode("Writing to "));
+        let url = gSheetUrl();
+        if (url) {
+          let a = document.createElement("a");
+          a.href = url;
+          a.target = "_blank";
+          a.rel = "noopener";
+          a.style.color = "var(--dim)";
+          a.textContent = who;
+          sub.appendChild(a);
+        } else {
+          sub.appendChild(document.createTextNode(who));
+        }
+        el.appendChild(sub);
+      }
+      async function renderRotModes() {
+        let box = document.getElementById("rotmodechips");
+        if (!box) return;
+        box.innerHTML = "";
+        [
+          ["fifo", "Use oldest"],
+          ["variety", "Keep it interesting"],
+          ["freshness", "Peak flavor"],
+          ["balanced", "Balanced"],
+        ].forEach((m) => {
+          let c = document.createElement("div");
+          c.textContent = m[1];
+          let on = m[0] == ROTMODE;
+          c.className = "chip" + (on ? " on" : "");
+          c.onclick = () => {
+            ROTMODE = m[0];
+            localStorage.setItem("rotMode", m[0]);
+            renderRotModes();
+          };
+          box.appendChild(c);
+        });
+      }
+      function renderInvSizes() {
+        let box = document.getElementById("invsizechips");
+        if (!box) return;
+        box.innerHTML = "";
+        ["20g", "40g", "60g", "120g", "whole bag"].forEach((s) => {
+          let c = document.createElement("div");
+          c.textContent = s;
+          let on = s == INVSIZE;
+          c.className = "chip sm" + (on ? " on" : "");
+          c.onclick = () => {
+            INVSIZE = s;
+            renderInvSizes();
+          };
+          box.appendChild(c);
+        });
+      }
+      async function freezeCoffee() {
+        let coffee = document.getElementById("invcoffee").value.trim();
+        if (!coffee) {
+          alert("coffee name?");
+          return;
+        }
+        let roaster = document.getElementById("invroaster").value;
+        if (roaster == "Other")
+          roaster = rememberOther("invroaster", "invroaster_other", "roaster");
+        let invroast = (document.getElementById("invroast") || {}).value || "";
+        let invproc = (document.getElementById("invprocess") || {}).value || "";
+        if (invproc == "Other")
+          invproc = rememberOther("invprocess", "invprocess_other", "process");
+        var invfd = (document.getElementById("invfreeze_date") || {}).value || "";
+        let rdate = document.getElementById("invrdate").value;
+        let qty = document.getElementById("invqty").value || 1;
+        if (dataMode() === "local") {
+          alert(t("gSaveFirst"));
+          return;
+        }
+        if (dataMode() === "google") {
+          var _fo = {
+            coffee: coffee,
+            roaster: roaster,
+            portion: INVSIZE,
+            qty: qty,
+            roast_date: rdate,
+            roast: invroast,
+            process: invproc,
+            freeze_date: (document.getElementById("invfreeze_date") || {}).value || "",
+            varietal: (document.getElementById("invvarietal") || {}).value || "",
+            region: (document.getElementById("invregion") || {}).value || "",
+            bag_g: INVBAG,
+            price: (document.getElementById("invprice") || {}).value || "",
+            currency: INVCCY,
+          };
+          var _saved = false;
+          try {
+            await gFreeze(_fo);
+            _saved = true;
+          } catch (e) {
+            if (String(e.message).indexOf("needs-gesture") >= 0) {
+              var _k = await gAuth(true);
+              if (_k) {
+                try {
+                  await gFreeze(_fo);
+                  _saved = true;
+                } catch (e2) {}
+              }
+            }
+          }
+          if (!_saved) {
+            alert(t("gSaveFailed"));
+            return;
+          }
+          /* repaint OUTSIDE the save try: a render error must never be reported as a failed save, or people freeze the same bag twice */ try {
+            iLocalInvPush(_fo);
+          } catch (e) {}
+          try {
+            loadInventory();
+          } catch (e) {}
+          return;
+        }
+        alert(t("gSaveFirst"));
+        return;
+        /*DEADFREEZE*/ let url = "",
+          body =
+            "x" +
+            encodeURIComponent(coffee) +
+            "&roaster=" +
+            encodeURIComponent(roaster) +
+            "&portion=" +
+            encodeURIComponent(INVSIZE) +
+            "&qty=" +
+            encodeURIComponent(qty) +
+            "&roast_date=" +
+            encodeURIComponent(rdate) +
+            "&roast=" +
+            encodeURIComponent(invroast) +
+            "&process=" +
+            encodeURIComponent(invproc) +
+            "&freeze_date=" +
+            encodeURIComponent((document.getElementById("invfreeze_date") || {}).value || "") +
+            "&bag_g=" +
+            encodeURIComponent(INVBAG || "") +
+            "&price=" +
+            encodeURIComponent((document.getElementById("invprice") || {}).value || "") +
+            "&currency=" +
+            encodeURIComponent(INVCCY || "USD");
+        try {
+          await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: body,
+          });
+          document.getElementById("invcoffee").value = "";
+          document.getElementById("invqty").value = "1";
+          alert(
+            (window.__RESTED ? t("savedResting") : t("savedFrozen")) +
+              ": " +
+              qty +
+              " x " +
+              INVSIZE +
+              " " +
+              coffee,
+          );
+          loadInventory();
+        } catch (e) {
+          alert("save failed");
+        }
+      }
+      function noSheetMsg() {
+        return (
+          "<div style='text-align:left;font-size:12px;color:var(--dim);line-height:1.5'>" +
+          "Inventory, history and trends are saved to your Google Sheet. " +
+          "Connect one in <b>Settings</b> (or the setup wizard) to enable this. " +
+          "Your live dial-in advice works without it.</div>"
+        );
+      }
+      async function loadInventory() {
+        let box = document.getElementById("invList");
+        if (dataMode() !== "google") {
+          box.innerHTML = noSheetMsg();
+          return;
+        }
+        try {
+          let d = await gInvList();
+          INVN = d && d.beans ? d.beans.length : 0;
+          try {
+            homeRender();
+          } catch (e) {}
+          if (!d || !d.beans || !d.beans.length) {
+            box.innerHTML =
+              '<div class="mut" style="text-align:left">no bags yet - freeze one above</div>';
+            return;
+          }
+          box.innerHTML = "";
+          d.beans.forEach((b) => {
+            let card = document.createElement("div");
+            card.style.cssText =
+              "border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:6px;background:var(--panel2)";
+            let tot = b.total_g ? " - " + b.total_g + "g" : "";
+            card.innerHTML =
+              '<b style="font-size:13px">' +
+              b.coffee +
+              '</b><span style="float:right;color:var(--hi-text);font-size:11px">' +
+              (b.summary || "") +
+              tot +
+              '</span><div style="color:var(--dim);font-size:11px;margin-top:2px">' +
+              ((b.roaster || "") + (b.age ? " - " + b.age : "")) +
+              "</div>" +
+              (function () {
+                var fa = bagFreezeAge(b);
+                return fa
+                  ? "<div style='color:var(--dim);font-size:11px;margin-top:2px'>" + fa + "</div>"
+                  : "";
+              })() +
+              bagStateChips(b);
+            let acts = document.createElement("div");
+            acts.style.cssText = "display:flex;gap:6px;margin-top:8px;flex-wrap:wrap";
+            let mk = (lab, fn) => {
+              let s = document.createElement("span");
+              s.textContent = lab;
+              s.style.cssText =
+                "padding:7px 11px;border-radius:14px;font-size:11px;cursor:pointer;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text)";
+              s.onclick = fn;
+              acts.appendChild(s);
+            };
+            if (!b.resting && !b.inuse) {
+              mk(t("bagOutBtn"), () => bagSet(b, "Counter", "Resting"));
+            }
+            if (b.resting) {
+              mk(t("bagRotateBtn"), () => bagSet(b, "Counter", "Open"));
+              mk(t("bagFreezeBackBtn"), () => bagSet(b, "Freezer", "Sealed"));
+            }
+            if (b.inuse) {
+              mk(t("bagFreezeBackBtn"), () => bagSet(b, "Freezer", "Sealed"));
+            }
+            let f = document.createElement("span");
+            f.textContent = "Finished";
+            f.style.cssText =
+              "padding:6px 10px;border-radius:14px;font-size:11px;cursor:pointer;border:1px solid var(--danger-line);background:var(--danger-bg);color:var(--danger-text)";
+            f.onclick = () => invAction("finished", b.coffee, "");
+            acts.appendChild(f);
+            let ed = document.createElement("span");
+            ed.textContent = t("editBtn");
+            ed.style.cssText =
+              "padding:6px 10px;border-radius:14px;font-size:11px;cursor:pointer;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text)";
+            ed.onclick = () => editBagOpen(b);
+            acts.appendChild(ed);
+            let lb = document.createElement("span");
+            lb.textContent = t("labelBtn");
+            lb.style.cssText =
+              "padding:6px 10px;border-radius:14px;font-size:11px;cursor:pointer;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text)";
+            lb.onclick = () => labelOpen(b);
+            acts.appendChild(lb);
+            card.appendChild(acts);
+            box.appendChild(card);
+          });
+          if (d.pick) {
+            let p = document.getElementById("rotpick");
+            p.style.display = "block";
+            p.innerHTML = "<b>Suggested:</b> " + d.pick;
+          }
+        } catch (e) {
+          box.innerHTML = '<div class="mut">could not load</div>';
+        }
+      }
+      async function invAction(action, coffee, portion) {
+        if (dataMode() !== "google") {
+          alert(t("gSaveFirst"));
+          return;
+        }
+        var ok = false;
+        try {
+          ok = await gInvAction(action, coffee, portion);
+        } catch (e) {
+          if (String(e.message).indexOf("needs-gesture") >= 0) {
+            var _a = await gAuth(true);
+            if (_a) {
+              try {
+                ok = await gInvAction(action, coffee, portion);
+              } catch (e2) {}
+            }
+          }
+        }
+        if (!ok) {
+          alert(t("gSaveFailed"));
+          return;
+        }
+        loadInventory();
+      }
+      function renderMyGrinders() {
+        let box = document.getElementById("mygrinderchips");
+        if (!box) return;
+        box.innerHTML = "";
+        let owned = ownedGrinders();
+        Object.keys(GRINDERS).forEach((id) => {
+          let g = GRINDERS[id];
+          let c = document.createElement("div");
+          c.textContent = g.n;
+          let on = owned.indexOf(id) >= 0;
+          c.className = "chip xs" + (on ? " on" : "");
+          c.onclick = () => {
+            let o = ownedGrinders();
+            let i = o.indexOf(id);
+            if (i >= 0) o.splice(i, 1);
+            else o.push(id);
+            localStorage.setItem("myGrinders", JSON.stringify(o));
+            renderMyGrinders();
+            renderGrinderChips();
+            renderColdStart();
+          };
+          box.appendChild(c);
+        });
+      }
+      function dialAdvice(best, last, e) {
+        let out = [];
+        let g = GRINDERS[lastGrinder() || (e && e.grinder)];
+        let method = (best && best.type) || (e && e.type) || "soup";
+        let dp = best.peak - last.peak;
+        if (best.gset != null && g) {
+          let unit = g.n == "Motto80" ? "um" : "#";
+          out.push("set " + g.n + " to " + best.gset + unit + " (your best-rated setting)");
+          if (Math.abs(dp) >= 0.25 && last.gset != null) {
+            out.push(
+              "last ran " +
+                last.peak.toFixed(1) +
+                "bar vs best " +
+                best.peak.toFixed(1) +
+                " - nudge " +
+                (dp > 0 ? "finer" : "coarser"),
+            );
+          }
+        } else if (Math.abs(dp) >= 0.2) {
+          let dir = dp > 0 ? "finer" : "coarser";
+          let um = Math.abs(dp) * umBar(method);
+          let src = SENS[method] && SENS[method].n > 0 ? "learned" : "est";
+          if (g && g.um > 0) {
+            let clicks = Math.max(1, Math.round(um / g.um));
+            out.push(
+              "grind " +
+                dir +
+                " ~" +
+                clicks +
+                " click" +
+                (clicks > 1 ? "s" : "") +
+                " on " +
+                g.n +
+                " [" +
+                src +
+                " " +
+                method +
+                "]",
+            );
+          } else if (g && g.n == "Motto80") {
+            out.push(
+              "grind " + dir + " ~" + Math.round(um) + "um on Motto80 [" + src + " " + method + "]",
+            );
+          } else {
+            out.push("grind " + dir + " (pick grinder for click count)");
+          }
+        }
+        if (best.ratio && last.ratio && Math.abs(best.ratio - last.ratio) >= 0.2) {
+          out.push(
+            (best.ratio > last.ratio ? "longer" : "shorter") +
+              " pull to 1:" +
+              best.ratio.toFixed(1) +
+              (best.yield ? " (~" + Math.round(best.yield) + "g)" : ""),
+          );
+        }
+        if (method == "soup" && Math.abs(dp) < 0.2) {
+          out.push("soup: pressure barely tracks grind - lean on ratio, shot time and flow");
+        }
+        if (method == "filter" && !out.length) {
+          out.push("filter: dial by taste + drawdown; pressure is a weak signal here");
+        }
+        if (e && e.roast && atCeiling(e.roast)) {
+          out.push(
+            "temp maxed at " +
+              Math.round(tempCap()) +
+              "C for your altitude - extract via grind/agitation/ratio",
+          );
+        }
+        return out.join("; ");
+      }
+      function setSel(sel, other, val) {
+        if (!val) {
+          document.getElementById(sel).value = "";
+          return;
+        }
+        let s = document.getElementById(sel);
+        let opts = [...s.options].map((o) => o.value);
+        if (opts.includes(val)) {
+          s.value = val;
+          document.getElementById(other).style.display = "none";
+        } else {
+          s.value = "Other";
+          document.getElementById(other).style.display = "block";
+          document.getElementById(other).value = val;
+        }
+      }
+      function fillSame() {
+        if (ROT.length) {
+          fillEntry(ROT[0]);
+        } else {
+          alert("No previous " + NOUN() + " yet");
+        }
+      }
+      function togglePin(i) {
+        ROT[i].pin = !ROT[i].pin;
+        let pins = ROT.filter((x) => x.pin),
+          rest = ROT.filter((x) => !x.pin);
+        ROT = pins.concat(rest);
+        saveRot();
+        renderChips();
+      }
+      function renderChips() {
+        let box = document.getElementById("chips");
+        box.innerHTML = "";
+        if (!ROT.length) {
+          box.innerHTML =
+            "<span style='color:var(--dim);font-size:12px'>" + t("rotEmptyHint") + "</span>";
+          rotAddChip(box);
+          return;
+        }
+        ROT.forEach((e, i) => {
+          let chip = document.createElement("div");
+          chip.style.cssText =
+            "display:flex;align-items:center;gap:4px;padding:8px 10px;border-radius:20px;border:1px solid " +
+            (e.pin ? "var(--hi-line)" : "var(--line)") +
+            ";background:" +
+            (e.pin ? "var(--hi-bg)" : "var(--panel)") +
+            ";font-size:13px";
+          let name = document.createElement("span");
+          name.textContent = (e.pin ? "* " : "") + e.coffee;
+          name.style.cssText = "color:var(--text);cursor:pointer";
+          name.onclick = () => fillEntry(e);
+          let pin = document.createElement("span");
+          pin.textContent = e.pin ? "unpin" : "pin";
+          pin.style.cssText =
+            "color:var(--dim);font-size:11px;cursor:pointer;border-left:1px solid var(--line);padding-left:5px";
+          pin.onclick = () => togglePin(i);
+          chip.appendChild(name);
+          chip.appendChild(pin);
+          let rm = document.createElement("span");
+          rm.textContent = "\u00D7";
+          rm.style.cssText =
+            "color:var(--dim);font-size:15px;line-height:1;cursor:pointer;border-left:1px solid var(--line);padding-left:7px";
+          rm.onclick = () => rotRemove(i);
+          chip.appendChild(rm);
+          box.appendChild(chip);
+        });
+        rotAddChip(box);
+      }
+      loadRot();
+      loadSens();
+      (function () {
+        let lg = localStorage.getItem("grinder");
+        if (lg) {
+          0;
+        }
+        renderGsetChips(null);
+        renderGrinderChips(null);
+        renderGWater();
+        renderGTaste();
+        renderPlanBanner();
+        if (!localStorage.getItem("webhook")) {
+          var w = document.getElementById("welcome");
+          if (w) w.style.display = "block";
+        }
+      })();
+      if (location.search.indexOf("rate=") >= 0) {
+        let e = document.getElementById("r");
+        e.focus();
+        e.scrollIntoView();
+      }
+      refresh();
+</script>
