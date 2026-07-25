@@ -5736,6 +5736,13 @@
         }
         if (!done) {
           setTimeout(function () {
+            /* A handoff outranks onboarding. By the time this timer fires,
+     bpHandoff has already put the shot metrics into the log form and switched
+     to that tab, so pulling the person to settings leaves the data sitting on
+     a screen nobody is looking at. Onboarding is a guess that someone is new;
+     a handoff is an explicit instruction to log THIS shot. The flag is left
+     unset on purpose, so the next plain load still offers onboarding. */
+            if (typeof BPSHOT !== "undefined" && BPSHOT) return;
             try {
               showTab("insights");
             } catch (e) {}
@@ -11426,7 +11433,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-07-25-0618-ab9f4c";
+      var BUILD = "2026-07-25-0626-0497f0";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
