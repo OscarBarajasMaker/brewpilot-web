@@ -1062,6 +1062,21 @@
           >
             Check for shots now
           </button>
+          <button
+            onclick="gSwitchAccount()"
+            style="
+              width: 100%;
+              padding: 10px;
+              margin-top: 6px;
+              border-radius: 10px;
+              border: 1px solid var(--line);
+              background: var(--panel);
+              color: var(--dim);
+              font-size: 13px;
+            "
+          >
+            Use a different Google account
+          </button>
           <input
             id="setWebhook"
             type="hidden"
@@ -2561,6 +2576,16 @@
         line.innerHTML =
           "<span style='color:var(--hi-text)'>Connected - inventory and history are saving</span>";
         el.appendChild(line);
+        let acct = gAccount();
+        if (acct) {
+          let aline = document.createElement("div");
+          aline.style.cssText = "color:var(--dim);margin-top:2px";
+          aline.appendChild(document.createTextNode("Signed in as "));
+          let b = document.createElement("b");
+          b.textContent = acct;
+          aline.appendChild(b);
+          el.appendChild(aline);
+        }
         let who = GNAME || (GSHEET ? "sheet " + String(GSHEET).slice(0, 10) : "");
         if (!who) return;
         let sub = document.createElement("div");

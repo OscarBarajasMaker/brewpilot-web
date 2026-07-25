@@ -10569,6 +10569,89 @@ FEATURES_JS = must_replace(
       function bpSeen() {''',
     'P24c topic field, manual check and status')
 
+# P25. The hint plus prompt:"" is a trap on its own: pick the wrong account once
+#      and Google will never show a chooser again, because there is nothing left
+#      that needs asking. An explicit way out is not optional once a hint exists.
+#
+#      Switching also has to forget the SHEET and the lane cache. A spreadsheet id
+#      from one Drive is meaningless in another, so keeping it would 403 every
+#      read with no explanation, and lane history belongs to the sheet it came
+#      from. gForget already clears the sheet and token; the account and the lane
+#      cache are new and would otherwise survive into the wrong Drive.
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '''      function gForget() {
+        try {
+          localStorage.removeItem("gsheet");
+          localStorage.removeItem("gsheetname");
+        } catch (e) {}''',
+    '''      function gForget() {
+        try {
+          localStorage.removeItem("gsheet");
+          localStorage.removeItem("gsheetname");
+          localStorage.removeItem("gaccount");
+          localStorage.removeItem("bpLanes");
+        } catch (e) {}''',
+    'P25a forgetting includes the account and the lane cache')
+
+FEATURES_JS = must_replace(
+    FEATURES_JS,
+    '      function gAccount() {',
+    '''      async function gSwitchAccount() {
+        /* prompt:"select_account" is the whole point: a returning user needs
+     nothing re-consented, so the default prompt:"" shows no chooser at all and
+     the remembered hint quietly wins forever. */
+        var cur = gAccount();
+        var msg = cur
+          ? "Disconnect " + cur + " and choose a different Google account?"
+          : "Choose a different Google account?";
+        msg +=
+          "\\n\\nYour data stays in that account's spreadsheet. This app will look for a log in the new account, or make one.";
+        /* Check BEFORE forgetting. Reversed, a blocked or not-yet-loaded Google
+     script would drop the sheet link and the token and only then discover it
+     cannot re-authenticate, leaving a working install disconnected for nothing. */
+        if (!(window.google && google.accounts && google.accounts.oauth2 && GCLIENT)) {
+          alert(t("gSaveFailed"));
+          return false;
+        }
+        if (!confirm(msg)) return false;
+        gForget();
+        try {
+          renderSheetStatus();
+        } catch (e) {}
+        /* The client was built with the OLD hint baked into its config, so the
+     per-request override is what actually clears it. Passing an empty
+     login_hint alongside select_account stops the old address being prefilled
+     in the chooser. */
+        var ok = await new Promise(function (resolve) {
+          var done = false;
+          GRESOLVE = function (v) {
+            if (done) return;
+            done = true;
+            resolve(v);
+          };
+          try {
+            GCLIENT.requestAccessToken({ prompt: "select_account", login_hint: "" });
+          } catch (e) {
+            resolve(false);
+          }
+        });
+        if (!ok) return false;
+        try {
+          await gLearnAccount();
+        } catch (e) {}
+        try {
+          await goConnectSheet();
+        } catch (e) {}
+        try {
+          renderSheetStatus();
+        } catch (e) {}
+        return true;
+      }
+      function gAccount() {''',
+    'P25b explicit account switch')
+
+
 ASSEMBLED = (HEAD + CSS + SHELL_OPEN + APPBAR_H + WRAP_DURA + TABHOME_O
              + INSTALL_H + HERO_H
              + home + SEP_LOG + logtab + SEP_BEANS + beanstab

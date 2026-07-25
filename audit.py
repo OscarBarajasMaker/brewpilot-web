@@ -822,9 +822,12 @@ checks += 1
 if not re.search(r'login_hint: gAccount\(\)', JS):
     fail('poller', 'the account hint is gone from initTokenClient -> a returning user with two '
                    'Google accounts signed in gets whichever the browser considers current')
-if not re.search(r'requestAccessToken\([^)]*login_hint', JS):
-    fail('poller', 'the account hint is gone from requestAccessToken -> the client is built once, '
-                   'so an account learned after that would never be asked for')
+# Matched on the variable specifically: gSwitchAccount also passes a login_hint
+# (an empty one, to clear the chooser), so a loose match would stay satisfied
+# after the real hint on the normal auth path was deleted.
+if not re.search(r'requestAccessToken\([^)]*login_hint: _h', JS):
+    fail('poller', 'the account hint is gone from the normal requestAccessToken path -> the client '
+                   'is built once, so an account learned after that would never be asked for')
 checks += 2
 
 m_ga = re.search(r'async function gLearnAccount\(\)\s*\{(.*?)\n      \}', JS, re.S)
@@ -833,6 +836,36 @@ if not m_ga:
 elif 'emailAddress' not in m_ga.group(1):
     fail('poller', 'gLearnAccount no longer reads the account from Drive -> a hint written from '
                    'anything else could be WRONG, which is worse than having none')
+checks += 1
+
+# A hint plus prompt:"" means a returning user is never shown a chooser, so one
+# wrong first pick would be permanent. The way out is not optional.
+m_sw = re.search(r'async function gSwitchAccount\(\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_sw:
+    fail('poller', 'gSwitchAccount is gone -> a wrong account choice becomes permanent, because '
+                   'the remembered hint stops Google ever asking again')
+else:
+    b = m_sw.group(1)
+    if 'select_account' not in b:
+        fail('poller', 'gSwitchAccount no longer forces the chooser -> the default prompt shows '
+                       'nothing to a returning user and the old hint wins')
+    if 'gForget()' not in b:
+        fail('poller', 'gSwitchAccount does not forget the old sheet -> a spreadsheet id from one '
+                       'Drive 403s in another with no explanation')
+    # The availability check has to come BEFORE the forget, or a blocked Google
+    # script disconnects a working install and cannot put it back. Guarded so a
+    # missing marker FAILS rather than raising, which would kill the whole audit
+    # and read as silence.
+    elif 'google.accounts.oauth2' not in b:
+        fail('poller', 'gSwitchAccount no longer checks that Google is loaded')
+    elif b.index('google.accounts.oauth2') > b.index('gForget()'):
+        fail('poller', 'gSwitchAccount forgets before checking Google is loaded -> a blocked script '
+                       'leaves a working install disconnected with no way back')
+    checks += 3
+
+if not re.search(r'localStorage\.removeItem\("bpLanes"\)', JS):
+    fail('poller', 'forgetting an account leaves the lane cache behind -> history from one Drive '
+                   'is carried into another')
 checks += 1
 
 # ---------------------------------------------------------------- report
