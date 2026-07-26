@@ -9005,6 +9005,7 @@ FEATURES_JS = must_replace(
         "first_drip_s",
         "shot_type_auto",
         "fw_version",
+        "profile",
       ];
       var COLNAMES = [
         "shot_id",''',
@@ -9156,6 +9157,7 @@ FEATURES_JS = must_replace(
    invent a coffee identity or start a lane on its own. */
       var BPSHOT = null;
       var BP_Q = {
+        pr: "profile",
         rs: "resistance",
         ad: "adherence",
         us: "undershoot",
@@ -9586,24 +9588,20 @@ FEATURES_JS = must_replace(
    Filter is null. There is no measured filter baseline yet and inventing one
    would be worse than saying so. */
       var LANE_SEED = {
-        espresso: {
-          resistance: 2.83,
-          band: 0.12,
-          adherence: 0.85,
-          channel: 0.05,
-          yield_g: 56,
-          obs: [2.78, 2.88],
-          n: 2,
-        },
-        soup: {
-          resistance: 0.15,
-          band: 0.6,
-          adherence: 0.75,
-          channel: 0.25,
-          yield_g: 81,
-          obs: [0.09, 0.2],
-          n: 2,
-        },
+        /* Deliberately empty. Every population figure that used to sit here was
+     an artefact, and each was checked against real captures before removal:
+       - soup resistance 0.15 came from the PRE-INFUSION ramp. Only 10 of 164
+         extraction samples clear 1.0 bar, below which a 0.1 bar sensor gives
+         over 25% error. Soup resistance is not measurable on this hardware.
+       - channel 0.25 and 0.05 measured PROFILE SHAPE. The old test fired on
+         commanded low-flow phases and scored 0.374 and 0.267 on two shots that
+         were behaving exactly as designed.
+       - espresso resistance 2.83 describes nothing. The same machine reads 3.46
+         on a 9 bar profile and 0.43 on a lever profile.
+     A lane now advises only from its OWN history, because that is the only
+     comparison where the numbers mean the same thing. */
+        espresso: null,
+        soup: null,
         filter: null,
       };
 
@@ -9634,6 +9632,16 @@ FEATURES_JS = must_replace(
           t = laneNormType(type);
         if (!c || !t) return "";
         return c + "|" + t;
+      }
+      function laneKey(coffee, type, profile) {
+        /* Profile first when it is known, type as the fallback for shots logged
+     by hand. Resistance is only comparable within one profile, so a lane that
+     mixes them is averaging numbers that are not the same quantity. */
+        var p = bpNorm(profile || "");
+        if (!p) return laneId(coffee, type);
+        var c = bpNorm(coffee || "");
+        if (!c) return "";
+        return c + "|" + p;
       }
       function laneDay(ts) {
         var s = String(ts || "").trim();
@@ -9705,6 +9713,7 @@ FEATURES_JS = must_replace(
           grind: at("grind_setting"),
           grindUm: laneNum(at("grind_um")),
           rating: at("rating"),
+          profile: String(at("profile") || "").trim(),
           resistance: laneNum(at("resistance")),
           adherence: laneNum(at("adherence")),
           channel: laneNum(at("channel")),
@@ -9724,7 +9733,7 @@ FEATURES_JS = must_replace(
         var n = laneNum(lane.n_shots);
         if (n === "") n = 0;
         var w = Math.min(n, LANE_WCAP);
-        lane.lane_id = laneId(shot.coffee, shot.type);
+        lane.lane_id = laneKey(shot.coffee, shot.type, shot.profile);
         lane.coffee = shot.coffee;
         lane.type = shot.type;
         lane.updated = laneDay(shot.date);
@@ -9765,19 +9774,9 @@ FEATURES_JS = must_replace(
             band: s0 ? s0.band : 0.4,
           };
         }
-        var s = LANE_SEED[t];
-        if (!s) return { source: "none", type: t, n: n };
-        return {
-          source: "type",
-          type: t,
-          n: n,
-          resistance: s.resistance,
-          adherence: s.adherence,
-          channel: s.channel,
-          yield_g: s.yield_g,
-          band: s.band,
-          obs: s.obs,
-        };
+        /* No population fallback. Advice from a borrowed number is worse than
+     no advice, because it looks identical to advice that was earned. */
+        return { source: "none", type: t, n: n };
       }
       function laneEligible(coffee) {
         /* The whole gate, in one place. Inventory identity and not a single
@@ -9874,7 +9873,7 @@ FEATURES_JS = must_replace(
         if (!shot.coffee) return "no-coffee";
         if (!shot.type) return "no-type";
         if (!laneEligible(shot.coffee)) return "not-in-inventory";
-        var id = laneId(shot.coffee, shot.type);
+        var id = laneKey(shot.coffee, shot.type, shot.profile);
         if (!id) return "no-id";
         var map = laneCache();
         var lane = map[id] || laneBlank(id);
@@ -10085,8 +10084,9 @@ FEATURES_JS = must_replace(
             out.push(t(d > 0 ? "laneRHigh" : "laneRLow").replace("{n}", Math.round(Math.abs(d) * 100)));
           }
         }
-        var ch = shot ? laneNum(shot.channel) : "";
-        if (ch !== "" && b.channel !== "" && ch > b.channel + 0.15) out.push(t("laneChan"));
+        /* channel deliberately absent: the number the device sends measures how
+     flow-limited the PROFILE is, not the puck. Reporting it would be inventing
+     a fault. */
         if (out.length) out.push(t("laneNoTaste"));
         return out;
       }

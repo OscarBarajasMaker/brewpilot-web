@@ -32,7 +32,7 @@ import re, sys, json, os
 # data-dependent, so it is not a tell anyone can rely on. A green check that is
 # not checking is the exact failure this file exists to prevent, so the file had
 # better not be able to do it to itself. Print the version next to the count.
-AUDIT_VERSION = 'v16-2026-07-25'
+AUDIT_VERSION = 'v17-2026-07-26'
 
 HTML = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/render/index_v5.html'
 src = open(HTML, encoding='utf-8').read()
@@ -471,6 +471,27 @@ checks += 1
 # The type is part of the identity. A lane keyed on the coffee alone collects
 # espresso, soup and filter into one baseline the first time it is written, and
 # nothing about the resulting number looks wrong.
+# Resistance is only comparable inside one profile, so the lane key has to carry
+# it. Same machine, same coffee: 3.46 on a 9 bar profile, 0.43 on a lever one.
+m_lk = re.search(r'function laneKey\(coffee, type, profile\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_lk:
+    fail('lane', 'laneKey is gone -> lanes pool shots from different profiles whose resistance '
+                 'differs eightfold for reasons unrelated to the coffee')
+else:
+    b = m_lk.group(1)
+    if not re.search(r'bpNorm\(profile', b):
+        fail('lane', 'laneKey ignores the profile -> lanes pool shots whose resistance differs '
+                     'eightfold for reasons unrelated to the coffee')
+    if 'laneId(' not in b:
+        fail('lane', 'laneKey no longer falls back to the type -> a hand-logged shot with no '
+                     'profile gets no lane at all')
+checks += 3
+for fn in ('laneApply', 'laneRecord'):
+    m = re.search(r'(?:async )?function ' + fn + r'\([^)]*\)\s*\{(.*?)\n      \}', JS, re.S)
+    if m and 'laneKey(' not in m.group(1):
+        fail('lane', '%s still keys the lane without the profile' % fn)
+    checks += 1
+
 m_li = re.search(r'function laneId\(coffee, type\)\s*\{(.*?)\n      \}', JS, re.S)
 if not m_li:
     fail('lane', 'laneId is gone, so the lane key cannot be verified')
@@ -560,12 +581,11 @@ if not m_sd:
     fail('lane', 'LANE_SEED is gone, so the baselines cannot be verified')
 else:
     b = m_sd.group(1)
-    if not re.search(r'filter:\s*null', b):
-        fail('lane', 'LANE_SEED.filter is no longer null -> a filter baseline was invented and '
-                     'there are no measured filter shots behind it')
-    if 'espresso' not in b or 'soup' not in b:
-        fail('lane', 'LANE_SEED lost a measured type')
-    checks += 2
+    for k in ('espresso', 'soup', 'filter'):
+        if not re.search(k + r':\s*null', b):
+            fail('lane', 'LANE_SEED.%s is no longer null -> that figure was disproved against real '
+                         'captures and re-adding it invents a baseline' % k)
+    checks += 3
 
 # laneBaseline has to say where its numbers came from, or the population figure
 # gets mistaken for this bag's own.
@@ -574,10 +594,17 @@ if not m_lb:
     fail('lane', 'laneBaseline is gone')
 else:
     b = m_lb.group(1)
-    for tag in ('"lane"', '"type"', '"none"'):
+    for tag in ('"lane"', '"none"'):
         if tag not in b:
-            fail('lane', 'laneBaseline no longer reports source %s -> a caller cannot tell this '
-                         'bag\'s own baseline from the population figure' % tag)
+            fail('lane', 'laneBaseline no longer reports source %s -> a caller cannot tell an '
+                         'earned baseline from having none' % tag)
+    # There is no population fallback any more, and there must not be one. Every
+    # seed that used to exist was an artefact, measured and disproved against
+    # real captures. Advice from a borrowed number looks identical to advice that
+    # was earned, which is worse than staying silent.
+    if '"type"' in b:
+        fail('lane', 'laneBaseline reports a borrowed population baseline again -> resistance is '
+                     'not comparable across profiles (3.46 vs 0.43 on the same machine)')
     checks += 3
 
 # The shot row is read by column NAME. An index written here is correct until a
@@ -627,7 +654,13 @@ else:
 
 # Flow numbers cannot reach taste without TDS. Every comparison carries the
 # caveat, or the tool starts making a claim it cannot support.
+# channel must not come back. It measured how flow-limited the PROFILE is and
+# scored 0.374 and 0.267 on two shots that were behaving perfectly.
 m_la = re.search(r'function laneAdvise\(coffee, type, shot\)\s*\{(.*?)\n      \}', JS, re.S)
+if m_la and 'laneChan' in m_la.group(1):
+    fail('lane', 'laneAdvise reports channel again -> that number measures profile shape, not the '
+                 'puck, and reporting it invents a fault')
+checks += 1
 if not m_la:
     fail('lane', 'laneAdvise is gone')
 else:
