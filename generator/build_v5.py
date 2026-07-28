@@ -9150,6 +9150,15 @@ FEATURES_JS = must_replace(
      rs    resistance              ad   adherence        us  undershoot
      ch    channel                 rt   retention g      pi  preinfusion bar
      te    temp error C            fd   first drip s
+     pr    profile name             <- a STRING, not a number
+
+   pr is deliberately NOT in BP_Q. BP_Q is the numeric map and every key in it
+   goes through bpQNum, which is parseFloat plus an isFinite guard. A profile
+   name is text, so parseFloat("Adaptive Light Roast Soup") is NaN and the guard
+   turned it into "". The column existed, the key existed, the firmware could
+   have sent it, and the value could never once have arrived. Verified in jsdom
+   against the built file before this was changed: profile came back "" while
+   all eight numerics round-tripped exactly.
 
    Nothing here trusts the link. Every numeric is parsed to a finite number or
    dropped, and the type only takes effect if it is one the form actually has.
@@ -9157,7 +9166,6 @@ FEATURES_JS = must_replace(
    invent a coffee identity or start a lane on its own. */
       var BPSHOT = null;
       var BP_Q = {
-        pr: "profile",
         rs: "resistance",
         ad: "adherence",
         us: "undershoot",
@@ -9222,6 +9230,11 @@ FEATURES_JS = must_replace(
         Object.keys(BP_Q).forEach(function (k) {
           s.m[BP_Q[k]] = bpQNum(p, k);
         });
+        /* The one text metric. Capped because it lands in a sheet cell and in a
+     lane key, and the device gets its name from the machine, not from us. */
+        s.m.profile = String(p.get("pr") || "")
+          .trim()
+          .slice(0, 64);
         BPSHOT = s;
         if (s.sid) bpMarkSeen(s.sid);
         try {
@@ -10496,9 +10509,17 @@ FEATURES_JS = must_replace(
     '      try {\n        bpHandoff();\n      } catch (e) {}',
     '      try {\n        bpHandoff();\n      } catch (e) {}\n'
     '      setTimeout(function () {\n'
-    '        try {\n          bpPollNtfy(12);\n        } catch (e) {}\n'
-    '      }, 900);',
-    'P24a poll at launch when the URL had nothing')
+    '        try {\n          bpAutoPoll(12);\n        } catch (e) {}\n'
+    '      }, 900);\n'
+    '      document.addEventListener("visibilitychange", function () {\n'
+    '        if (document.visibilityState !== "visible") return;\n'
+    '        try {\n          bpAutoPoll(12);\n        } catch (e) {}\n'
+    '      });\n'
+    '      window.addEventListener("pageshow", function (e) {\n'
+    '        if (!e || !e.persisted) return;\n'
+    '        try {\n          bpAutoPoll(12);\n        } catch (e2) {}\n'
+    '      });',
+    'P24a poll at launch and on every resume, not just at cold start')
 
 FEATURES_JS = must_replace(
     FEATURES_JS,
@@ -10574,21 +10595,49 @@ FEATURES_JS = must_replace(
         if (!el) return;
         el.textContent = msg || "";
       }
-      async function checkShotsNow() {
-        renderNtfyStatus("checking...");
+      var BP_POLL_SAY = {
+        ingested: "shot loaded, see the Log tab",
+        "no-topic": "set your ntfy topic first",
+        "none-found": "no shots on that topic in the last 48h",
+        "all-seen": "nothing new, every shot there is already logged",
+        "already-have-one": "a shot is already loaded, save or clear it first",
+        offline: "could not reach ntfy",
+      };
+      var BP_LAST_POLL = 0;
+      async function bpAutoPoll(hours) {
+        /* The launch poll ran ONCE, in bootstrap. On iOS an installed PWA
+     reopened from the home screen usually RESUMES a suspended page instead of
+     re-executing the script, so a shot pulled after the last cold start was
+     never fetched: open the app from the drawer and there is simply nothing
+     there, with no error, because no code ran at all. Resume has to poll too.
+
+     Throttled, because visibilitychange fires on every app switch and each poll
+     is a request to somebody else's server. Twenty seconds is long enough to
+     stop a flurry and short enough that walking from the machine to the couch
+     is never inside it.
+
+     The reason is written to the status line even on the automatic path. The
+     old auto path discarded it, so a topic that was never entered in THIS
+     browser storage looked exactly like a topic with no new shots. */
+        var now = Date.now();
+        if (now - BP_LAST_POLL < 20000) return "throttled";
+        BP_LAST_POLL = now;
         var r = "error";
         try {
-          r = await bpPollNtfy(48);
+          r = await bpPollNtfy(hours || 12);
         } catch (e) {}
-        var say = {
-          ingested: "shot loaded, see the Log tab",
-          "no-topic": "set your ntfy topic first",
-          "none-found": "no shots on that topic in the last 48h",
-          "all-seen": "nothing new, every shot there is already logged",
-          "already-have-one": "a shot is already loaded, save or clear it first",
-          offline: "could not reach ntfy",
-        };
-        renderNtfyStatus(say[r] || r);
+        try {
+          renderNtfyStatus(BP_POLL_SAY[r] || r);
+        } catch (e) {}
+        return r;
+      }
+      async function checkShotsNow() {
+        renderNtfyStatus("checking...");
+        /* The manual button ignores the throttle on purpose. It is the thing you
+     press when you are already suspicious, and refusing to act would be the
+     worst possible answer. */
+        BP_LAST_POLL = 0;
+        return await bpAutoPoll(48);
       }
       function bpSeen() {''',
     'P24c topic field, manual check and status')

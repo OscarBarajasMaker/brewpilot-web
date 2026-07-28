@@ -32,7 +32,7 @@ import re, sys, json, os
 # data-dependent, so it is not a tell anyone can rely on. A green check that is
 # not checking is the exact failure this file exists to prevent, so the file had
 # better not be able to do it to itself. Print the version next to the count.
-AUDIT_VERSION = 'v17-2026-07-26'
+AUDIT_VERSION = 'v19-2026-07-28'
 
 HTML = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/render/index_v5.html'
 src = open(HTML, encoding='utf-8').read()
@@ -396,6 +396,75 @@ if not m_gr:
 elif re.search(r'tab\s*\+\s*"!', m_gr.group(0)):
     fail('schema', 'gRead pins an A1 column range. Too narrow silently truncates the header, '
                    'too wide is a 400 on every read of a narrower tab. Ask for the tab by name.')
+checks += 1
+
+# ============================ 17a. THE POLLER RUNS ON RESUME, NOT ONLY AT BOOT
+# An installed PWA on iOS reopened from the home screen usually RESUMES the
+# suspended page rather than re-running the script. The launch poll lived in
+# bootstrap and nowhere else, so a shot pulled after the last cold start was
+# never fetched: open the app from the drawer and there is nothing there, no
+# error, no status, because no code ran. Reported from the drawer with shot 130
+# sitting unfetched on the topic.
+if not re.search(r'addEventListener\(\s*"visibilitychange"', JS):
+    fail('handoff', 'no visibilitychange listener -> the ntfy poll happens only at cold start, '
+                    'so an installed PWA resumed from the drawer never fetches a shot pulled '
+                    'since the last full launch and shows nothing at all')
+else:
+    m_vis = re.search(r'addEventListener\(\s*"visibilitychange"(.{0,400}?)\}\s*\)\s*;', JS, re.S)
+    if not m_vis or 'bpAutoPoll' not in m_vis.group(1):
+        fail('handoff', 'the visibilitychange listener does not poll -> a resumed PWA still '
+                        'never fetches the shot waiting on the topic')
+checks += 1
+
+# The automatic path used to throw its reason away, so a topic that was never
+# entered in THIS browser storage was indistinguishable from a topic with no new
+# shots: both were a blank screen. The app is used from two storages, an
+# installed PWA and Safari, and only one of them can be configured at a time.
+m_ap = re.search(r'async function bpAutoPoll\(.*?\n      \}', JS, re.S)
+if not m_ap:
+    fail('handoff', 'bpAutoPoll is gone or reshaped, so the automatic poll cannot be verified')
+else:
+    if 'renderNtfyStatus(' not in m_ap.group(0):
+        fail('handoff', 'the automatic poll does not write its reason to the status line -> an '
+                        'unset ntfy topic looks exactly like having no new shots, and both look '
+                        'like nothing happening')
+    if 'BP_LAST_POLL' not in m_ap.group(0):
+        fail('handoff', 'the automatic poll is not throttled -> visibilitychange fires on every '
+                        'app switch and each one is a request to somebody else machine')
+checks += 2
+
+# The manual button is pressed by someone who is already suspicious. Refusing to
+# act because a resume happened ten seconds ago is the worst possible answer.
+m_cs = re.search(r'async function checkShotsNow\(\).*?\n      \}', JS, re.S)
+if not m_cs:
+    fail('handoff', 'checkShotsNow is gone or reshaped')
+elif not re.search(r'BP_LAST_POLL\s*=\s*0', m_cs.group(0)):
+    fail('handoff', 'the manual check does not clear the throttle -> pressing the button right '
+                    'after a resume silently does nothing and reports the previous reason')
+checks += 1
+
+# ============================ 17b. THE PROFILE NAME IS TEXT, NOT A NUMBER
+# BP_Q is the numeric map: every key in it is read through bpQNum, which is
+# parseFloat plus isFinite. "profile" was sitting in that map, so a real profile
+# name parsed to NaN and was written to the sheet as "". The column was in
+# BP_METRIC_COLS, the key was in the contract, the firmware could have sent it,
+# and no value could ever have arrived. Nothing failed and nothing was empty
+# enough to notice: the row was the right width with the right names.
+#
+# Two halves, and either one alone puts it back. If pr returns to BP_Q it is a
+# number again. If the string assignment goes, the column is silently blank.
+m_bpq = re.search(r'var BP_Q = \{(.*?)\};', JS, re.S)
+if not m_bpq:
+    fail('handoff', 'BP_Q is gone or reshaped, so the profile parse cannot be verified')
+elif re.search(r'\bpr\s*:', m_bpq.group(1)):
+    fail('handoff', 'pr is back in BP_Q -> the profile name goes through bpQNum, parseFloat '
+                    'returns NaN on any real name, and the profile column is written blank '
+                    'on every single shot with nothing on screen to show it')
+checks += 1
+
+if not re.search(r's\.m\.profile\s*=\s*String\(\s*p\.get\("pr"\)', JS):
+    fail('handoff', 'bpIngest no longer reads pr as a string -> the profile column is blank '
+                    'on every handoff even though the firmware sent a name')
 checks += 1
 
 # ============================ 18. ONBOARDING DOES NOT EAT THE HANDOFF
