@@ -479,7 +479,7 @@
                 step="0.1"
                 inputmode="decimal"
                 class="fin"
-                oninput="gRatioLive()"
+                oninput="bpYieldEdited(); gRatioLive()"
               />
             </div>
             <div class="fcell">
@@ -1277,6 +1277,18 @@
           if (grn && !isNaN(gsetN) && typeof GRINDERS === "object" && GRINDERS[grn])
             grindUm = Math.round(clicksToUm(gsetN, grn));
         } catch (e) {}
+        /* The region slot in cols was the literal "" from the day the column was
+     added. #fregion was filled by the picker, shown on screen, written to
+     Inventory, and then dropped on the floor at save. Every logged shot went to
+     the sheet with region blank while the field visibly held a value.
+     Inventory as the fallback, so a coffee typed by name rather than tapped
+     from the rotation still gets its origin. */
+        var regionCol = g("fregion");
+        if (!regionCol && c) {
+          try {
+            regionCol = String(coffeeIdentity(c)("region", null) || "").trim();
+          } catch (e) {}
+        }
         var cols = [
           "",
           "",
@@ -1301,7 +1313,7 @@
           paper,
           GTASTE || "",
           bl || "",
-          "",
+          regionCol || "",
           basket,
           agit,
           waterCol,

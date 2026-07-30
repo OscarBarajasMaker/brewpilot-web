@@ -32,7 +32,7 @@ import re, sys, json, os
 # data-dependent, so it is not a tell anyone can rely on. A green check that is
 # not checking is the exact failure this file exists to prevent, so the file had
 # better not be able to do it to itself. Print the version next to the count.
-AUDIT_VERSION = 'v19-2026-07-28'
+AUDIT_VERSION = 'v21-2026-07-29'
 
 HTML = sys.argv[1] if len(sys.argv) > 1 else '/home/claude/render/index_v5.html'
 src = open(HTML, encoding='utf-8').read()
@@ -396,6 +396,98 @@ if not m_gr:
 elif re.search(r'tab\s*\+\s*"!', m_gr.group(0)):
     fail('schema', 'gRead pins an A1 column range. Too narrow silently truncates the header, '
                    'too wide is a 400 on every read of a narrower tab. Ask for the tab by name.')
+checks += 1
+
+# ============================ 16b. EVERY COLUMN IS EITHER WRITTEN OR KNOWINGLY BLANK
+# cols[23] was the literal "" from the day the region column was added. The
+# picker filled #fregion, the value was visible on screen and copied into
+# Inventory, and then it was dropped at save. Every logged shot went to the
+# sheet with region blank while the field held a value, and nothing anywhere
+# said so. The only slots allowed to be literal "" are the four bpApplyShot
+# fills in afterwards.
+m_cols = re.search(r'var cols = \[(.*?)\n        \];', JS, re.S)
+m_names = re.search(r'var COLNAMES = \[(.*?)\]\.concat\(BP_METRIC_COLS\);', JS, re.S)
+if not m_cols or not m_names:
+    fail('logform', 'the cols array or COLNAMES is gone or reshaped, so the column alignment '
+                    'cannot be verified')
+else:
+    _c = [x.strip().rstrip(',') for x in m_cols.group(1).strip().split('\n') if x.strip()]
+    _n = [x.strip().strip('",') for x in m_names.group(1).strip().split('\n') if x.strip()]
+    if len(_c) != len(_n):
+        fail('logform', 'cols has %d entries and COLNAMES has %d -> every value after the '
+                        'mismatch is written under the wrong header' % (len(_c), len(_n)))
+    else:
+        _allowed = {'shot_id', 'timestamp', 'peak_bar', 'avg_flow_mls'}
+        for _i in range(len(_c)):
+            if _c[_i] == '""' and _n[_i] not in _allowed:
+                fail('logform', 'cols[%d] is a hard-coded empty string but COLNAMES calls it %s '
+                                '-> that column is blank on every row no matter what the form '
+                                'holds' % (_i, _n[_i]))
+checks += 2
+
+if not re.search(r'coffeeIdentity\(c\)\("region"', JS):
+    fail('logform', 'the region save has no Inventory fallback -> a coffee typed by name rather '
+                    'than tapped from the rotation is logged with no origin even though '
+                    'Inventory knows it')
+checks += 1
+
+# ============================ 16c. A CHOKED SHOT IS NAMED, NOT AVERAGED AWAY
+# Shots 137 to 139 were 9 g, 18 g and 20 g in 55 s at roughly 9 bar and the
+# device called all three a solid traditional pull. Both halves of the test are
+# needed: 9 bar alone is a normal pull, and 0.2 g/s alone is a soup shot doing
+# exactly as commanded.
+m_ch = re.search(r'function bpChoke\(s\).*?\n      \}', JS, re.S)
+if not m_ch:
+    fail('logform', 'bpChoke is gone or reshaped, so a choked shot is reported as a normal one')
+else:
+    _b = m_ch.group(0)
+    if 'peakBar' not in _b or '7.5' not in _b:
+        fail('logform', 'bpChoke no longer tests pressure -> any slow shot is called a choke, '
+                        'including every soup shot, which runs slow on purpose')
+    if 'durationS' not in _b or '0.5' not in _b:
+        fail('logform', 'bpChoke no longer tests flow against duration -> a normal 9 bar '
+                        'traditional pull is flagged as a choke')
+    if '"soup"' not in _b or '"filter"' not in _b:
+        fail('logform', 'bpChoke no longer excludes soup and filter by type')
+checks += 3
+
+if 'bpChoke(BPSHOT)' not in JS:
+    fail('logform', 'the banner never calls bpChoke -> the detector exists and nothing shows it '
+                    'to anyone')
+checks += 1
+
+# ============================ 16d. A COMPUTED YIELD NEVER OVERWRITES A MEASURED ONE
+# gRatioApply wrote dose x ratio into the yield box unconditionally. After a
+# handoff that box holds a number the machine actually weighed, so typing a dose
+# of 20 and then a ratio of 16 replaced a measured 18 g with 320, one keystroke
+# at a time, and the row went to the sheet as if it were real. Reproduced
+# against the built form: 18 -> 20 -> 320.
+m_gra = re.search(r'function gRatioApply\(\).*?\n      \}', JS, re.S)
+if not m_gra:
+    fail('logform', 'gRatioApply is gone or reshaped, so the measured-yield guard cannot be verified')
+else:
+    body = m_gra.group(0)
+    if 'BP_YIELD_MEASURED' not in body:
+        fail('logform', 'gRatioApply does not check BP_YIELD_MEASURED -> typing a ratio overwrites '
+                        'a yield the machine weighed, and the fabricated number is what gets logged')
+    if 'activeElement' not in body:
+        fail('logform', 'gRatioApply has no focus guard -> the ratio box is rewritten under the '
+                        'user fingers while they are still typing in it')
+checks += 2
+
+if not re.search(r'BP_YIELD_MEASURED\s*=\s*s\.yieldG\s*!==\s*""', JS):
+    fail('logform', 'bpIngest does not mark an ingested yield as measured -> the guard is never '
+                    'armed and a weighed yield is overwritten exactly as before')
+checks += 1
+
+# The lock has to release, or a yield the user typed by hand stays protected
+# from the ratio arithmetic they are deliberately using.
+m_gy = re.search(r'<input[^>]*id="gyield"[^>]*>', BODY, re.S)
+if not m_gy:
+    fail('logform', 'the gyield input is gone or reshaped')
+elif 'bpYieldEdited' not in m_gy.group(0):
+    fail('logform', 'the gyield input does not call bpYieldEdited -> once a handoff arms the lock '
+                    'nothing releases it, so a hand-typed yield can never be driven by the ratio')
 checks += 1
 
 # ============================ 17a. THE POLLER RUNS ON RESUME, NOT ONLY AT BOOT

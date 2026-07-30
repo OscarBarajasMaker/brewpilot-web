@@ -6189,13 +6189,42 @@ FEATURES_JS = r'''
         if (d.length > 4) d = d.slice(0, 4);
         e.value = d.length > 2 ? d.slice(0, d.length - 2) + ":" + d.slice(-2) : d;
       }
+      /* Set when the yield box was filled from a real handoff, cleared the moment
+   anyone types in that box. A weighed number and a number computed from a ratio
+   are not the same kind of thing and must not overwrite each other. */
+      var BP_YIELD_MEASURED = false;
+      function bpYieldEdited() {
+        BP_YIELD_MEASURED = false;
+      }
       function gRatioApply() {
         var ri = document.getElementById("gratioIn"),
           d = document.getElementById("dose"),
           y = document.getElementById("gyield");
         if (!ri || !d || !y) return;
         var rv = parseFloat(ri.value),
-          dv = parseFloat(d.value);
+          dv = parseFloat(d.value),
+          yv = parseFloat(y.value);
+        /* The machine weighed the cup. The dose is the only thing it cannot know,
+     so once the dose is typed the ratio is DERIVED, not entered. This used to
+     run the other way in every mode: with a measured 18 g in the box, typing a
+     dose of 20 and then a ratio of 16 wrote 320 over the measurement, one
+     keystroke at a time, with nothing on screen to say a real number had just
+     been replaced by an arithmetic one. Reproduced against the built form
+     before this was changed.
+
+     Not while the ratio box has focus. Rewriting a field under someone's
+     fingers is its own bug. */
+        if (BP_YIELD_MEASURED && !isNaN(yv) && yv > 0 && !isNaN(dv) && dv > 0) {
+          if (document.activeElement !== ri) {
+            ri.value = Math.round((yv / dv) * 100) / 100;
+          }
+          try {
+            gRatioLive();
+          } catch (e) {}
+          return;
+        }
+        /* Planning a shot, or logging one with no measured yield: ratio times dose
+     is the target and writing it into the yield box is the whole point. */
         if (!isNaN(rv) && rv > 0 && !isNaN(dv) && dv > 0) {
           y.value = Math.round(dv * rv * 10) / 10;
           try {
@@ -9254,6 +9283,7 @@ FEATURES_JS = must_replace(
           } catch (e) {}
         }
         bpFill("gyield", s.yieldG === "" ? "" : Math.round(s.yieldG * 10) / 10);
+        BP_YIELD_MEASURED = s.yieldG !== "";
         bpFill("gtime", s.durationS === "" ? "" : Math.round(s.durationS));
         bpFill("gtemp", s.tempC === "" ? "" : Math.round(s.tempC * 10) / 10);
         try {
@@ -9261,6 +9291,30 @@ FEATURES_JS = must_replace(
         } catch (e) {}
         bpShotBanner();
         return true;
+      }
+      function bpChoke(s) {
+        /* Pure, so it can be run against captured shots without a DOM.
+
+     A choke is the pump at full pressure with nothing coming out. Both halves
+     are needed: 9 bar on its own is a normal traditional pull, and 0.2 g/s on
+     its own is a soup shot behaving exactly as commanded.
+
+     From four real espresso shots, 135 and 137 to 139: 9 g in 55 s at 9.0 bar,
+     18 g in 55 s at 8.9 bar, 20 g in 55 s at 8.9 bar, all three reported as a
+     solid traditional pull by the device. A normal 18 in 36 out in 28 s is
+     1.3 g/s, so the gap down to 0.5 is wide and nothing sane sits in it.
+
+     This is a heuristic with a fitted threshold, not a physical boundary like
+     the 1.0 on resistanceDrift. It exists to shout at an obvious failure and it
+     must not be fed into any lane baseline. */
+        if (!s) return false;
+        if (s.type === "soup" || s.type === "filter") return false;
+        var d = s.durationS,
+          y = s.yieldG,
+          p = s.peakBar;
+        if (d === "" || y === "" || p === "") return false;
+        if (d < 30 || p < 7.5) return false;
+        return y / d < 0.5;
       }
       function bpShotBanner() {
         var el = document.getElementById("bpShotBanner");
@@ -9272,14 +9326,41 @@ FEATURES_JS = must_replace(
         }
         var isEs = typeof LANG !== "undefined" && LANG === "es";
         var bits = [];
-        if (BPSHOT.durationS !== "") bits.push(Math.round(BPSHOT.durationS) + "s");
-        if (BPSHOT.yieldG !== "") bits.push(Math.round(BPSHOT.yieldG) + "g");
-        if (BPSHOT.peakBar !== "") bits.push(BPSHOT.peakBar.toFixed(1) + " bar");
-        if (BPSHOT.m.resistance !== "") bits.push("R " + BPSHOT.m.resistance.toFixed(2));
+        /* typeof, not !== "". Every field bpIngest produces is a number or the
+     empty string, so the old test was true for both. It was also true for
+     undefined, and undefined.toFixed throws and takes the whole banner with it.
+     Unreachable through bpIngest as written, one bad shape away from a blank
+     screen with a shot sitting in it. */
+        var num = function (v) {
+          return typeof v === "number" && isFinite(v);
+        };
+        if (num(BPSHOT.durationS)) bits.push(Math.round(BPSHOT.durationS) + "s");
+        if (num(BPSHOT.yieldG)) bits.push(Math.round(BPSHOT.yieldG) + "g");
+        if (num(BPSHOT.peakBar)) bits.push(BPSHOT.peakBar.toFixed(1) + " bar");
+        if (BPSHOT.m && num(BPSHOT.m.resistance))
+          bits.push("R " + BPSHOT.m.resistance.toFixed(2));
         var head = isEs ? "Datos del shot recibidos" : "Shot data received";
         var tail = isEs
           ? "Agrega cafe, dosis y calificacion, luego guarda."
           : "Add coffee, dose and rating, then save.";
+        if (bpChoke(BPSHOT)) {
+          tail =
+            (isEs
+              ? "ATASCADA. " +
+                Math.round(BPSHOT.yieldG) +
+                " g en " +
+                Math.round(BPSHOT.durationS) +
+                " s a " +
+                BPSHOT.peakBar.toFixed(1) +
+                " bar. Muele mas grueso o baja la dosis. "
+              : "CHOKED. " +
+                Math.round(BPSHOT.yieldG) +
+                " g in " +
+                Math.round(BPSHOT.durationS) +
+                " s at " +
+                BPSHOT.peakBar.toFixed(1) +
+                " bar. Grind coarser or drop the dose. ") + tail;
+        }
         el.textContent =
           head +
           (BPSHOT.fw ? " (fw " + BPSHOT.fw + ")" : "") +
