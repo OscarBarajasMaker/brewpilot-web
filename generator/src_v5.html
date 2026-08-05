@@ -479,7 +479,7 @@
                 step="0.1"
                 inputmode="decimal"
                 class="fin"
-                oninput="bpYieldEdited(); gRatioLive()"
+                oninput="gRatioLive()"
               />
             </div>
             <div class="fcell">
@@ -701,7 +701,12 @@
           <div class="fl">Portion size</div>
           <div
             id="invsizechips"
-            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px"
+            style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px"
+          ></div>
+          <div
+            id="invPortionOut"
+            class="csS"
+            style="margin: 0 0 6px 2px; display: flex; align-items: center; gap: 8px"
           ></div>
           <div class="frow">
             <div class="fcell">
@@ -752,6 +757,20 @@
             <div class="fcell">
               <div class="fl" data-i18n="invVarietal">Varietal</div>
               <input id="invvarietal" list="ghVarList" class="fin" />
+              <div
+                id="invBlendToggle"
+                onclick="invBlendOpen()"
+                style="
+                  color: var(--hi-text);
+                  font-size: 12px;
+                  margin: 4px 2px 0;
+                  cursor: pointer;
+                "
+              ></div>
+              <div
+                id="invblendchips"
+                style="display: none; flex-wrap: wrap; gap: 6px; margin-top: 6px"
+              ></div>
             </div>
             <div class="fcell">
               <div class="fl" data-i18n="invRegion">Origin</div>
@@ -919,8 +938,11 @@
             <option>Villa Sarchi</option>
             <option>Castillo</option>
             <option>Colombia</option>
+            <option>SL32</option>
+            <option>K7</option>
             <option>Ruiru 11</option>
             <option>Batian</option>
+            <option>SL-32, SL-28, Batian, Ruiru 11</option>
             <option>Sudan Rume</option>
             <option>Wush Wush</option>
             <option>Chiroso</option>
@@ -1277,18 +1299,6 @@
           if (grn && !isNaN(gsetN) && typeof GRINDERS === "object" && GRINDERS[grn])
             grindUm = Math.round(clicksToUm(gsetN, grn));
         } catch (e) {}
-        /* The region slot in cols was the literal "" from the day the column was
-     added. #fregion was filled by the picker, shown on screen, written to
-     Inventory, and then dropped on the floor at save. Every logged shot went to
-     the sheet with region blank while the field visibly held a value.
-     Inventory as the fallback, so a coffee typed by name rather than tapped
-     from the rotation still gets its origin. */
-        var regionCol = g("fregion");
-        if (!regionCol && c) {
-          try {
-            regionCol = String(coffeeIdentity(c)("region", null) || "").trim();
-          } catch (e) {}
-        }
         var cols = [
           "",
           "",
@@ -1313,7 +1323,7 @@
           paper,
           GTASTE || "",
           bl || "",
-          regionCol || "",
+          "",
           basket,
           agit,
           waterCol,
@@ -2721,6 +2731,9 @@
           c.onclick = () => {
             INVSIZE = s;
             renderInvSizes();
+            try {
+              invPortions();
+            } catch (e) {}
           };
           box.appendChild(c);
         });
@@ -2786,55 +2799,29 @@
           try {
             loadInventory();
           } catch (e) {}
+          /* Success was completely silent: the only confirmation lived in the
+       unreachable branch that sat behind a return, now deleted. Saving a
+       bag looked identical to nothing happening, so the safe move was to press
+       it again, which is exactly how a bag gets logged twice. Clear the fields
+       too, for the same reason. */
+          try {
+            document.getElementById("invcoffee").value = "";
+            document.getElementById("invqty").value = "1";
+          } catch (e) {}
+          try {
+            alert(
+              (window.__RESTED ? t("savedResting") : t("savedFrozen")) +
+                ": " +
+                qty +
+                " x " +
+                INVSIZE +
+                " " +
+                coffee,
+            );
+          } catch (e) {}
           return;
         }
         alert(t("gSaveFirst"));
-        return;
-        /*DEADFREEZE*/ let url = "",
-          body =
-            "x" +
-            encodeURIComponent(coffee) +
-            "&roaster=" +
-            encodeURIComponent(roaster) +
-            "&portion=" +
-            encodeURIComponent(INVSIZE) +
-            "&qty=" +
-            encodeURIComponent(qty) +
-            "&roast_date=" +
-            encodeURIComponent(rdate) +
-            "&roast=" +
-            encodeURIComponent(invroast) +
-            "&process=" +
-            encodeURIComponent(invproc) +
-            "&freeze_date=" +
-            encodeURIComponent((document.getElementById("invfreeze_date") || {}).value || "") +
-            "&bag_g=" +
-            encodeURIComponent(INVBAG || "") +
-            "&price=" +
-            encodeURIComponent((document.getElementById("invprice") || {}).value || "") +
-            "&currency=" +
-            encodeURIComponent(INVCCY || "USD");
-        try {
-          await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: body,
-          });
-          document.getElementById("invcoffee").value = "";
-          document.getElementById("invqty").value = "1";
-          alert(
-            (window.__RESTED ? t("savedResting") : t("savedFrozen")) +
-              ": " +
-              qty +
-              " x " +
-              INVSIZE +
-              " " +
-              coffee,
-          );
-          loadInventory();
-        } catch (e) {
-          alert("save failed");
-        }
       }
       function noSheetMsg() {
         return (

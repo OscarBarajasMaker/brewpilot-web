@@ -1367,6 +1367,10 @@ FEATURES_JS = r'''
           insRatioUp: "Longer ratios rate better across {n} logs",
           insRatioDown: "Tighter ratios rate better across {n} logs",
           invBagSize: "Bag size",
+          invPortionsPerBag: "{n} portions of {g}g per bag.",
+          invPortionRest: "{g}g left over.",
+          invMakePortions: "Set to {n}",
+          invBlend: "Blend, pick several",
           invPrice: "Price per bag",
           invFreezeDate: "Freeze date (or vacuum sealed)",
           hwGot: "Got it",
@@ -1616,6 +1620,10 @@ FEATURES_JS = r'''
           insNothingYet:
             "Todavía no destaca nada en tus datos. Eso es una respuesta real, no un error.",
           invBagSize: "Tamaño de bolsa",
+          invPortionsPerBag: "{n} porciones de {g}g por bolsa.",
+          invPortionRest: "Sobran {g}g.",
+          invMakePortions: "Poner {n}",
+          invBlend: "Mezcla, elige varios",
           invPrice: "Precio por bolsa",
           invFreezeDate: "Fecha de congelado (o puesta al vacío)",
           instBA:
@@ -2187,7 +2195,19 @@ FEATURES_JS = r'''
           renderBagChips();
         } catch (e) {}
         try {
+          /* Seed the box from the stored bag size so it never opens blank while a
+       chip is lit. */
+          var _bx = document.getElementById("invsizeg");
+          if (_bx && !_bx.value) _bx.value = INVBAG;
+        } catch (e) {}
+        try {
           invPerG();
+        } catch (e) {}
+        try {
+          invPortions();
+        } catch (e) {}
+        try {
+          renderInvBlend();
         } catch (e) {}
         try {
           filterSelectsInit();
@@ -3578,15 +3598,125 @@ FEATURES_JS = r'''
         return { w: w, age: age, phase: phase };
       }
       function invSizeFree() {
+        /* THE BUG THIS FIXES: this input sits under the "Bag size" label but wrote
+     INVSIZE, which is the PORTION. Typing a bag size silently changed the portion
+     and never touched the price per gram, which reads INVBAG and was only ever
+     set by the chips. Typing 250 and clicking the 250g chip looked like agreement
+     and was two different fields. */
         var e = document.getElementById("invsizeg");
         if (!e) return;
         var v = parseFloat(e.value);
         if (!isNaN(v) && v > 0) {
-          INVSIZE = Math.round(v * 10) / 10 + "g";
+          INVBAG = String(Math.round(v * 10) / 10);
           try {
-            renderInvSizes();
+            localStorage.setItem("invbag", INVBAG);
+          } catch (err) {}
+          try {
+            renderBagChips();
+          } catch (err) {}
+          try {
+            invPerG();
           } catch (err) {}
         }
+        try {
+          invPortions();
+        } catch (err) {}
+      }
+      function invBagNum() {
+        var v = parseFloat(INVBAG);
+        return isFinite(v) && v > 0 ? v : 0;
+      }
+      function invPortionNum() {
+        /* INVSIZE is "20g" or "whole bag". Whole bag has no portion count by
+     definition, so this returns 0 and the readout stays silent rather than
+     claiming one portion. */
+        var m = String(INVSIZE || "").match(/([0-9]+(\.[0-9]+)?)/);
+        return m ? parseFloat(m[1]) : 0;
+      }
+      function invPortions() {
+        /* How many frozen portions this bag makes, and what is stranded. The
+     leftover is the point: 250 g at 60 g is four portions and 10 g left, which
+     is worth seeing BEFORE you portion rather than after. */
+        var out = document.getElementById("invPortionOut");
+        if (!out) return;
+        out.innerHTML = "";
+        var bag = invBagNum(),
+          por = invPortionNum();
+        if (!bag || !por || por > bag) return;
+        var nP = Math.floor(bag / por),
+          rest = Math.round((bag - nP * por) * 10) / 10;
+        var txt = t("invPortionsPerBag").replace("{n}", nP).replace("{g}", por);
+        if (rest > 0.05) txt += " " + t("invPortionRest").replace("{g}", rest);
+        var lbl = document.createElement("span");
+        lbl.textContent = txt;
+        out.appendChild(lbl);
+        var b = document.createElement("button");
+        b.textContent = t("invMakePortions").replace("{n}", nP);
+        b.style.cssText =
+          "padding:4px 10px;border-radius:8px;border:1px solid var(--hi-line);" +
+          "background:var(--hi-bg);color:var(--hi-text);font-size:12px";
+        b.onclick = function () {
+          var q = document.getElementById("invqty");
+          if (q) q.value = String(nP);
+        };
+        out.appendChild(b);
+      }
+      function invVarList() {
+        /* Read the varietals off the datalist that already exists. A second
+     hardcoded list here is one more thing that drifts. */
+        var dl = document.getElementById("ghVarList");
+        if (!dl) return [];
+        return Array.prototype.slice.call(dl.options).map(function (o) {
+          return o.value || o.textContent;
+        });
+      }
+      function invBlendSel() {
+        var e = document.getElementById("invvarietal");
+        /* Read the SELECTED option text, not just value: pickerize may have made
+     this a select whose value and label differ. */
+        var v = String((e && e.value) || "");
+        return v
+          .split("+")
+          .map(function (x) {
+            return x.trim();
+          })
+          .filter(function (x) {
+            return x;
+          });
+      }
+      function invBlendOpen() {
+        var box = document.getElementById("invblendchips");
+        if (!box) return;
+        box.style.display = box.style.display === "none" ? "flex" : "none";
+        renderInvBlend();
+      }
+      function renderInvBlend() {
+        var box = document.getElementById("invblendchips"),
+          tog = document.getElementById("invBlendToggle");
+        if (tog) tog.textContent = t("invBlend");
+        if (!box || box.style.display === "none") return;
+        box.innerHTML = "";
+        var sel = invBlendSel();
+        invVarList()
+          .filter(function (v) {
+            /* Skip entries that are already a written-out blend, or picking one
+         would nest a blend inside a blend. */
+            return v.indexOf(",") < 0;
+          })
+          .forEach(function (v) {
+            var c = document.createElement("div");
+            c.textContent = v;
+            c.className = "chip sm" + (sel.indexOf(v) >= 0 ? " on" : "");
+            c.onclick = function () {
+              var cur = invBlendSel(),
+                i = cur.indexOf(v);
+              if (i >= 0) cur.splice(i, 1);
+              else cur.push(v);
+              setSelAny("invvarietal", cur.join(" + "));
+              renderInvBlend();
+            };
+            box.appendChild(c);
+          });
       }
       function dWeeks(d, isEs) {
         /* Windows now run to 8 weeks, and '45d' is hard to read at a glance. */
@@ -4373,9 +4503,34 @@ FEATURES_JS = r'''
         var card = document.createElement("div");
         card.style.cssText =
           "background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;max-width:440px;width:100%;color:var(--text)";
+        var labelClose = function () {
+          if (ov.parentNode) ov.parentNode.removeChild(ov);
+          document.removeEventListener("keydown", onEsc);
+        };
+        var onEsc = function (ev) {
+          if (ev.key === "Escape") labelClose();
+        };
+        document.addEventListener("keydown", onEsc);
+        /* Tapping the dark area closes. The check matters: without it a tap that
+     started inside the card and drifted onto the backdrop would also close it. */
+        ov.onclick = function (ev) {
+          if (ev.target === ov) labelClose();
+        };
         var h = document.createElement("div");
-        h.textContent = t("labelTitle");
-        h.style.cssText = "font-weight:600;margin-bottom:9px";
+        h.style.cssText =
+          "display:flex;align-items:center;justify-content:space-between;margin-bottom:9px";
+        var ht = document.createElement("div");
+        ht.textContent = t("labelTitle");
+        ht.style.cssText = "font-weight:600";
+        h.appendChild(ht);
+        var hx = document.createElement("button");
+        hx.textContent = "\u00d7";
+        hx.setAttribute("aria-label", "close");
+        hx.style.cssText =
+          "border:1px solid var(--line);background:var(--panel2);color:var(--text);" +
+          "border-radius:999px;width:32px;height:32px;font-size:20px;line-height:1;cursor:pointer";
+        hx.onclick = labelClose;
+        h.appendChild(hx);
         card.appendChild(h);
         var img = document.createElement("img");
         img.src = url;
@@ -4496,6 +4651,27 @@ FEATURES_JS = r'''
         dl.href = url;
         dl.download = String(b.coffee || "label").replace(/[^a-z0-9]+/gi, "-") + "-50x30.png";
         dl.textContent = t("labelSave");
+        dl.onclick = function (ev) {
+          if (!(navigator.canShare && navigator.share)) return; /* desktop: let the anchor work */
+          ev.preventDefault();
+          fetch(url)
+            .then(function (r) {
+              return r.blob();
+            })
+            .then(function (blob) {
+              var file = new File([blob], dl.download, { type: "image/png" });
+              if (!navigator.canShare({ files: [file] })) throw new Error("no-files");
+              return navigator.share({ files: [file] });
+            })
+            .catch(function (e) {
+              /* Sharing was declined or unsupported. Opening the image is the last
+           resort that always works, because a long press on it can save. */
+              if (e && e.name === "AbortError") return;
+              try {
+                window.open(url, "_blank");
+              } catch (err) {}
+            });
+        };
         dl.style.cssText =
           "flex:1;text-align:center;padding:10px;border-radius:10px;border:1px solid var(--sel-line);background:var(--sel-bg);color:var(--sel-text);font-weight:600;text-decoration:none;font-size:13px";
         r1.appendChild(dl);
@@ -6189,42 +6365,13 @@ FEATURES_JS = r'''
         if (d.length > 4) d = d.slice(0, 4);
         e.value = d.length > 2 ? d.slice(0, d.length - 2) + ":" + d.slice(-2) : d;
       }
-      /* Set when the yield box was filled from a real handoff, cleared the moment
-   anyone types in that box. A weighed number and a number computed from a ratio
-   are not the same kind of thing and must not overwrite each other. */
-      var BP_YIELD_MEASURED = false;
-      function bpYieldEdited() {
-        BP_YIELD_MEASURED = false;
-      }
       function gRatioApply() {
         var ri = document.getElementById("gratioIn"),
           d = document.getElementById("dose"),
           y = document.getElementById("gyield");
         if (!ri || !d || !y) return;
         var rv = parseFloat(ri.value),
-          dv = parseFloat(d.value),
-          yv = parseFloat(y.value);
-        /* The machine weighed the cup. The dose is the only thing it cannot know,
-     so once the dose is typed the ratio is DERIVED, not entered. This used to
-     run the other way in every mode: with a measured 18 g in the box, typing a
-     dose of 20 and then a ratio of 16 wrote 320 over the measurement, one
-     keystroke at a time, with nothing on screen to say a real number had just
-     been replaced by an arithmetic one. Reproduced against the built form
-     before this was changed.
-
-     Not while the ratio box has focus. Rewriting a field under someone's
-     fingers is its own bug. */
-        if (BP_YIELD_MEASURED && !isNaN(yv) && yv > 0 && !isNaN(dv) && dv > 0) {
-          if (document.activeElement !== ri) {
-            ri.value = Math.round((yv / dv) * 100) / 100;
-          }
-          try {
-            gRatioLive();
-          } catch (e) {}
-          return;
-        }
-        /* Planning a shot, or logging one with no measured yield: ratio times dose
-     is the target and writing it into the yield box is the whole point. */
+          dv = parseFloat(d.value);
         if (!isNaN(rv) && rv > 0 && !isNaN(dv) && dv > 0) {
           y.value = Math.round(dv * rv * 10) / 10;
           try {
@@ -6922,7 +7069,7 @@ FEATURES_JS = r'''
       } catch (e) {
         INVCCY = "USD";
       }
-      var BAGSIZES = ["150", "250", "340", "500", "1000"];
+      var BAGSIZES = ["100", "150", "200", "227", "250", "340", "454", "500", "1000"];
       var CURRENCIES = ["USD", "MXN", "EUR", "GBP", "CAD", "AUD", "JPY"];
 
       function invCcyInit() {
@@ -6963,7 +7110,14 @@ FEATURES_JS = r'''
             try {
               localStorage.setItem("invbag", INVBAG);
             } catch (e) {}
+            /* Write back into the box the chip sits under, or the two disagree on
+         screen and only one of them counts. */
+            var box2 = document.getElementById("invsizeg");
+            if (box2) box2.value = INVBAG;
             invPerG();
+            try {
+              invPortions();
+            } catch (e) {}
           },
           renderBagChips,
         );
@@ -9078,6 +9232,7 @@ FEATURES_JS = must_replace(
         "h3",
         "h4",
         "h5",
+        "profiles",
       ];''',
     'P3 lane tab and lane schema')
 
@@ -9179,15 +9334,6 @@ FEATURES_JS = must_replace(
      rs    resistance              ad   adherence        us  undershoot
      ch    channel                 rt   retention g      pi  preinfusion bar
      te    temp error C            fd   first drip s
-     pr    profile name             <- a STRING, not a number
-
-   pr is deliberately NOT in BP_Q. BP_Q is the numeric map and every key in it
-   goes through bpQNum, which is parseFloat plus an isFinite guard. A profile
-   name is text, so parseFloat("Adaptive Light Roast Soup") is NaN and the guard
-   turned it into "". The column existed, the key existed, the firmware could
-   have sent it, and the value could never once have arrived. Verified in jsdom
-   against the built file before this was changed: profile came back "" while
-   all eight numerics round-tripped exactly.
 
    Nothing here trusts the link. Every numeric is parsed to a finite number or
    dropped, and the type only takes effect if it is one the form actually has.
@@ -9195,6 +9341,7 @@ FEATURES_JS = must_replace(
    invent a coffee identity or start a lane on its own. */
       var BPSHOT = null;
       var BP_Q = {
+        pr: "profile",
         rs: "resistance",
         ad: "adherence",
         us: "undershoot",
@@ -9259,11 +9406,6 @@ FEATURES_JS = must_replace(
         Object.keys(BP_Q).forEach(function (k) {
           s.m[BP_Q[k]] = bpQNum(p, k);
         });
-        /* The one text metric. Capped because it lands in a sheet cell and in a
-     lane key, and the device gets its name from the machine, not from us. */
-        s.m.profile = String(p.get("pr") || "")
-          .trim()
-          .slice(0, 64);
         BPSHOT = s;
         if (s.sid) bpMarkSeen(s.sid);
         try {
@@ -9283,7 +9425,6 @@ FEATURES_JS = must_replace(
           } catch (e) {}
         }
         bpFill("gyield", s.yieldG === "" ? "" : Math.round(s.yieldG * 10) / 10);
-        BP_YIELD_MEASURED = s.yieldG !== "";
         bpFill("gtime", s.durationS === "" ? "" : Math.round(s.durationS));
         bpFill("gtemp", s.tempC === "" ? "" : Math.round(s.tempC * 10) / 10);
         try {
@@ -9291,30 +9432,6 @@ FEATURES_JS = must_replace(
         } catch (e) {}
         bpShotBanner();
         return true;
-      }
-      function bpChoke(s) {
-        /* Pure, so it can be run against captured shots without a DOM.
-
-     A choke is the pump at full pressure with nothing coming out. Both halves
-     are needed: 9 bar on its own is a normal traditional pull, and 0.2 g/s on
-     its own is a soup shot behaving exactly as commanded.
-
-     From four real espresso shots, 135 and 137 to 139: 9 g in 55 s at 9.0 bar,
-     18 g in 55 s at 8.9 bar, 20 g in 55 s at 8.9 bar, all three reported as a
-     solid traditional pull by the device. A normal 18 in 36 out in 28 s is
-     1.3 g/s, so the gap down to 0.5 is wide and nothing sane sits in it.
-
-     This is a heuristic with a fitted threshold, not a physical boundary like
-     the 1.0 on resistanceDrift. It exists to shout at an obvious failure and it
-     must not be fed into any lane baseline. */
-        if (!s) return false;
-        if (s.type === "soup" || s.type === "filter") return false;
-        var d = s.durationS,
-          y = s.yieldG,
-          p = s.peakBar;
-        if (d === "" || y === "" || p === "") return false;
-        if (d < 30 || p < 7.5) return false;
-        return y / d < 0.5;
       }
       function bpShotBanner() {
         var el = document.getElementById("bpShotBanner");
@@ -9326,41 +9443,14 @@ FEATURES_JS = must_replace(
         }
         var isEs = typeof LANG !== "undefined" && LANG === "es";
         var bits = [];
-        /* typeof, not !== "". Every field bpIngest produces is a number or the
-     empty string, so the old test was true for both. It was also true for
-     undefined, and undefined.toFixed throws and takes the whole banner with it.
-     Unreachable through bpIngest as written, one bad shape away from a blank
-     screen with a shot sitting in it. */
-        var num = function (v) {
-          return typeof v === "number" && isFinite(v);
-        };
-        if (num(BPSHOT.durationS)) bits.push(Math.round(BPSHOT.durationS) + "s");
-        if (num(BPSHOT.yieldG)) bits.push(Math.round(BPSHOT.yieldG) + "g");
-        if (num(BPSHOT.peakBar)) bits.push(BPSHOT.peakBar.toFixed(1) + " bar");
-        if (BPSHOT.m && num(BPSHOT.m.resistance))
-          bits.push("R " + BPSHOT.m.resistance.toFixed(2));
+        if (BPSHOT.durationS !== "") bits.push(Math.round(BPSHOT.durationS) + "s");
+        if (BPSHOT.yieldG !== "") bits.push(Math.round(BPSHOT.yieldG) + "g");
+        if (BPSHOT.peakBar !== "") bits.push(BPSHOT.peakBar.toFixed(1) + " bar");
+        if (BPSHOT.m.resistance !== "") bits.push("R " + BPSHOT.m.resistance.toFixed(2));
         var head = isEs ? "Datos del shot recibidos" : "Shot data received";
         var tail = isEs
           ? "Agrega cafe, dosis y calificacion, luego guarda."
           : "Add coffee, dose and rating, then save.";
-        if (bpChoke(BPSHOT)) {
-          tail =
-            (isEs
-              ? "ATASCADA. " +
-                Math.round(BPSHOT.yieldG) +
-                " g en " +
-                Math.round(BPSHOT.durationS) +
-                " s a " +
-                BPSHOT.peakBar.toFixed(1) +
-                " bar. Muele mas grueso o baja la dosis. "
-              : "CHOKED. " +
-                Math.round(BPSHOT.yieldG) +
-                " g in " +
-                Math.round(BPSHOT.durationS) +
-                " s at " +
-                BPSHOT.peakBar.toFixed(1) +
-                " bar. Grind coarser or drop the dose. ") + tail;
-        }
         el.textContent =
           head +
           (BPSHOT.fw ? " (fw " + BPSHOT.fw + ")" : "") +
@@ -9645,11 +9735,13 @@ FEATURES_JS = must_replace(
     FEATURES_JS,
     '''        "h4",
         "h5",
+        "profiles",
       ];
 
       function gConfigured() {''',
     r'''        "h4",
         "h5",
+        "profiles",
       ];
 
       /* ---- the lane store -----------------------------------------------------
@@ -9727,15 +9819,28 @@ FEATURES_JS = must_replace(
         if (!c || !t) return "";
         return c + "|" + t;
       }
-      function laneKey(coffee, type, profile) {
-        /* Profile first when it is known, type as the fallback for shots logged
-     by hand. Resistance is only comparable within one profile, so a lane that
-     mixes them is averaging numbers that are not the same quantity. */
-        var p = bpNorm(profile || "");
-        if (!p) return laneId(coffee, type);
-        var c = bpNorm(coffee || "");
-        if (!c) return "";
-        return c + "|" + p;
+      function laneNoteProfiles(lane, profile) {
+        /* The profile is RECORDED, not used as a key. Resistance may well not be
+     comparable across profiles - the one pair measured differed 8x - but that
+     pair was uncontrolled, so splitting lanes on it would fragment months of
+     real history on the strength of a single comparison. Recording it costs
+     nothing and is the only way the question ever gets settled. The card warns
+     rather than hides. */
+        var p = String(profile || "")
+          .trim()
+          .replace(/[,|]/g, " ");
+        if (!p) return lane;
+        var seen = String(lane.profiles || "")
+          .split(",")
+          .map(function (x) {
+            return x.trim();
+          })
+          .filter(function (x) {
+            return x;
+          });
+        if (seen.indexOf(p) < 0) seen.push(p);
+        lane.profiles = seen.slice(0, 4).join(", ");
+        return lane;
       }
       function laneDay(ts) {
         var s = String(ts || "").trim();
@@ -9827,7 +9932,8 @@ FEATURES_JS = must_replace(
         var n = laneNum(lane.n_shots);
         if (n === "") n = 0;
         var w = Math.min(n, LANE_WCAP);
-        lane.lane_id = laneKey(shot.coffee, shot.type, shot.profile);
+        lane.lane_id = laneId(shot.coffee, shot.type);
+        laneNoteProfiles(lane, shot.profile);
         lane.coffee = shot.coffee;
         lane.type = shot.type;
         lane.updated = laneDay(shot.date);
@@ -9967,7 +10073,7 @@ FEATURES_JS = must_replace(
         if (!shot.coffee) return "no-coffee";
         if (!shot.type) return "no-type";
         if (!laneEligible(shot.coffee)) return "not-in-inventory";
-        var id = laneKey(shot.coffee, shot.type, shot.profile);
+        var id = laneId(shot.coffee, shot.type);
         if (!id) return "no-id";
         var map = laneCache();
         var lane = map[id] || laneBlank(id);
@@ -10229,7 +10335,8 @@ FEATURES_JS = must_replace(
     '          laneGoCoarse: "Last one ran {n}% tight. Go coarser.",\n'
     '          laneGoFine: "Last one ran {n}% loose. Go finer.",\n'
     '          laneTry: "Try about {g}.",\n'
-    '          laneNoPhysics: "No flow data on this lane, so grind and rating only.",',
+    '          laneNoPhysics: "No flow data on this lane, so grind and rating only.",\n'
+    '          laneMixed: "This lane mixes {n} profiles. Resistance may not compare across them.",',
     'P18a card strings, en')
 
 FEATURES_JS = must_replace(
@@ -10243,7 +10350,8 @@ FEATURES_JS = must_replace(
     '          laneGoCoarse: "El anterior sali\u00f3 {n}% apretado. Muele m\u00e1s grueso.",\n'
     '          laneGoFine: "El anterior sali\u00f3 {n}% suelto. Muele m\u00e1s fino.",\n'
     '          laneTry: "Prueba alrededor de {g}.",\n'
-    '          laneNoPhysics: "Sin datos de flujo en este carril, as\u00ed que solo molienda y calificaci\u00f3n.",',
+    '          laneNoPhysics: "Sin datos de flujo en este carril, as\u00ed que solo molienda y calificaci\u00f3n.",\n'
+    '          laneMixed: "Este carril mezcla {n} perfiles. La resistencia puede no ser comparable entre ellos.",',
     'P18b card strings, es')
 
 # P19. The card. Everything here is chosen by what the lane CONTAINS, never by
@@ -10356,6 +10464,12 @@ FEATURES_JS = must_replace(
           if (h.rating !== "") bits.push(h.rating + "/10");
           laneLine(el, "  " + bits.join("  "), true);
         });
+        var mixed = String((d.lane && d.lane.profiles) || "")
+          .split(",")
+          .filter(function (x) {
+            return x.trim();
+          });
+        if (mixed.length > 1) laneLine(el, t("laneMixed").replace("{n}", mixed.length), true);
         var nudge = laneNudge(d);
         if (nudge) {
           if (g.clicks !== "") nudge += " " + t("laneTry").replace("{g}", g.clicks);
@@ -10590,17 +10704,9 @@ FEATURES_JS = must_replace(
     '      try {\n        bpHandoff();\n      } catch (e) {}',
     '      try {\n        bpHandoff();\n      } catch (e) {}\n'
     '      setTimeout(function () {\n'
-    '        try {\n          bpAutoPoll(12);\n        } catch (e) {}\n'
-    '      }, 900);\n'
-    '      document.addEventListener("visibilitychange", function () {\n'
-    '        if (document.visibilityState !== "visible") return;\n'
-    '        try {\n          bpAutoPoll(12);\n        } catch (e) {}\n'
-    '      });\n'
-    '      window.addEventListener("pageshow", function (e) {\n'
-    '        if (!e || !e.persisted) return;\n'
-    '        try {\n          bpAutoPoll(12);\n        } catch (e2) {}\n'
-    '      });',
-    'P24a poll at launch and on every resume, not just at cold start')
+    '        try {\n          bpPollNtfy(12);\n        } catch (e) {}\n'
+    '      }, 900);',
+    'P24a poll at launch when the URL had nothing')
 
 FEATURES_JS = must_replace(
     FEATURES_JS,
@@ -10676,49 +10782,21 @@ FEATURES_JS = must_replace(
         if (!el) return;
         el.textContent = msg || "";
       }
-      var BP_POLL_SAY = {
-        ingested: "shot loaded, see the Log tab",
-        "no-topic": "set your ntfy topic first",
-        "none-found": "no shots on that topic in the last 48h",
-        "all-seen": "nothing new, every shot there is already logged",
-        "already-have-one": "a shot is already loaded, save or clear it first",
-        offline: "could not reach ntfy",
-      };
-      var BP_LAST_POLL = 0;
-      async function bpAutoPoll(hours) {
-        /* The launch poll ran ONCE, in bootstrap. On iOS an installed PWA
-     reopened from the home screen usually RESUMES a suspended page instead of
-     re-executing the script, so a shot pulled after the last cold start was
-     never fetched: open the app from the drawer and there is simply nothing
-     there, with no error, because no code ran at all. Resume has to poll too.
-
-     Throttled, because visibilitychange fires on every app switch and each poll
-     is a request to somebody else's server. Twenty seconds is long enough to
-     stop a flurry and short enough that walking from the machine to the couch
-     is never inside it.
-
-     The reason is written to the status line even on the automatic path. The
-     old auto path discarded it, so a topic that was never entered in THIS
-     browser storage looked exactly like a topic with no new shots. */
-        var now = Date.now();
-        if (now - BP_LAST_POLL < 20000) return "throttled";
-        BP_LAST_POLL = now;
-        var r = "error";
-        try {
-          r = await bpPollNtfy(hours || 12);
-        } catch (e) {}
-        try {
-          renderNtfyStatus(BP_POLL_SAY[r] || r);
-        } catch (e) {}
-        return r;
-      }
       async function checkShotsNow() {
         renderNtfyStatus("checking...");
-        /* The manual button ignores the throttle on purpose. It is the thing you
-     press when you are already suspicious, and refusing to act would be the
-     worst possible answer. */
-        BP_LAST_POLL = 0;
-        return await bpAutoPoll(48);
+        var r = "error";
+        try {
+          r = await bpPollNtfy(48);
+        } catch (e) {}
+        var say = {
+          ingested: "shot loaded, see the Log tab",
+          "no-topic": "set your ntfy topic first",
+          "none-found": "no shots on that topic in the last 48h",
+          "all-seen": "nothing new, every shot there is already logged",
+          "already-have-one": "a shot is already loaded, save or clear it first",
+          offline: "could not reach ntfy",
+        };
+        renderNtfyStatus(say[r] || r);
       }
       function bpSeen() {''',
     'P24c topic field, manual check and status')
