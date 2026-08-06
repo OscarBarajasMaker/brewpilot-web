@@ -4198,6 +4198,8 @@ FEATURES_JS = r'''
         freeze: 1,
         peak: 1,
         portion: 0,
+        notesroaster: 0,
+        notescup: 0,
       };
       function lblFields() {
         try {
@@ -4357,9 +4359,26 @@ FEATURES_JS = r'''
           if (f.process && b.process) left.push([isEs ? "Proceso" : "Process", b.process]);
           if (f.roastlvl && b.roast) left.push([isEs ? "Tueste" : "Roast", b.roast]);
           left = left.concat(rows);
-          left.slice(0, 6).forEach(function (r) {
+          var noteLines = [];
+          if (f.notesroaster && b.notes_roaster)
+            wrap((isEs ? "Tostador: " : "Roaster: ") + b.notes_roaster, W - pad * 2 - 360)
+              .slice(0, 2)
+              .forEach(function (l) {
+                noteLines.push(l);
+              });
+          if (f.notescup && b.notes_cup)
+            wrap((isEs ? "Taza: " : "Cup: ") + b.notes_cup, W - pad * 2 - 360)
+              .slice(0, 2)
+              .forEach(function (l) {
+                noteLines.push(l);
+              });
+          left.slice(0, 6 - Math.min(noteLines.length, 3)).forEach(function (r) {
             x.fillText(r[0] + ": " + r[1], pad, ly);
             ly += G(50);
+          });
+          noteLines.slice(0, 3).forEach(function (l) {
+            x.fillText(l, pad, ly);
+            ly += G(46);
           });
           drawLogo(W - pad - 340, ty + G(16), 340, Math.max(150, H - pad - 14 - (ty + G(16))));
         } else {
@@ -4389,6 +4408,19 @@ FEATURES_JS = r'''
             x.fillText(meta.varietal, rx, ry);
             ry += G(54);
           }
+          [
+            [f.notesroaster, b.notes_roaster],
+            [f.notescup, b.notes_cup],
+          ].forEach(function (nv) {
+            if (!nv[0] || !nv[1]) return;
+            x.font = F(38);
+            wrap(String(nv[1]), 660)
+              .slice(0, 2)
+              .forEach(function (l) {
+                x.fillText(l, rx, ry);
+                ry += G(44);
+              });
+          });
           x.textAlign = "left";
           var lb = f.region && meta.region ? H - pad - G(48) - 26 : H - pad - 14;
           drawLogo(pad, 104, 430, Math.max(150, lb - 104));
@@ -4604,6 +4636,8 @@ FEATURES_JS = r'''
           ["freeze", isEs ? "F. congelado" : "Freeze date"],
           ["peak", isEs ? "Pico" : "Peak"],
           ["portion", isEs ? "Porción" : "Portion"],
+          ["notesroaster", isEs ? "Notas tostador" : "Roaster notes"],
+          ["notescup", isEs ? "Notas taza" : "Cup notes"],
         ].forEach(function (k) {
           fr2.appendChild(
             chip(k[1], !!ff[k[0]], function () {

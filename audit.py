@@ -1211,6 +1211,40 @@ if not re.search(r'notes_cup: row\[idx\["notes_cup"\]\]', JS):
     fail('beans', 'the inventory read drops the cup notes -> they save once and never come back')
 checks += 2
 
+# The notes are optional label fields, and they must default OFF. A 50x30 label
+# is already crowded and notes are unbounded free text, so switching them on by
+# default would reflow every label already printed and stuck to a bag.
+m_ld = re.search(r'var LBL_DEF = \{(.*?)\};', JS, re.S)
+if not m_ld:
+    fail('beans', 'LBL_DEF is gone')
+else:
+    b = m_ld.group(1)
+    for k in ('notesroaster', 'notescup'):
+        if not re.search(k + r':\s*0', b):
+            fail('beans', 'label field %s is missing or defaults ON -> every label already printed '
+                          'would reflow' % k)
+    checks += 2
+
+# Drawn wrapped and line-capped. An unbounded note printed straight would run off
+# the label, and a note cut mid word reads as a different note.
+m_dr = re.search(r'function labelDraw\(b, logoImg\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_dr:
+    fail('beans', 'labelDraw is gone')
+else:
+    b = m_dr.group(1)
+    # There are two layouts and each draws the notes separately, so a substring
+    # test stays satisfied while one of them is neutered.
+    if not re.search(r'f\.notesroaster && b\.notes_roaster', b):
+        fail('beans', 'the stacked layout no longer draws the notes -> the toggles do nothing '
+                      'there while still working in split')
+    if not re.search(r'\[f\.notesroaster, b\.notes_roaster\]', b):
+        fail('beans', 'the split layout no longer draws the notes -> the toggles do nothing '
+                      'there while still working in stacked')
+    if not re.search(r'wrap\(String\(nv\[1\]\), 660\)', b):
+        fail('beans', 'the split layout no longer wraps the notes -> a long note runs off the '
+                      'label instead of breaking onto a second line')
+    checks += 2
+
 # ---------------------------------------------------------------- report
 print()
 print('  audit of %s' % os.path.basename(HTML))
