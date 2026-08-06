@@ -7124,31 +7124,43 @@ FEATURES_JS = r'''
         invPerG();
       }
       function renderBagChips() {
-        var box = document.getElementById("invbagchips");
-        if (!box || typeof chipRow !== "function") return;
-        var labels = BAGSIZES.map(function (g) {
-          return g === "1000" ? "1kg" : g + "g";
-        });
-        chipRow(
-          "invbagchips",
-          labels,
-          INVBAG === "1000" ? "1kg" : INVBAG + "g",
-          function (v) {
-            INVBAG = v === "1kg" ? "1000" : v.replace("g", "");
-            try {
-              localStorage.setItem("invbag", INVBAG);
-            } catch (e) {}
-            /* Write back into the box the chip sits under, or the two disagree on
-         screen and only one of them counts. */
-            var box2 = document.getElementById("invsizeg");
-            if (box2) box2.value = INVBAG;
-            invPerG();
-            try {
-              invPortions();
-            } catch (e) {}
-          },
-          renderBagChips,
-        );
+        /* Was a chip row. Nine standard sizes wrapped to five rows of two inside
+     this narrow column and pushed Congelar off the screen, for a value that is
+     already typed in the box right above. One select, one line, and the box
+     stays authoritative for anything not on the list. */
+        var sel = document.getElementById("invbagsel");
+        if (!sel) return;
+        var cur = String(INVBAG || "");
+        sel.innerHTML = "";
+        var opts = BAGSIZES.slice();
+        /* A size not on the list still gets an option, or the select would show
+     something other than the bag actually set. */
+        if (cur && opts.indexOf(cur) < 0) opts.push(cur);
+        opts
+          .sort(function (a, b) {
+            return parseFloat(a) - parseFloat(b);
+          })
+          .forEach(function (g) {
+            var o = document.createElement("option");
+            o.value = g;
+            o.textContent = g === "1000" ? "1kg" : g + "g";
+            sel.appendChild(o);
+          });
+        if (cur) sel.value = cur;
+      }
+      function invBagPick() {
+        var sel = document.getElementById("invbagsel");
+        if (!sel || !sel.value) return;
+        INVBAG = String(sel.value);
+        try {
+          localStorage.setItem("invbag", INVBAG);
+        } catch (e) {}
+        var box = document.getElementById("invsizeg");
+        if (box) box.value = INVBAG;
+        invPerG();
+        try {
+          invPortions();
+        } catch (e) {}
       }
       /* Show per gram and per shot live. Currency codes, not symbols: $ means four
    different things in this list and the ambiguity is not worth the pixels. */

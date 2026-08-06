@@ -723,7 +723,12 @@
                   style="width: 100%"
                 />
               </div>
-              <div id="invbagchips" style="display: flex; flex-wrap: wrap; gap: 6px"></div>
+              <select
+                id="invbagsel"
+                class="fin"
+                onchange="invBagPick()"
+                style="width: 100%; margin-top: 6px"
+              ></select>
             </div>
             <div class="fcell">
               <div class="fl" data-i18n="invPrice">Price per bag</div>

@@ -1113,11 +1113,17 @@ else:
                       'changes the portion instead')
     checks += 2
 
-m_bc = re.search(r'function renderBagChips\(\)\s*\{(.*?)\n      \}', JS, re.S)
+m_bc = re.search(r'function invBagPick\(\)\s*\{(.*?)\n      \}', JS, re.S)
 if not m_bc or 'invsizeg' not in m_bc.group(1):
-    fail('beans', 'the bag size chip no longer fills the box -> the typed value and the lit chip '
-                  'can disagree with no sign of which one counts')
-checks += 1
+    fail('beans', 'picking a bag size no longer fills the box -> the typed value and the selected '
+                  'size can disagree with no sign of which one counts')
+# A bag size that is not one of the standard nine must still appear in the list,
+# or the select shows a different size from the one actually set.
+m_bs = re.search(r'function renderBagChips\(\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_bs or 'opts.indexOf(cur) < 0' not in m_bs.group(1):
+    fail('beans', 'a custom bag size gets no option -> the select displays a size other than the '
+                  'one in use')
+checks += 2
 
 m_ip = re.search(r'function invPortions\(\)\s*\{(.*?)\n      \}', JS, re.S)
 if not m_ip:
