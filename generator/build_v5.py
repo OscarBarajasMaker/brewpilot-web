@@ -10018,14 +10018,20 @@ FEATURES_JS = must_replace(
           .trim();
       }
       function laneHistCell(shot) {
-        /* date|grind_setting|resistance|rating, one shot per cell. Five plain
-     cells rather than one JSON blob, so a lane can be read and corrected in the
-     sheet by hand. The separator is stripped from every field first: a grind
-     setting typed as "3|4" would otherwise split the cell and shift every
-     field after it. */
-        return [laneDay(shot.date), shot.grind, shot.resistance, shot.rating]
-          .map(laneCellSafe)
-          .join("|");
+        /* date|grind_setting|resistance|rating|taste, one shot per cell. Five
+     plain cells rather than one JSON blob, so a lane can be read and corrected
+     in the sheet by hand. The separator is stripped from every field first: a
+     grind setting typed as "3|4" would otherwise split the cell and shift every
+     field after it.
+     taste is APPENDED, so a cell written before today has four parts and still
+     parses; the fifth simply comes back empty. */
+        var f = [laneDay(shot.date), shot.grind, shot.resistance, shot.rating, shot.taste].map(
+          laneCellSafe,
+        );
+        /* Drop trailing empties, so a shot with no taste writes exactly the same
+     cell it always did instead of a cosmetic dangling separator in the sheet. */
+        while (f.length > 4 && f[f.length - 1] === "") f.pop();
+        return f.join("|");
       }
       function laneCache() {
         try {
@@ -10074,6 +10080,7 @@ FEATURES_JS = must_replace(
           grindUm: laneNum(at("grind_um")),
           rating: at("rating"),
           profile: String(at("profile") || "").trim(),
+          taste: String(at("taste_tag") || "").trim(),
           resistance: laneNum(at("resistance")),
           adherence: laneNum(at("adherence")),
           channel: laneNum(at("channel")),
@@ -10497,7 +10504,9 @@ FEATURES_JS = must_replace(
     '          laneGoFine: "Last one ran {n}% loose. Go finer.",\n'
     '          laneTry: "Try about {g}.",\n'
     '          laneNoPhysics: "No flow data on this lane, so grind and rating only.",\n'
-    '          laneMixed: "This lane mixes {n} profiles. Resistance may not compare across them.",',
+    '          laneMixed: "This lane mixes {n} profiles. Resistance may not compare across them.",\n'
+    '          laneCupNotes: "In the cup: {s}",\n'
+    '          laneTasteAt: "{t} ran at R {r} ({n} shots)",',
     'P18a card strings, en')
 
 FEATURES_JS = must_replace(
@@ -10512,7 +10521,9 @@ FEATURES_JS = must_replace(
     '          laneGoFine: "El anterior sali\u00f3 {n}% suelto. Muele m\u00e1s fino.",\n'
     '          laneTry: "Prueba alrededor de {g}.",\n'
     '          laneNoPhysics: "Sin datos de flujo en este carril, as\u00ed que solo molienda y calificaci\u00f3n.",\n'
-    '          laneMixed: "Este carril mezcla {n} perfiles. La resistencia puede no ser comparable entre ellos.",',
+    '          laneMixed: "Este carril mezcla {n} perfiles. La resistencia puede no ser comparable entre ellos.",\n'
+    '          laneCupNotes: "En taza: {s}",\n'
+    '          laneTasteAt: "{t} sali\u00f3 con R {r} ({n} shots)",',
     'P18b card strings, es')
 
 # P19. The card. Everything here is chosen by what the lane CONTAINS, never by
@@ -10526,7 +10537,13 @@ FEATURES_JS = must_replace(
     '      function laneNote(reason, lane) {',
     '''      function laneHistParse(cell) {
         var p = String(cell || "").split("|");
-        return { date: p[0] || "", grind: p[1] || "", resistance: p[2] || "", rating: p[3] || "" };
+        return {
+          date: p[0] || "",
+          grind: p[1] || "",
+          resistance: p[2] || "",
+          rating: p[3] || "",
+          taste: p[4] || "",
+        };
       }
       function laneCardData(coffee, type) {
         /* Pure, so the card can be tested without a DOM. */
@@ -10565,6 +10582,37 @@ FEATURES_JS = must_replace(
           if (c !== null && isFinite(c)) clicks = String(Math.round(c * 10) / 10);
         }
         return { last: last, um: um, clicks: clicks };
+      }
+      function laneTasteSplit(d) {
+        /* The missing half. Rating is a number with no flavour attached and
+     resistance is a flavour with no number attached; this is the only place they
+     meet. Needs at least two shots on each of at least two different tastes, or
+     it would be reporting one shot as if it were a pattern. */
+        var by = {};
+        d.hist.forEach(function (h) {
+          var k = String(h.taste || "").trim(),
+            r = laneNum(h.resistance);
+          if (!k || r === "") return;
+          (by[k] = by[k] || []).push(r);
+        });
+        var out = [];
+        Object.keys(by).forEach(function (k) {
+          if (by[k].length < 2) return;
+          var v = by[k].slice().sort(function (a, b) {
+            return a - b;
+          });
+          /* A real median. Taking v[len/2] on an even count reports the UPPER of
+       the two middles, so two shots at 2.2 and 2.4 came back as 2.4: the higher
+       reading presented as the typical one. Rounded because averaging floats
+       produces 2.3000000000000003. */
+          var mid = v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2;
+          out.push({ taste: k, n: v.length, r: laneRound(mid, 3) });
+        });
+        if (out.length < 2) return [];
+        out.sort(function (a, b) {
+          return a.r - b.r;
+        });
+        return out;
       }
       function laneNudge(d) {
         /* Silent unless the lane carries flow data AND the last shot has a
@@ -10612,6 +10660,10 @@ FEATURES_JS = must_replace(
           return;
         }
         laneLine(el, t("laneCardHead").replace("{m}", d.type).replace("{n}", d.n));
+        try {
+          var _inv = invRowByName(coffee) || {};
+          if (_inv.notes_cup) laneLine(el, t("laneCupNotes").replace("{s}", _inv.notes_cup), true);
+        } catch (e) {}
         var g = laneGrindHint(d);
         if (g.last) {
           var line = t("laneUsually").replace("{g}", g.last);
@@ -10623,7 +10675,15 @@ FEATURES_JS = must_replace(
           if (h.grind) bits.push(h.grind);
           if (h.resistance !== "") bits.push("R " + h.resistance);
           if (h.rating !== "") bits.push(h.rating + "/10");
+          if (h.taste) bits.push(h.taste);
           laneLine(el, "  " + bits.join("  "), true);
+        });
+        laneTasteSplit(d).forEach(function (g) {
+          laneLine(
+            el,
+            t("laneTasteAt").replace("{t}", g.taste).replace("{r}", g.r).replace("{n}", g.n),
+            true,
+          );
         });
         var mixed = String((d.lane && d.lane.profiles) || "")
           .split(",")

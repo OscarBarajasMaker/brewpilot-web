@@ -104,7 +104,12 @@ else:
         elif JS[j] == '}': d -= 1
         j += 1
     blob = JS[i:j]
-    esi = blob.find('es:')
+    # Was blob.find('es:'), which matches the tail of any KEY ending in "es",
+    # for example laneCupNotes:. That truncated the English dictionary at the
+    # first such key and reported every later key as missing: 144 failures on a
+    # build that was correct. Anchor on the dictionary opener instead.
+    m_es = re.search(r'\n\s*es:\s*\{', blob)
+    esi = m_es.start() if m_es else -1
     if esi < 0:
         fail('i18n', 'no es:{} dictionary found')
     else:
@@ -1243,6 +1248,42 @@ else:
     if not re.search(r'wrap\(String\(nv\[1\]\), 660\)', b):
         fail('beans', 'the split layout no longer wraps the notes -> a long note runs off the '
                       'label instead of breaking onto a second line')
+    checks += 2
+
+# taste_tag is the only qualitative field per shot and it never reached the lane,
+# so a lane held ratings with no flavour and resistances with no flavour. The
+# history cell carries it now, APPENDED so a cell written before today still
+# parses with four parts and an empty fifth.
+m_hc2 = re.search(r'function laneHistCell\(shot\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_hc2:
+    fail('lane', 'laneHistCell is gone')
+elif not re.search(r'shot\.rating,\s*shot\.taste\]', m_hc2.group(1)):
+    fail('lane', 'the taste is not last in the history cell -> a cell written before today parses '
+                 'its fields one position out')
+checks += 1
+
+m_hp = re.search(r'function laneHistParse\(cell\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_hp or 'p[4]' not in m_hp.group(1):
+    fail('lane', 'laneHistParse drops the taste -> it is written to the sheet and never read back')
+checks += 1
+
+# Descriptive only, and gated. One shot of a taste is not a pattern, and two
+# tastes are the minimum for a comparison to mean anything.
+m_ts = re.search(r'function laneTasteSplit\(d\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_ts:
+    fail('lane', 'laneTasteSplit is gone -> rating and resistance never meet')
+else:
+    b = m_ts.group(1)
+    if 'by[k].length < 2' not in b:
+        fail('lane', 'laneTasteSplit reports a taste seen once -> one shot presented as a pattern')
+    # An even count must average the two middles. v[len/2] returns the UPPER, so
+    # two shots at 2.2 and 2.4 report 2.4: the higher reading shown as typical.
+    if 'v.length / 2 - 1' not in b:
+        fail('lane', 'laneTasteSplit does not take a true median -> on an even number of shots it '
+                     'reports the higher reading as the typical one')
+    if 'out.length < 2' not in b:
+        fail('lane', 'laneTasteSplit reports a single taste -> nothing to compare it against, so '
+                     'the number reads as a verdict')
     checks += 2
 
 # ---------------------------------------------------------------- report
