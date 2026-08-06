@@ -1415,6 +1415,7 @@
                 </optgroup>
                 <optgroup label="Typica family">
                   <option>Typica</option>
+                  <option>Typica Mejorado</option>
                   <option>Mundo Novo</option>
                   <option>Maragogipe</option>
                   <option>Kona</option>
@@ -1429,6 +1430,8 @@
                   <option>Ruiru 11</option>
                   <option>Batian</option>
                   <option>K7</option>
+                  <option>SL32</option>
+                  <option>SL-32, SL-28, Batian, Ruiru 11</option>
                 </optgroup>
                 <optgroup label="Hybrids / Large-bean">
                   <option>Castillo</option>
@@ -2031,33 +2034,7 @@
             <option>Yemen</option>
             <option>Indonesia</option>
             <option>India</option></datalist
-          ><datalist id="ghVarList">
-            <option>Gesha</option>
-            <option>SL28</option>
-            <option>SL34</option>
-            <option>Bourbon</option>
-            <option>Pink Bourbon</option>
-            <option>Caturra</option>
-            <option>Catuai</option>
-            <option>Typica</option>
-            <option>Heirloom</option>
-            <option>Pacamara</option>
-            <option>Pacas</option>
-            <option>Villa Sarchi</option>
-            <option>Castillo</option>
-            <option>Colombia</option>
-            <option>SL32</option>
-            <option>K7</option>
-            <option>Ruiru 11</option>
-            <option>Batian</option>
-            <option>SL-32, SL-28, Batian, Ruiru 11</option>
-            <option>Sudan Rume</option>
-            <option>Wush Wush</option>
-            <option>Chiroso</option>
-            <option>Java</option>
-            <option>Maragogipe</option>
-            <option>Mundo Novo</option>
-          </datalist>
+          ><datalist id="ghVarList"></datalist>
           <div class="convout" id="ghOut"></div>
           <div class="mut" style="text-align: left" data-i18n="ghHint">
             Roast and process do the work; origin and varietal only nudge by density.
@@ -6847,6 +6824,36 @@
           if (q) q.value = String(nP);
         };
         out.appendChild(b);
+      }
+      function varietalSync() {
+        /* ONE list. The grouped select is the source and the datalist is derived
+     from it, because two hand-kept copies drift: the datalist had SL32 and a
+     Kenyan blend the select lacked, and the select had Laurina, Kona, Blue
+     Mountain, Eugenioides and a dozen more the datalist lacked. Whichever field
+     you happened to be looking at decided which varietals existed.
+     The Other group is skipped: Blend, Other and Unknown are form controls, not
+     varietals, and a datalist is a suggestion list. */
+        var sel = document.getElementById("varietal"),
+          dl = document.getElementById("ghVarList");
+        if (!sel || !dl) return;
+        var seen = {},
+          out = [];
+        Array.prototype.slice.call(sel.querySelectorAll("optgroup")).forEach(function (g) {
+          if (String(g.label || "").toLowerCase() === "other") return;
+          Array.prototype.slice.call(g.children).forEach(function (o) {
+            var v = String(o.value || o.textContent || "").trim();
+            if (!v || seen[v]) return;
+            seen[v] = 1;
+            out.push(v);
+          });
+        });
+        if (!out.length) return; /* never blank a working list */
+        dl.innerHTML = "";
+        out.forEach(function (v) {
+          var o = document.createElement("option");
+          o.value = v;
+          dl.appendChild(o);
+        });
       }
       function invVarList() {
         /* Read the varietals off the datalist that already exists. A second
@@ -12627,7 +12634,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-08-06-0624-5d8147";
+      var BUILD = "2026-08-06-0636-66e44d";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;
@@ -13714,6 +13721,9 @@
       /* wizTemplateLink() and wizShots() removed with the Apps Script wizard: one was an
    empty stub left over from the /exec cut, the other lazy-loaded screenshots of a
    flow that no longer exists. Bootstrap is the worst place to leave a dead call. */
+      try {
+        varietalSync();
+      } catch (e) {}
       uiStart();
       try {
         pickerizeAll();

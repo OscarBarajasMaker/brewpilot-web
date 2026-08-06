@@ -3663,6 +3663,36 @@ FEATURES_JS = r'''
         };
         out.appendChild(b);
       }
+      function varietalSync() {
+        /* ONE list. The grouped select is the source and the datalist is derived
+     from it, because two hand-kept copies drift: the datalist had SL32 and a
+     Kenyan blend the select lacked, and the select had Laurina, Kona, Blue
+     Mountain, Eugenioides and a dozen more the datalist lacked. Whichever field
+     you happened to be looking at decided which varietals existed.
+     The Other group is skipped: Blend, Other and Unknown are form controls, not
+     varietals, and a datalist is a suggestion list. */
+        var sel = document.getElementById("varietal"),
+          dl = document.getElementById("ghVarList");
+        if (!sel || !dl) return;
+        var seen = {},
+          out = [];
+        Array.prototype.slice.call(sel.querySelectorAll("optgroup")).forEach(function (g) {
+          if (String(g.label || "").toLowerCase() === "other") return;
+          Array.prototype.slice.call(g.children).forEach(function (o) {
+            var v = String(o.value || o.textContent || "").trim();
+            if (!v || seen[v]) return;
+            seen[v] = 1;
+            out.push(v);
+          });
+        });
+        if (!out.length) return; /* never blank a working list */
+        dl.innerHTML = "";
+        out.forEach(function (v) {
+          var o = document.createElement("option");
+          o.value = v;
+          dl.appendChild(o);
+        });
+      }
       function invVarList() {
         /* Read the varietals off the datalist that already exists. A second
      hardcoded list here is one more thing that drifts. */
@@ -9652,6 +9682,12 @@ FEATURES_JS = must_replace(
 FEATURES_JS = must_replace(
     FEATURES_JS,
     '      uiStart();\n      try {\n        pickerizeAll();\n      } catch (e) {}',
+    # varietalSync runs BEFORE pickerizeAll: pickerize builds real selects out of
+    # the datalist, so an empty datalist at that instant yields an empty picker on
+    # iOS and the field silently offers nothing. It goes ahead of uiStart rather
+    # than between the two, because P24d anchors on that exact pair and splitting
+    # it would break a later patch.
+    '      try {\n        varietalSync();\n      } catch (e) {}\n'
     '      uiStart();\n      try {\n        pickerizeAll();\n      } catch (e) {}\n'
     '      try {\n        bpHandoff();\n      } catch (e) {}',
     'P6b call the handoff at boot')

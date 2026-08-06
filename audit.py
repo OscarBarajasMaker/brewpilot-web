@@ -1286,6 +1286,36 @@ else:
                      'the number reads as a verdict')
     checks += 2
 
+# ONE varietal list. The grouped select is the source and the datalist is
+# derived. Two hand-kept copies drifted: the datalist had SL32 and a Kenyan blend
+# the select lacked, the select had Laurina, Kona, Blue Mountain, Eugenioides and
+# a dozen more the datalist lacked, so which field you were looking at decided
+# which varietals existed.
+if re.search(r'<datalist id="ghVarList">\s*<option', BODY):
+    fail('varietal', 'ghVarList has hardcoded options again -> a second copy of the varietal list '
+                     'that will drift from the select')
+m_vs = re.search(r'function varietalSync\(\)\s*\{(.*?)\n      \}', JS, re.S)
+if not m_vs:
+    fail('varietal', 'varietalSync is gone -> the datalist is never filled, so the inventory '
+                     'varietal field and the blend chips offer nothing at all')
+else:
+    b = m_vs.group(1)
+    if 'if (!out.length) return' not in b:
+        fail('varietal', 'varietalSync can blank a working datalist -> if the select is ever empty '
+                         'it wipes the list instead of leaving it alone')
+    if '"other"' not in b:
+        fail('varietal', 'varietalSync no longer skips the Other group -> Blend, Other and Unknown '
+                         'are form controls, not varietals, and would be offered as blend chips')
+    checks += 3
+
+# Order matters: pickerize builds real selects out of the datalist, so it must run
+# after the datalist is filled or the picker is empty on iOS.
+m_boot = re.search(r'varietalSync\(\);(.*?)pickerizeAll\(\);', JS, re.S)
+if not m_boot:
+    fail('varietal', 'varietalSync no longer runs before pickerizeAll -> pickerize reads an empty '
+                     'datalist and the iOS picker offers nothing')
+checks += 1
+
 # ---------------------------------------------------------------- report
 print()
 print('  audit of %s' % os.path.basename(HTML))
