@@ -1875,6 +1875,14 @@
               <input id="invregion" list="ghOriginList" class="fin" />
             </div>
             <div class="fcell fullrow">
+              <div class="fl" data-i18n="invNotesRoaster">Roaster notes</div>
+              <input id="invnotes_roaster" class="fin" style="width: 100%" />
+            </div>
+            <div class="fcell fullrow">
+              <div class="fl" data-i18n="invNotesCup">What you taste</div>
+              <input id="invnotes_cup" class="fin" style="width: 100%" />
+            </div>
+            <div class="fcell fullrow">
               <button class="grn" style="width: 100%" onclick="freezeCoffee()">Freeze it</button
               ><button
                 class="off"
@@ -3962,6 +3970,8 @@
             freeze_date: (document.getElementById("invfreeze_date") || {}).value || "",
             varietal: (document.getElementById("invvarietal") || {}).value || "",
             region: (document.getElementById("invregion") || {}).value || "",
+            notes_roaster: (document.getElementById("invnotes_roaster") || {}).value || "",
+            notes_cup: (document.getElementById("invnotes_cup") || {}).value || "",
             bag_g: INVBAG,
             price: (document.getElementById("invprice") || {}).value || "",
             currency: INVCCY,
@@ -3999,6 +4009,9 @@
           try {
             document.getElementById("invcoffee").value = "";
             document.getElementById("invqty").value = "1";
+            /* clear the notes too, or the next bag inherits the last one's */
+            document.getElementById("invnotes_roaster").value = "";
+            document.getElementById("invnotes_cup").value = "";
           } catch (e) {}
           try {
             alert(
@@ -4505,6 +4518,8 @@
           insRatioUp: "Longer ratios rate better across {n} logs",
           insRatioDown: "Tighter ratios rate better across {n} logs",
           invBagSize: "Bag size",
+          invNotesRoaster: "Roaster notes (from the bag)",
+          invNotesCup: "What you taste (your own)",
           invPortionsPerBag: "{n} portions of {g}g per bag.",
           invPortionRest: "{g}g left over.",
           invMakePortions: "Set to {n}",
@@ -4784,6 +4799,8 @@
           laneMixed:
             "Este carril mezcla {n} perfiles. La resistencia puede no ser comparable entre ellos.",
           invBagSize: "Tamaño de bolsa",
+          invNotesRoaster: "Notas del tostador (de la bolsa)",
+          invNotesCup: "Notas en taza (las tuyas)",
           invPortionsPerBag: "{n} porciones de {g}g por bolsa.",
           invPortionRest: "Sobran {g}g.",
           invMakePortions: "Poner {n}",
@@ -8105,6 +8122,16 @@
               v: b.region,
               options: listOptions("ghOriginList"),
             },
+            {
+              k: "notes_roaster",
+              label: isEs ? "Notas del tostador" : "Roaster notes",
+              v: b.notes_roaster,
+            },
+            {
+              k: "notes_cup",
+              label: isEs ? "Notas en taza" : "What you taste",
+              v: b.notes_cup,
+            },
             { k: "qty", label: isEs ? "Cuantas" : "How many", v: p.qty, type: "number" },
           ],
           async function (vals) {
@@ -8495,6 +8522,8 @@
               freeze_date: "",
               varietal: "",
               region: "",
+              notes_roaster: "",
+              notes_cup: "",
               bag_g: (o && o.bag_g) || "",
               price: "",
               currency: typeof INVCCY !== "undefined" ? INVCCY : "",
@@ -10885,6 +10914,8 @@
         "price_per_g",
         "varietal",
         "region",
+        "notes_roaster",
+        "notes_cup",
       ];
 
       /* Build the same shape iBuild wants, straight from localStorage. */
@@ -12272,6 +12303,8 @@
           price_per_g: ppg,
           varietal: o.varietal || "",
           region: o.region || "",
+          notes_roaster: o.notes_roaster || "",
+          notes_cup: o.notes_cup || "",
         };
         return INV_COLNAMES.map(function (c) {
           return map[c] !== undefined ? map[c] : "";
@@ -12436,6 +12469,8 @@
               roaster: row[idx["roaster"]] || "",
               varietal: row[idx["varietal"]] || "",
               region: row[idx["region"]] || "",
+              notes_roaster: row[idx["notes_roaster"]] || "",
+              notes_cup: row[idx["notes_cup"]] || "",
               roast: row[idx["roast"]] || "",
               process: row[idx["process"]] || "",
               resting: String(row[idx["status"]] || "") === "Resting",
@@ -12547,7 +12582,7 @@
       /* Build stamp. Same job as FW_VERSION in the firmware: answer "which build is
    actually live" without guessing. Generated at build time, printed by
    update.ps1 before publishing, and shown at the bottom of Settings. */
-      var BUILD = "2026-08-06-0543-df3f48";
+      var BUILD = "2026-08-06-0555-f77d45";
       function renderBuild() {
         var host = document.getElementById("setPanel");
         if (!host) return;

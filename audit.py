@@ -1185,6 +1185,32 @@ else:
                       'a saved bag from a dead button and freezes it twice')
     checks += 1
 
+# Two notes columns: what the roaster claims and what you actually taste. They
+# are separate on purpose, because comparing them is the whole point and a single
+# merged field loses that.
+m_ic = re.search(r'var INV_COLNAMES = \[(.*?)\];', JS, re.S)
+if not m_ic:
+    fail('beans', 'INV_COLNAMES is gone')
+else:
+    b = m_ic.group(1)
+    for c in ('notes_roaster', 'notes_cup'):
+        if '"' + c + '"' not in b:
+            fail('beans', 'the %s column is gone from the inventory schema' % c)
+    # APPENDED, never inserted: gEnsureHeader only widens, so a sheet made before
+    # today keeps its order. Inserting would shift every value one column right.
+    cols = re.findall(r'"([a-z_]+)"', b)
+    if cols[-2:] != ['notes_roaster', 'notes_cup']:
+        fail('beans', 'the notes columns are not last in INV_COLNAMES -> on a sheet created '
+                      'earlier every value after them lands one column off')
+    checks += 3
+
+if not re.search(r'notes_roaster: \(document\.getElementById\("invnotes_roaster"\)', JS):
+    fail('beans', 'freezeCoffee no longer reads the roaster notes -> the field is typed and thrown '
+                  'away')
+if not re.search(r'notes_cup: row\[idx\["notes_cup"\]\]', JS):
+    fail('beans', 'the inventory read drops the cup notes -> they save once and never come back')
+checks += 2
+
 # ---------------------------------------------------------------- report
 print()
 print('  audit of %s' % os.path.basename(HTML))

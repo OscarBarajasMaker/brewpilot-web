@@ -782,6 +782,14 @@
               <input id="invregion" list="ghOriginList" class="fin" />
             </div>
             <div class="fcell fullrow">
+              <div class="fl" data-i18n="invNotesRoaster">Roaster notes</div>
+              <input id="invnotes_roaster" class="fin" style="width: 100%" />
+            </div>
+            <div class="fcell fullrow">
+              <div class="fl" data-i18n="invNotesCup">What you taste</div>
+              <input id="invnotes_cup" class="fin" style="width: 100%" />
+            </div>
+            <div class="fcell fullrow">
               <button class="grn" style="width: 100%" onclick="freezeCoffee()">Freeze it</button
               ><button
                 class="off"
@@ -2787,6 +2795,8 @@
             freeze_date: (document.getElementById("invfreeze_date") || {}).value || "",
             varietal: (document.getElementById("invvarietal") || {}).value || "",
             region: (document.getElementById("invregion") || {}).value || "",
+            notes_roaster: (document.getElementById("invnotes_roaster") || {}).value || "",
+            notes_cup: (document.getElementById("invnotes_cup") || {}).value || "",
             bag_g: INVBAG,
             price: (document.getElementById("invprice") || {}).value || "",
             currency: INVCCY,
@@ -2824,6 +2834,9 @@
           try {
             document.getElementById("invcoffee").value = "";
             document.getElementById("invqty").value = "1";
+            /* clear the notes too, or the next bag inherits the last one's */
+            document.getElementById("invnotes_roaster").value = "";
+            document.getElementById("invnotes_cup").value = "";
           } catch (e) {}
           try {
             alert(

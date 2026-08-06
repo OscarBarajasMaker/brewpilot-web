@@ -1367,6 +1367,8 @@ FEATURES_JS = r'''
           insRatioUp: "Longer ratios rate better across {n} logs",
           insRatioDown: "Tighter ratios rate better across {n} logs",
           invBagSize: "Bag size",
+          invNotesRoaster: "Roaster notes (from the bag)",
+          invNotesCup: "What you taste (your own)",
           invPortionsPerBag: "{n} portions of {g}g per bag.",
           invPortionRest: "{g}g left over.",
           invMakePortions: "Set to {n}",
@@ -1620,6 +1622,8 @@ FEATURES_JS = r'''
           insNothingYet:
             "Todavía no destaca nada en tus datos. Eso es una respuesta real, no un error.",
           invBagSize: "Tamaño de bolsa",
+          invNotesRoaster: "Notas del tostador (de la bolsa)",
+          invNotesCup: "Notas en taza (las tuyas)",
           invPortionsPerBag: "{n} porciones de {g}g por bolsa.",
           invPortionRest: "Sobran {g}g.",
           invMakePortions: "Poner {n}",
@@ -4903,6 +4907,16 @@ FEATURES_JS = r'''
               v: b.region,
               options: listOptions("ghOriginList"),
             },
+            {
+              k: "notes_roaster",
+              label: isEs ? "Notas del tostador" : "Roaster notes",
+              v: b.notes_roaster,
+            },
+            {
+              k: "notes_cup",
+              label: isEs ? "Notas en taza" : "What you taste",
+              v: b.notes_cup,
+            },
             { k: "qty", label: isEs ? "Cuantas" : "How many", v: p.qty, type: "number" },
           ],
           async function (vals) {
@@ -5293,6 +5307,8 @@ FEATURES_JS = r'''
               freeze_date: "",
               varietal: "",
               region: "",
+              notes_roaster: "",
+              notes_cup: "",
               bag_g: (o && o.bag_g) || "",
               price: "",
               currency: typeof INVCCY !== "undefined" ? INVCCY : "",
@@ -7658,6 +7674,8 @@ FEATURES_JS = r'''
         "price_per_g",
         "varietal",
         "region",
+        "notes_roaster",
+        "notes_cup",
       ];
 
       /* Build the same shape iBuild wants, straight from localStorage. */
@@ -8447,6 +8465,8 @@ FEATURES_JS = r'''
           price_per_g: ppg,
           varietal: o.varietal || "",
           region: o.region || "",
+          notes_roaster: o.notes_roaster || "",
+          notes_cup: o.notes_cup || "",
         };
         return INV_COLNAMES.map(function (c) {
           return map[c] !== undefined ? map[c] : "";
@@ -8611,6 +8631,8 @@ FEATURES_JS = r'''
               roaster: row[idx["roaster"]] || "",
               varietal: row[idx["varietal"]] || "",
               region: row[idx["region"]] || "",
+              notes_roaster: row[idx["notes_roaster"]] || "",
+              notes_cup: row[idx["notes_cup"]] || "",
               roast: row[idx["roast"]] || "",
               process: row[idx["process"]] || "",
               resting: String(row[idx["status"]] || "") === "Resting",
