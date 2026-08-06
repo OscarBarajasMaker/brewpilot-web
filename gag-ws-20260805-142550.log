@@ -1,0 +1,6 @@
+﻿# gag-ws capture
+# machine   192.168.31.252
+# path      /ws
+# started   2026-08-05T14:25:50.3565185-06:00
+# format    <ms since connect> <TAB> <frame>
+

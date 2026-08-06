@@ -479,7 +479,7 @@
                 step="0.1"
                 inputmode="decimal"
                 class="fin"
-                oninput="gRatioLive()"
+                oninput="bpYieldEdited(); gRatioLive()"
               />
             </div>
             <div class="fcell">
@@ -1299,6 +1299,18 @@
           if (grn && !isNaN(gsetN) && typeof GRINDERS === "object" && GRINDERS[grn])
             grindUm = Math.round(clicksToUm(gsetN, grn));
         } catch (e) {}
+        /* The region slot in cols was the literal "" from the day the column was
+     added. #fregion was filled by the picker, shown on screen, written to
+     Inventory, and then dropped on the floor at save. Every logged shot went to
+     the sheet with region blank while the field visibly held a value.
+     Inventory as the fallback, so a coffee typed by name rather than tapped
+     from the rotation still gets its origin. */
+        var regionCol = g("fregion");
+        if (!regionCol && c) {
+          try {
+            regionCol = String(coffeeIdentity(c)("region", null) || "").trim();
+          } catch (e) {}
+        }
         var cols = [
           "",
           "",
@@ -1323,7 +1335,7 @@
           paper,
           GTASTE || "",
           bl || "",
-          "",
+          regionCol || "",
           basket,
           agit,
           waterCol,
@@ -2799,11 +2811,11 @@
           try {
             loadInventory();
           } catch (e) {}
-          /* Success was completely silent: the only confirmation lived in the
-       unreachable branch that sat behind a return, now deleted. Saving a
-       bag looked identical to nothing happening, so the safe move was to press
-       it again, which is exactly how a bag gets logged twice. Clear the fields
-       too, for the same reason. */
+          /* Success was completely silent: the only confirmation lived in an
+       unreachable branch behind a return, now deleted. Saving a bag looked
+       identical to a dead button, so the safe move was to press it again, which
+       is exactly how a bag gets logged twice. Clear the fields for the same
+       reason. */
           try {
             document.getElementById("invcoffee").value = "";
             document.getElementById("invqty").value = "1";
